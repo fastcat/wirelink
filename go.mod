@@ -2,4 +2,7 @@ module github.com/fastcat/wirelink
 
 go 1.12
 
-require golang.zx2c4.com/wireguard/wgctrl v0.0.0-20190925195211-ef61b881e46f
+require (
+	golang.zx2c4.com/wireguard v0.0.20190908
+	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20190925195211-ef61b881e46f
+)
