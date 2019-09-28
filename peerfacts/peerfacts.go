@@ -45,7 +45,9 @@ func LocalFacts(peer *wgtypes.Peer, ttl time.Duration) (ret []fact.Fact, err err
 	autoAddress := autopeer.AutoAddress(peer)
 	if autoAddress != nil {
 		addAttr(fact.AttributeAllowedCidrV6, IPNetValue{net.IPNet{
-			autoAddress, net.CIDRMask(128, 128)}})
+			IP:   autoAddress,
+			Mask: net.CIDRMask(128, 128),
+		}})
 	}
 
 	for _, peerIP := range peer.AllowedIPs {
@@ -64,15 +66,17 @@ func LocalFacts(peer *wgtypes.Peer, ttl time.Duration) (ret []fact.Fact, err err
 	return ret, nil
 }
 
+// PeerSubject is a subject that is a peer identified via its public key
 type PeerSubject struct {
 	wgtypes.Key
 }
 
+// Bytes gives the binary representation of a peer's public key
 func (s PeerSubject) Bytes() []byte {
 	return s.Key[:]
 }
 
-// peerSubject must implement Subject
+// PeerSubject must implement Subject
 var _ fact.Subject = PeerSubject{}
 
 // IPValue represents some IP address as an Attribute of a Subject
@@ -100,6 +104,7 @@ type IPNetValue struct {
 // IPNetValue must implement Value
 var _ fact.Value = IPNetValue{}
 
+// Bytes gives the binary representation of the ip and cidr prefix
 func (ipn IPNetValue) Bytes() []byte {
 	ipnorm := ipn.IP.To4()
 	if ipnorm == nil {
