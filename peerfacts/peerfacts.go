@@ -1,11 +1,13 @@
 package peerfacts
 
 import (
-	"encoding/binary"
 	"fmt"
+	"net"
 	"time"
 
+	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/fact"
+
 	"golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -21,64 +23,95 @@ func LocalFacts(peer *wgtypes.Peer, ttl time.Duration) (ret []fact.Fact, err err
 
 	expiration := time.Now().Add(ttl)
 
-	// TODO: this is just a placeholder
-	// ret = append(ret, fact.Fact{
-	// 	Attribute: fact.AttributeUnknown,
-	// 	Subject:   peer.PublicKey[:],
-	// 	Value:     peer.PublicKey[:],
-	// 	Expires:   expiration,
-	// })
+	addAttr := func(attr fact.Attribute, value fact.Value) {
+		fact := fact.Fact{
+			Attribute: attr,
+			Subject:   PeerSubject{peer.PublicKey},
+			Value:     value,
+			Expires:   expiration,
+		}
+		ret = append(ret, fact)
+	}
 
 	// the endpoint is trustable if the last handshake age is less than the TTL
 	if peer.Endpoint != nil && peer.LastHandshakeTime.After(time.Now().Add(-device.RekeyAfterTime)) {
 		if peer.Endpoint.IP.To4() != nil {
-			value := make([]byte, 6)
-			copy(value, peer.Endpoint.IP.To4())
-			binary.BigEndian.PutUint16(value[4:], uint16(peer.Endpoint.Port))
-			ret = append(ret, fact.Fact{
-				Attribute: fact.AttributeEndpointV4,
-				Subject:   peer.PublicKey[:],
-				Value:     value,
-				Expires:   expiration,
-			})
+			addAttr(fact.AttributeEndpointV4, IPValue{peer.Endpoint.IP})
 		} else if peer.Endpoint.IP.To16() != nil {
-			value := make([]byte, 18)
-			copy(value, peer.Endpoint.IP.To16())
-			binary.BigEndian.PutUint16(value[16:], uint16(peer.Endpoint.Port))
-			ret = append(ret, fact.Fact{
-				Attribute: fact.AttributeEndpointV6,
-				Subject:   peer.PublicKey[:],
-				Value:     value,
-				Expires:   expiration,
-			})
+			addAttr(fact.AttributeEndpointV6, IPValue{peer.Endpoint.IP})
 		}
+	}
+
+	autoAddress := autopeer.AutoAddress(peer)
+	if autoAddress != nil {
+		addAttr(fact.AttributeAllowedCidrV6, IPNetValue{net.IPNet{
+			autoAddress, net.CIDRMask(128, 128)}})
 	}
 
 	for _, peerIP := range peer.AllowedIPs {
 		// TODO: ignore the auto-generated v6 address
-		ones, _ := peerIP.Mask.Size()
 		if peerIP.IP.To4() != nil {
-			value := make([]byte, 5)
-			copy(value, peerIP.IP.To4())
-			value[4] = uint8(ones)
-			ret = append(ret, fact.Fact{
-				Attribute: fact.AttributeAllowedCidrV4,
-				Subject:   peer.PublicKey[:],
-				Value:     value,
-				Expires:   expiration,
-			})
+			addAttr(fact.AttributeAllowedCidrV4, IPNetValue{peerIP})
 		} else if peerIP.IP.To16() != nil {
-			value := make([]byte, 17)
-			copy(value, peerIP.IP.To16())
-			value[16] = uint8(ones)
-			ret = append(ret, fact.Fact{
-				Attribute: fact.AttributeAllowedCidrV4,
-				Subject:   peer.PublicKey[:],
-				Value:     value,
-				Expires:   expiration,
-			})
+			// ignore link-local addresses, particularly the auto-generated v6 one
+			if peerIP.IP[0] == 0xfe && peerIP.IP[1] == 0x80 {
+				continue
+			}
+			addAttr(fact.AttributeAllowedCidrV6, IPNetValue{peerIP})
 		}
 	}
 
 	return ret, nil
+}
+
+type PeerSubject struct {
+	wgtypes.Key
+}
+
+func (s PeerSubject) Bytes() []byte {
+	return s.Key[:]
+}
+
+// peerSubject must implement Subject
+var _ fact.Subject = PeerSubject{}
+
+// IPValue represents some IP address as an Attribute of a Subject
+type IPValue struct {
+	net.IP
+}
+
+// IPValue must implement Value
+var _ fact.Value = IPValue{}
+
+// Bytes returns the normalized binary representation
+func (ip IPValue) Bytes() []byte {
+	normalized := ip.To4()
+	if normalized == nil {
+		normalized = ip.To16()
+	}
+	return normalized
+}
+
+// IPNetValue represents some IP+Mask as an Attribute of a Subject
+type IPNetValue struct {
+	net.IPNet
+}
+
+// IPNetValue must implement Value
+var _ fact.Value = IPNetValue{}
+
+func (ipn IPNetValue) Bytes() []byte {
+	ipnorm := ipn.IP.To4()
+	if ipnorm == nil {
+		ipnorm = ipn.IP.To16()
+	}
+	ones, _ := ipn.Mask.Size()
+	ret := make([]byte, len(ipnorm), len(ipnorm)+1)
+	copy(ret, ipnorm)
+	ret = append(ret, uint8(ones))
+	return ret
+}
+
+func (ipn IPNetValue) String() string {
+	return ipn.IPNet.String()
 }
