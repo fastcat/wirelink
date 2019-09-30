@@ -36,9 +36,9 @@ func LocalFacts(peer *wgtypes.Peer, ttl time.Duration) (ret []fact.Fact, err err
 	// the endpoint is trustable if the last handshake age is less than the TTL
 	if peer.Endpoint != nil && peer.LastHandshakeTime.After(time.Now().Add(-device.RekeyAfterTime)) {
 		if peer.Endpoint.IP.To4() != nil {
-			addAttr(fact.AttributeEndpointV4, IPValue{peer.Endpoint.IP})
+			addAttr(fact.AttributeEndpointV4, IPPortValue{peer.Endpoint.IP, peer.Endpoint.Port})
 		} else if peer.Endpoint.IP.To16() != nil {
-			addAttr(fact.AttributeEndpointV6, IPValue{peer.Endpoint.IP})
+			addAttr(fact.AttributeEndpointV6, IPPortValue{peer.Endpoint.IP, peer.Endpoint.Port})
 		}
 	}
 

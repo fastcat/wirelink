@@ -1,6 +1,8 @@
 package peerfacts
 
 import (
+	"encoding/binary"
+	"fmt"
 	"net"
 
 	"github.com/fastcat/wirelink/fact"
@@ -21,21 +23,29 @@ func (s PeerSubject) Bytes() []byte {
 // PeerSubject must implement Subject
 var _ fact.Subject = PeerSubject{}
 
-// IPValue represents some IP address as an Attribute of a Subject
-type IPValue struct {
-	net.IP
+// IPPortValue represents an IP:port pair as an Attribute of a Subject
+type IPPortValue struct {
+	IP   net.IP
+	Port int
 }
 
 // IPValue must implement Value
-var _ fact.Value = IPValue{}
+var _ fact.Value = IPPortValue{}
 
 // Bytes returns the normalized binary representation
-func (ip IPValue) Bytes() []byte {
-	normalized := ip.To4()
+func (ipp IPPortValue) Bytes() []byte {
+	normalized := ipp.IP.To4()
 	if normalized == nil {
-		normalized = ip.To16()
+		normalized = ipp.IP.To16()
 	}
+	ret := make([]byte, len(normalized)+2)
+	copy(ret, normalized)
+	binary.BigEndian.PutUint16(ret[len(normalized):], uint16(ipp.Port))
 	return normalized
+}
+
+func (ipp IPPortValue) String() string {
+	return fmt.Sprintf("%v:%v", ipp.IP, ipp.Port)
 }
 
 // IPNetValue represents some IP+Mask as an Attribute of a Subject
