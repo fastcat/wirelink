@@ -1,14 +1,27 @@
-package peerfacts
+package types
 
 import (
 	"encoding/binary"
 	"fmt"
 	"net"
 
-	"github.com/fastcat/wirelink/fact"
-
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
+
+// Subject is the subject of a Fact
+type Subject interface {
+	fmt.Stringer
+	Bytes() []byte
+}
+
+// Value represents the value of a Fact
+type Value interface {
+	fmt.Stringer
+	Bytes() []byte
+}
+
+// Attribute is a byte identifying what aspect of a Subject a Fact describes
+type Attribute byte
 
 // PeerSubject is a subject that is a peer identified via its public key
 type PeerSubject struct {
@@ -21,7 +34,7 @@ func (s PeerSubject) Bytes() []byte {
 }
 
 // PeerSubject must implement Subject
-var _ fact.Subject = PeerSubject{}
+var _ Subject = PeerSubject{}
 
 // IPPortValue represents an IP:port pair as an Attribute of a Subject
 type IPPortValue struct {
@@ -30,7 +43,7 @@ type IPPortValue struct {
 }
 
 // IPValue must implement Value
-var _ fact.Value = IPPortValue{}
+var _ Value = IPPortValue{}
 
 // Bytes returns the normalized binary representation
 func (ipp IPPortValue) Bytes() []byte {
@@ -54,7 +67,7 @@ type IPNetValue struct {
 }
 
 // IPNetValue must implement Value
-var _ fact.Value = IPNetValue{}
+var _ Value = IPNetValue{}
 
 // Bytes gives the binary representation of the ip and cidr prefix
 func (ipn IPNetValue) Bytes() []byte {

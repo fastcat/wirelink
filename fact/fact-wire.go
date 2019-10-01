@@ -2,15 +2,16 @@ package fact
 
 import "fmt"
 
-// representation of fact on the wire
-type FactOnWire struct {
+// OnWire is the intermediate representation of fact packet on the wire
+type OnWire struct {
 	attribute byte
 	ttl       uint8
 	subject   []byte
 	value     []byte
 }
 
-func (f *FactOnWire) Serialize() ([]byte, error) {
+// Serialize turns an on-the-wire fact into  a byte array that can be sent
+func (f *OnWire) Serialize() ([]byte, error) {
 	if f == nil {
 		return nil, fmt.Errorf("Fact is nil")
 	}
@@ -28,4 +29,33 @@ func (f *FactOnWire) Serialize() ([]byte, error) {
 	ret = append(ret, f.subject...)
 	ret = append(ret, f.value...)
 	return ret, nil
+}
+
+// Deserialize tries to turn a packet from the wire into the intermediate structure
+func Deserialize(data []byte) (*OnWire, error) {
+	if data == nil {
+		return nil, fmt.Errorf("data is nil")
+	}
+	if len(data) < 4 {
+		return nil, fmt.Errorf("data is impossibly short")
+	}
+
+	attribute := data[0]
+	ttl := data[1]
+	subjectLen := data[2]
+	valueLen := data[3]
+
+	if len(data) != 4+int(subjectLen)+int(valueLen) {
+		return nil, fmt.Errorf("data is too short for header values")
+	}
+
+	subject := data[4 : 4+subjectLen]
+	value := data[4+subjectLen:]
+
+	return &OnWire{
+		attribute: attribute,
+		ttl:       ttl,
+		subject:   subject,
+		value:     value,
+	}, nil
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/fact"
+	"github.com/fastcat/wirelink/fact/types"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -22,10 +23,10 @@ func DeviceFacts(dev *wgtypes.Device, ttl time.Duration) (ret []fact.Fact, err e
 
 	expiration := time.Now().Add(ttl)
 
-	addAttr := func(attr fact.Attribute, value fact.Value) {
+	addAttr := func(attr types.Attribute, value types.Value) {
 		fact := fact.Fact{
 			Attribute: attr,
-			Subject:   PeerSubject{dev.PublicKey},
+			Subject:   types.PeerSubject{dev.PublicKey},
 			Value:     value,
 			Expires:   expiration,
 		}
@@ -54,16 +55,16 @@ func DeviceFacts(dev *wgtypes.Device, ttl time.Duration) (ret []fact.Fact, err e
 				continue
 			}
 			if ip4 := ipn.IP.To4(); ip4 != nil {
-				addAttr(fact.AttributeEndpointV4, IPPortValue{ip4, dev.ListenPort})
+				addAttr(fact.AttributeEndpointV4, types.IPPortValue{ip4, dev.ListenPort})
 			} else {
-				addAttr(fact.AttributeEndpointV6, IPPortValue{ipn.IP, dev.ListenPort})
+				addAttr(fact.AttributeEndpointV6, types.IPPortValue{ipn.IP, dev.ListenPort})
 			}
 		}
 	}
 
 	autoAddress := autopeer.AutoAddress(dev.PublicKey)
 	if autoAddress != nil {
-		addAttr(fact.AttributeAllowedCidrV6, IPNetValue{net.IPNet{
+		addAttr(fact.AttributeAllowedCidrV6, types.IPNetValue{net.IPNet{
 			IP:   autoAddress,
 			Mask: net.CIDRMask(128, 128),
 		}})
