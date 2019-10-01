@@ -44,9 +44,9 @@ func main() {
 	defer fmt.Println("Goodbye")
 }
 
-func printFact(fact fact.Fact) {
-	fmt.Println(fact)
-	wf, err := fact.ToWire()
+func printFact(f fact.Fact) {
+	fmt.Println(f)
+	wf, err := f.ToWire()
 	if err != nil {
 		panic(err)
 	}
@@ -55,4 +55,13 @@ func printFact(fact fact.Fact) {
 		panic(err)
 	}
 	fmt.Printf("  => (%d) %v\n", len(wfd), wfd)
+	dwfd, err := fact.Deserialize(wfd)
+	if err != nil {
+		panic(err)
+	}
+	pf, err := fact.Parse(dwfd)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("  ==> %v\n", pf)
 }

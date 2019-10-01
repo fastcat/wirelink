@@ -54,7 +54,7 @@ func (ipp IPPortValue) Bytes() []byte {
 	ret := make([]byte, len(normalized)+2)
 	copy(ret, normalized)
 	binary.BigEndian.PutUint16(ret[len(normalized):], uint16(ipp.Port))
-	return normalized
+	return ret
 }
 
 func (ipp IPPortValue) String() string {

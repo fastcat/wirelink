@@ -1,7 +1,9 @@
 package fact
 
 import (
+	"encoding/binary"
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/fastcat/wirelink/fact/types"
@@ -10,7 +12,7 @@ import (
 
 // Parse tries to parse the intermediate packet format to a full data structure
 func Parse(p *OnWire) (f *Fact, err error) {
-	if f == nil {
+	if p == nil {
 		return nil, fmt.Errorf("packet is nil")
 	}
 
@@ -76,15 +78,50 @@ func ParsePeerSubject(data []byte) (*types.PeerSubject, error) {
 	return &key, nil
 }
 
+// ParseEndpointV4 parses a bytes value as an IPv4 address and port pair
 func ParseEndpointV4(data []byte) (*types.IPPortValue, error) {
-	return nil, fmt.Errorf("not implemented")
+	if len(data) != net.IPv4len+2 {
+		return nil, fmt.Errorf("ipv4 + port should be %d bytes, not %d", net.IPv4len+2, len(data))
+	}
+	return &types.IPPortValue{
+		IP:   net.IP(data[0:net.IPv4len]),
+		Port: int(binary.BigEndian.Uint16(data[net.IPv4len:])),
+	}, nil
 }
+
+// ParseEndpointV6 parses a bytes value as an IPv6 address and port pair
 func ParseEndpointV6(data []byte) (*types.IPPortValue, error) {
-	return nil, fmt.Errorf("not implemented")
+	if len(data) != net.IPv6len+2 {
+		return nil, fmt.Errorf("ipv6 + port should be 18 bytes")
+	}
+	return &types.IPPortValue{
+		IP:   net.IP(data[0:net.IPv6len]),
+		Port: int(binary.BigEndian.Uint16(data[net.IPv6len:])),
+	}, nil
 }
-func ParseCidrV4(data []byte) (*types.IPPortValue, error) {
-	return nil, fmt.Errorf("not implemented")
+
+// ParseCidrV4 parses a bytes value as an IPv4 address and CIDR prefix
+func ParseCidrV4(data []byte) (*types.IPNetValue, error) {
+	if len(data) != net.IPv4len+1 {
+		return nil, fmt.Errorf("ipv4 + prefix should be 5 bytes")
+	}
+	return &types.IPNetValue{
+		net.IPNet{
+			IP:   net.IP(data[0:net.IPv4len]),
+			Mask: net.CIDRMask(int(data[net.IPv4len]), 8*net.IPv4len),
+		},
+	}, nil
 }
-func ParseCidrV6(data []byte) (*types.IPPortValue, error) {
-	return nil, fmt.Errorf("not implemented")
+
+// ParseCidrV6 parses a bytes value as an IPv6 address and CIDR prefix
+func ParseCidrV6(data []byte) (*types.IPNetValue, error) {
+	if len(data) != net.IPv6len+1 {
+		return nil, fmt.Errorf("ipv6 + prefix should be 17 bytes")
+	}
+	return &types.IPNetValue{
+		net.IPNet{
+			IP:   net.IP(data[0:net.IPv6len]),
+			Mask: net.CIDRMask(int(data[net.IPv6len]), 8*net.IPv6len),
+		},
+	}, nil
 }
