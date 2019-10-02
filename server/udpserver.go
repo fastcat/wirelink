@@ -1,27 +1,38 @@
 package server
 
 import (
+	"fmt"
 	"net"
+	"time"
 
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+	"golang.zx2c4.com/wireguard/wgctrl"
 
 	"github.com/fastcat/wirelink/autopeer"
+	"github.com/fastcat/wirelink/fact"
+	"github.com/fastcat/wirelink/peerfacts"
 )
 
 // LinkServer represents the server component of wirelink
 // sending/receiving on a socket
 type LinkServer struct {
-	conn *net.UDPConn
-	addr net.IP
+	conn       *net.UDPConn
+	addr       net.IP
+	ctrl       *wgctrl.Client
+	deviceName string
 }
 
 // DefaultPort is used by default, one up from the normal wireguard port
 const DefaultPort = 51821
 
 // Create starts the server up
-func Create(device *wgtypes.Device, port int) (*LinkServer, error) {
+// have to take a deviceFactory instead of a Device since you can't refresh a device
+func Create(ctrl *wgctrl.Client, deviceName string, port int) (*LinkServer, error) {
 	if port <= 0 {
 		port = DefaultPort
+	}
+	device, err := ctrl.Device(deviceName)
+	if err != nil {
+		return nil, err
 	}
 	addr := autopeer.AutoAddress(device.PublicKey)
 	// only listen on the local ipv6 auto address on the specific interface
@@ -35,8 +46,10 @@ func Create(device *wgtypes.Device, port int) (*LinkServer, error) {
 	}
 
 	return &LinkServer{
-		conn: conn,
-		addr: addr,
+		conn:       conn,
+		addr:       addr,
+		ctrl:       ctrl,
+		deviceName: deviceName,
 	}, nil
 
 }
@@ -50,4 +63,47 @@ func (s *LinkServer) Close() {
 // Address returns the local IP address on which the server listens
 func (s *LinkServer) Address() net.IP {
 	return s.addr
+}
+
+// PrintFacts is just a debug tool, it will panic if something goes wrong
+func (s *LinkServer) PrintFacts() {
+	dev, err := s.ctrl.Device(s.deviceName)
+	if err != nil {
+		panic(err)
+	}
+	facts, err := peerfacts.DeviceFacts(dev, 30*time.Second)
+	if err != nil {
+		panic(err)
+	}
+	for _, fact := range facts {
+		printFact(&fact)
+	}
+	for _, peer := range dev.Peers {
+		facts, _ := peerfacts.LocalFacts(&peer, 30*time.Second)
+		for _, fact := range facts {
+			printFact(&fact)
+		}
+	}
+}
+
+func printFact(f *fact.Fact) {
+	fmt.Printf("%v\n", f)
+	wf, err := f.ToWire()
+	if err != nil {
+		panic(err)
+	}
+	wfd, err := wf.Serialize()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("  => (%d) %v\n", len(wfd), wfd)
+	dwfd, err := fact.Deserialize(wfd)
+	if err != nil {
+		panic(err)
+	}
+	pf, err := fact.Parse(dwfd)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("  ==> %v\n", pf)
 }
