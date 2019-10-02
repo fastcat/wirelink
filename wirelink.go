@@ -25,12 +25,12 @@ func main() {
 		panic(err)
 	}
 	for _, fact := range facts {
-		printFact(fact)
+		printFact(&fact)
 	}
 	for _, peer := range dev.Peers {
 		facts, _ := peerfacts.LocalFacts(&peer, 30*time.Second)
 		for _, fact := range facts {
-			printFact(fact)
+			printFact(&fact)
 		}
 	}
 
@@ -44,8 +44,8 @@ func main() {
 	defer fmt.Println("Goodbye")
 }
 
-func printFact(f fact.Fact) {
-	fmt.Println(f)
+func printFact(f *fact.Fact) {
+	fmt.Printf("%v\n", f)
 	wf, err := f.ToWire()
 	if err != nil {
 		panic(err)
