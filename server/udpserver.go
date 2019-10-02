@@ -17,6 +17,7 @@ import (
 type LinkServer struct {
 	conn       *net.UDPConn
 	addr       net.IP
+	port       int
 	ctrl       *wgctrl.Client
 	deviceName string
 }
@@ -48,6 +49,7 @@ func Create(ctrl *wgctrl.Client, deviceName string, port int) (*LinkServer, erro
 	return &LinkServer{
 		conn:       conn,
 		addr:       addr,
+		port:       port,
 		ctrl:       ctrl,
 		deviceName: deviceName,
 	}, nil
@@ -63,6 +65,11 @@ func (s *LinkServer) Close() {
 // Address returns the local IP address on which the server listens
 func (s *LinkServer) Address() net.IP {
 	return s.addr
+}
+
+// Port returns the local UDP port on which the server listens and sends
+func (s *LinkServer) Port() int {
+	return s.port
 }
 
 // PrintFacts is just a debug tool, it will panic if something goes wrong

@@ -20,7 +20,7 @@ func main() {
 	}
 	defer server.Close()
 
-	fmt.Printf("Server running on %v\n", server.Address())
+	fmt.Printf("Server running on [%v]:%v\n", server.Address(), server.Port())
 	defer fmt.Println("Goodbye")
 
 	server.PrintFacts()
