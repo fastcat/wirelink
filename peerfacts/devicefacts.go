@@ -23,7 +23,7 @@ func DeviceFacts(dev *wgtypes.Device, ttl time.Duration) (ret []*fact.Fact, err 
 	addAttr := func(attr types.Attribute, value types.Value) {
 		ret = append(ret, &fact.Fact{
 			Attribute: attr,
-			Subject:   types.PeerSubject{dev.PublicKey},
+			Subject:   types.PeerSubject{Key: dev.PublicKey},
 			Value:     value,
 			Expires:   expiration,
 		})
@@ -51,16 +51,16 @@ func DeviceFacts(dev *wgtypes.Device, ttl time.Duration) (ret []*fact.Fact, err 
 				continue
 			}
 			if ip4 := ipn.IP.To4(); ip4 != nil {
-				addAttr(fact.AttributeEndpointV4, types.IPPortValue{ip4, dev.ListenPort})
+				addAttr(fact.AttributeEndpointV4, types.IPPortValue{IP: ip4, Port: dev.ListenPort})
 			} else {
-				addAttr(fact.AttributeEndpointV6, types.IPPortValue{ipn.IP, dev.ListenPort})
+				addAttr(fact.AttributeEndpointV6, types.IPPortValue{IP: ipn.IP, Port: dev.ListenPort})
 			}
 		}
 	}
 
 	autoAddress := autopeer.AutoAddress(dev.PublicKey)
 	if autoAddress != nil {
-		addAttr(fact.AttributeAllowedCidrV6, types.IPNetValue{net.IPNet{
+		addAttr(fact.AttributeAllowedCidrV6, types.IPNetValue{IPNet: net.IPNet{
 			IP:   autoAddress,
 			Mask: net.CIDRMask(128, 128),
 		}})

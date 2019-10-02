@@ -102,7 +102,7 @@ func ParseCidrV4(data []byte) (*types.IPNetValue, error) {
 		return nil, fmt.Errorf("ipv4 + prefix should be 5 bytes")
 	}
 	return &types.IPNetValue{
-		net.IPNet{
+		IPNet: net.IPNet{
 			IP:   net.IP(data[0:net.IPv4len]),
 			Mask: net.CIDRMask(int(data[net.IPv4len]), 8*net.IPv4len),
 		},
@@ -115,7 +115,7 @@ func ParseCidrV6(data []byte) (*types.IPNetValue, error) {
 		return nil, fmt.Errorf("ipv6 + prefix should be 17 bytes")
 	}
 	return &types.IPNetValue{
-		net.IPNet{
+		IPNet: net.IPNet{
 			IP:   net.IP(data[0:net.IPv6len]),
 			Mask: net.CIDRMask(int(data[net.IPv6len]), 8*net.IPv6len),
 		},
