@@ -6,6 +6,8 @@ import (
 	"net"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+
+	"github.com/fastcat/wirelink/util"
 )
 
 // Subject is the subject of a Fact
@@ -47,10 +49,7 @@ var _ Value = IPPortValue{}
 
 // Bytes returns the normalized binary representation
 func (ipp IPPortValue) Bytes() []byte {
-	normalized := ipp.IP.To4()
-	if normalized == nil {
-		normalized = ipp.IP.To16()
-	}
+	normalized := util.NormalizeIP(ipp.IP)
 	ret := make([]byte, len(normalized)+2)
 	copy(ret, normalized)
 	binary.BigEndian.PutUint16(ret[len(normalized):], uint16(ipp.Port))
