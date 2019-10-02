@@ -14,9 +14,6 @@ import (
 
 // DeviceFacts returns facts about the local wireguard device
 func DeviceFacts(dev *wgtypes.Device, ttl time.Duration) (ret []*fact.Fact, err error) {
-	if dev == nil {
-		return nil, fmt.Errorf("No device")
-	}
 	if ttl.Seconds() < 0 || ttl.Seconds() > 255 {
 		return nil, fmt.Errorf("ttl out of range")
 	}

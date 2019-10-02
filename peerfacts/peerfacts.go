@@ -15,9 +15,6 @@ import (
 
 // LocalFacts gets all the known facts about a local peer
 func LocalFacts(peer *wgtypes.Peer, ttl time.Duration) (ret []*fact.Fact, err error) {
-	if peer == nil {
-		return nil, fmt.Errorf("No peer")
-	}
 	if ttl.Seconds() < 0 || ttl.Seconds() > 255 {
 		return nil, fmt.Errorf("ttl out of range")
 	}

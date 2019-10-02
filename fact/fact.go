@@ -40,10 +40,6 @@ func (f *Fact) String() string {
 
 // ToWire turns a structured fact into its intermediate wire format
 func (f *Fact) ToWire() (p *OnWire, err error) {
-	if f == nil {
-		return nil, fmt.Errorf("fact is nil")
-	}
-
 	ttl := f.Expires.Sub(time.Now()) / time.Second
 	if ttl < 0 {
 		ttl = 0

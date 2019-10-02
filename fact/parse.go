@@ -12,10 +12,6 @@ import (
 
 // Parse tries to parse the intermediate packet format to a full data structure
 func Parse(p *OnWire) (f *Fact, err error) {
-	if p == nil {
-		return nil, fmt.Errorf("packet is nil")
-	}
-
 	var subject types.Subject
 	var value types.Value
 

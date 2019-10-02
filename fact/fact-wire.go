@@ -12,12 +12,6 @@ type OnWire struct {
 
 // Serialize turns an on-the-wire fact into  a byte array that can be sent
 func (f *OnWire) Serialize() ([]byte, error) {
-	if f == nil {
-		return nil, fmt.Errorf("Fact is nil")
-	}
-	if f.subject == nil || f.value == nil {
-		return nil, fmt.Errorf("subject or value is nil")
-	}
 	if len(f.subject) < 1 || len(f.subject) > 255 {
 		return nil, fmt.Errorf("subject length %d is out of range", len(f.subject))
 	}
@@ -33,9 +27,6 @@ func (f *OnWire) Serialize() ([]byte, error) {
 
 // Deserialize tries to turn a packet from the wire into the intermediate structure
 func Deserialize(data []byte) (*OnWire, error) {
-	if data == nil {
-		return nil, fmt.Errorf("data is nil")
-	}
 	if len(data) < 4 {
 		return nil, fmt.Errorf("data is impossibly short")
 	}
