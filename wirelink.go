@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"golang.zx2c4.com/wireguard/wgctrl"
 
@@ -23,5 +24,9 @@ func main() {
 	fmt.Printf("Server running on [%v]:%v\n", server.Address(), server.Port())
 	defer fmt.Println("Goodbye")
 
-	server.PrintFacts()
+	count, err := server.BroadcastFacts(5 * time.Second)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Printf("Sent %d fact packets\n", count)
 }
