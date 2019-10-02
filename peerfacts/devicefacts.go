@@ -13,7 +13,7 @@ import (
 )
 
 // DeviceFacts returns facts about the local wireguard device
-func DeviceFacts(dev *wgtypes.Device, ttl time.Duration) (ret []fact.Fact, err error) {
+func DeviceFacts(dev *wgtypes.Device, ttl time.Duration) (ret []*fact.Fact, err error) {
 	if dev == nil {
 		return nil, fmt.Errorf("No device")
 	}
@@ -24,13 +24,12 @@ func DeviceFacts(dev *wgtypes.Device, ttl time.Duration) (ret []fact.Fact, err e
 	expiration := time.Now().Add(ttl)
 
 	addAttr := func(attr types.Attribute, value types.Value) {
-		fact := fact.Fact{
+		ret = append(ret, &fact.Fact{
 			Attribute: attr,
 			Subject:   types.PeerSubject{dev.PublicKey},
 			Value:     value,
 			Expires:   expiration,
-		}
-		ret = append(ret, fact)
+		})
 	}
 
 	// map listen port to each local ip address, except link-local ones

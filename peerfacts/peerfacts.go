@@ -14,7 +14,7 @@ import (
 )
 
 // LocalFacts gets all the known facts about a local peer
-func LocalFacts(peer *wgtypes.Peer, ttl time.Duration) (ret []fact.Fact, err error) {
+func LocalFacts(peer *wgtypes.Peer, ttl time.Duration) (ret []*fact.Fact, err error) {
 	if peer == nil {
 		return nil, fmt.Errorf("No peer")
 	}
@@ -25,13 +25,12 @@ func LocalFacts(peer *wgtypes.Peer, ttl time.Duration) (ret []fact.Fact, err err
 	expiration := time.Now().Add(ttl)
 
 	addAttr := func(attr types.Attribute, value types.Value) {
-		fact := fact.Fact{
+		ret = append(ret, &fact.Fact{
 			Attribute: attr,
 			Subject:   types.PeerSubject{peer.PublicKey},
 			Value:     value,
 			Expires:   expiration,
-		}
-		ret = append(ret, fact)
+		})
 	}
 
 	// the endpoint is trustable if the last handshake age is less than the TTL

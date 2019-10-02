@@ -72,11 +72,11 @@ func (s *LinkServer) PrintFacts() {
 		panic(err)
 	}
 	for _, fact := range facts {
-		printFact(&fact)
+		printFact(fact)
 	}
 }
 
-func (s *LinkServer) collectFacts() (ret []fact.Fact, err error) {
+func (s *LinkServer) collectFacts() (ret []*fact.Fact, err error) {
 	dev, err := s.ctrl.Device(s.deviceName)
 	if err != nil {
 		return
@@ -85,7 +85,7 @@ func (s *LinkServer) collectFacts() (ret []fact.Fact, err error) {
 	if err != nil {
 		return
 	}
-	ret = make([]fact.Fact, len(pf))
+	ret = make([]*fact.Fact, len(pf))
 	copy(ret, pf)
 	for _, peer := range dev.Peers {
 		pf, err = peerfacts.LocalFacts(&peer, 30*time.Second)
