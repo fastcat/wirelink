@@ -29,8 +29,9 @@ type LinkServer struct {
 // DefaultPort is used by default, one up from the normal wireguard port
 const DefaultPort = 51821
 
-// Create starts the server up
-// have to take a deviceFactory instead of a Device since you can't refresh a device
+// Create starts the server up.
+// Have to take a deviceFactory instead of a Device since you can't refresh a device.
+// Will take ownership of the wg client and close it when the server is closed
 func Create(ctrl *wgctrl.Client, deviceName string, port int) (*LinkServer, error) {
 	if port <= 0 {
 		port = DefaultPort
@@ -64,6 +65,8 @@ func Create(ctrl *wgctrl.Client, deviceName string, port int) (*LinkServer, erro
 func (s *LinkServer) Close() {
 	s.conn.Close()
 	s.conn = nil
+	s.ctrl.Close()
+	s.ctrl = nil
 }
 
 // Address returns the local IP address on which the server listens
