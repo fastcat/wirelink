@@ -24,6 +24,9 @@ type LinkServer struct {
 	addr       net.UDPAddr
 	ctrl       *wgctrl.Client
 	deviceName string
+	wait       *sync.WaitGroup
+	endReader  chan bool
+	packets    chan *ReceivedFact
 }
 
 // DefaultPort is used by default, one up from the normal wireguard port
@@ -52,21 +55,32 @@ func Create(ctrl *wgctrl.Client, deviceName string, port int) (*LinkServer, erro
 		return nil, err
 	}
 
-	return &LinkServer{
+	ret := &LinkServer{
 		conn:       conn,
 		addr:       addr,
 		ctrl:       ctrl,
 		deviceName: deviceName,
-	}, nil
+		wait:       &sync.WaitGroup{},
+		endReader:  make(chan bool),
+		packets:    make(chan *ReceivedFact, 10),
+	}
 
+	ret.wait.Add(1)
+	go ret.readPackets()
+
+	return ret, nil
 }
 
 // Close stops the server and closes its socket
 func (s *LinkServer) Close() {
+	s.endReader <- true
+	s.wait.Wait()
 	s.conn.Close()
-	s.conn = nil
 	s.ctrl.Close()
+	s.conn = nil
 	s.ctrl = nil
+	s.wait = nil
+	s.endReader = nil
 }
 
 // Address returns the local IP address on which the server listens
@@ -142,18 +156,18 @@ func (s *LinkServer) BroadcastFacts(timeout time.Duration) (int, []error) {
 	if err != nil {
 		panic(err)
 	}
-	return s.broadcastFacts(dev, facts, timeout)
+	return s.broadcastFacts(dev.Peers, facts, timeout)
 }
 
 // broadcastFacts tries to send every fact to every peer
 // it returns the number of sends performed
-func (s *LinkServer) broadcastFacts(dev *wgtypes.Device, facts []*fact.Fact, timeout time.Duration) (int, []error) {
+func (s *LinkServer) broadcastFacts(peers []wgtypes.Peer, facts []*fact.Fact, timeout time.Duration) (int, []error) {
 	var counter int32
 	var wg sync.WaitGroup
 	s.conn.SetWriteDeadline(time.Now().Add(timeout))
 	errs := make(chan error)
 	for _, fact := range facts {
-		for _, peer := range dev.Peers {
+		for _, peer := range peers {
 			pa := autopeer.AutoAddress(peer.PublicKey)
 			wg.Add(1)
 			go s.sendFact(pa, fact, &wg, &counter, errs)
@@ -205,4 +219,42 @@ func (s *LinkServer) sendFact(ip net.IP, fact *fact.Fact, wg *sync.WaitGroup, co
 
 	// else/fall-through: sent OK
 	atomic.AddInt32(counter, 1)
+}
+
+func (s *LinkServer) readPackets() {
+	defer s.wait.Done()
+	// longest possible fact packet is an ipv6 endpoint
+	// which is 1(attr) + 1(ttl) + 1(len)+wgtypes.KeyLen + 1(len)+net.IPv6len+2
+	var buffer [4 + wgtypes.KeyLen + net.IPv6len + 2]byte
+	for {
+		select {
+		case <-s.endReader:
+			return
+		default:
+			s.conn.SetReadDeadline(time.Now().Add(time.Second))
+			n, addr, err := s.conn.ReadFromUDP(buffer[:])
+			if err != nil {
+				if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
+					continue
+				}
+				// TODO: handle read errors better
+				panic(err)
+			}
+			// TODO: parse the packet
+			p, err := fact.Deserialize(buffer[:n])
+			if err != nil {
+				// TODO: report errors better
+				fmt.Println(err)
+				continue
+			}
+			pp, err := fact.Parse(p)
+			if err != nil {
+				// TODO: report errors better
+				fmt.Println(err)
+				continue
+			}
+			rcv := &ReceivedFact{fact: pp, source: addr.IP}
+			s.packets <- rcv
+		}
+	}
 }
