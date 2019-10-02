@@ -130,7 +130,7 @@ func printFact(f *fact.Fact) {
 	fmt.Printf("  ==> %v\n", pf)
 }
 
-func (s *LinkServer) BroadcastFacts(timeout time.Duration) (int, error) {
+func (s *LinkServer) BroadcastFacts(timeout time.Duration) (int, []error) {
 	dev, err := s.ctrl.Device(s.deviceName)
 	if err != nil {
 		panic(err)
@@ -144,7 +144,7 @@ func (s *LinkServer) BroadcastFacts(timeout time.Duration) (int, error) {
 
 // broadcastFacts tries to send every fact to every peer
 // it returns the number of sends performed
-func (s *LinkServer) broadcastFacts(dev *wgtypes.Device, facts []*fact.Fact, timeout time.Duration) (int, error) {
+func (s *LinkServer) broadcastFacts(dev *wgtypes.Device, facts []*fact.Fact, timeout time.Duration) (int, []error) {
 	var counter int32
 	var wg sync.WaitGroup
 	s.conn.SetWriteDeadline(time.Now().Add(timeout))
@@ -162,10 +162,8 @@ func (s *LinkServer) broadcastFacts(dev *wgtypes.Device, facts []*fact.Fact, tim
 		errlist = append(errlist, err)
 	}
 	if len(errlist) != 0 {
-		// TODO: return more than just the first error details
-		return int(counter), errlist[0]
+		return int(counter), errlist
 	}
-
 	return int(counter), nil
 }
 
