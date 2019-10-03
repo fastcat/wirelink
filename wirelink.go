@@ -30,5 +30,5 @@ func main() {
 	}
 	fmt.Printf("Sent %d fact packets\n", count)
 
-	time.Sleep(30 * time.Second)
+	time.Sleep(45 * time.Second)
 }

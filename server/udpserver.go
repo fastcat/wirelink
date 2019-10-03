@@ -323,8 +323,6 @@ func (s *LinkServer) processChunks() {
 		for _, f := range s.currentFacts {
 			if now.Before(f.Expires) {
 				newFacts = append(newFacts, f)
-			} else {
-				fmt.Printf("Fact expired: %v\n", f)
 			}
 		}
 		// add all the new not-expired and _trusted_ facts
@@ -337,8 +335,6 @@ func (s *LinkServer) processChunks() {
 			for _, rf := range chunk {
 				if now.Before(rf.fact.Expires) && trust.IsTrusted(rf.fact, rf.source) {
 					newFacts = append(newFacts, rf.fact)
-				} else {
-					fmt.Printf("Received fact is no good: %v\n", rf)
 				}
 			}
 			// TODO: this needs to be atomic or mutex'd

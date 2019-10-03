@@ -13,9 +13,10 @@ import (
 
 func CreateRouteBasedTrust(peers []wgtypes.Peer) TrustEvaluator {
 	var pps []peerWithAddr
-	for _, p := range peers {
-		a := autopeer.AutoAddress(p.PublicKey)
-		pps = append(pps, peerWithAddr{&p, a})
+	for i, _ := range peers {
+		a := autopeer.AutoAddress(peers[i].PublicKey)
+		// need to take the address of the array element not a local iterator var here
+		pps = append(pps, peerWithAddr{&peers[i], a})
 	}
 	return &routeBasedTrust{pps}
 }
@@ -34,7 +35,7 @@ var _ TrustEvaluator = &routeBasedTrust{}
 
 func (rbt *routeBasedTrust) IsTrusted(fact *fact.Fact, source net.IP) bool {
 	// trust peer to provide facts about itself
-	ps, ok := fact.Subject.(types.PeerSubject)
+	ps, ok := fact.Subject.(*types.PeerSubject)
 	// we only look at PeerSubject facts for this model
 	if !ok {
 		return false
@@ -55,7 +56,7 @@ func (rbt *routeBasedTrust) IsTrusted(fact *fact.Fact, source net.IP) bool {
 				}
 				aipn := util.NormalizeIP(aip.IP)
 				ones, size := aip.Mask.Size()
-				if len(aipn) == ones && len(aipn) == size {
+				if len(aipn)*8 == size && ones < size {
 					return true
 				}
 			}
