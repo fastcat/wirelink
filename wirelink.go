@@ -29,4 +29,6 @@ func main() {
 		fmt.Println(errs)
 	}
 	fmt.Printf("Sent %d fact packets\n", count)
+
+	time.Sleep(30 * time.Second)
 }

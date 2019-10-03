@@ -15,6 +15,7 @@ import (
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/peerfacts"
+	"github.com/fastcat/wirelink/trust"
 )
 
 // LinkServer represents the server component of wirelink
@@ -25,12 +26,25 @@ type LinkServer struct {
 	ctrl       *wgctrl.Client
 	deviceName string
 	wait       *sync.WaitGroup
-	endReader  chan bool
-	packets    chan *ReceivedFact
+	// sending on this channel will stop the packet reader goroutine
+	endReader chan bool
+	// the packet reader goroutine emits each packet as it is parsed on this channel
+	packets chan *ReceivedFact
+	// the current list of known facts _from other peers_ (no local facts here)
+	currentFacts []*fact.Fact
+	// the packet receiver will periodically emit groups of new facts here when it's time to refresh state
+	newFacts chan []*ReceivedFact
 }
 
 // DefaultPort is used by default, one up from the normal wireguard port
 const DefaultPort = 51821
+
+// MaxChunk is the max number of packets to receive before processing them
+const MaxChunk = 100
+
+// ChunkPeriod is the max time to wait between processing chunks of received packets and expiring old ones
+// TODO: set this based on TTL instead
+const ChunkPeriod = 5 * time.Second
 
 // Create starts the server up.
 // Have to take a deviceFactory instead of a Device since you can't refresh a device.
@@ -63,10 +77,17 @@ func Create(ctrl *wgctrl.Client, deviceName string, port int) (*LinkServer, erro
 		wait:       &sync.WaitGroup{},
 		endReader:  make(chan bool),
 		packets:    make(chan *ReceivedFact, 10),
+		newFacts:   make(chan []*ReceivedFact, 1),
 	}
 
 	ret.wait.Add(1)
 	go ret.readPackets()
+
+	ret.wait.Add(1)
+	go ret.receivePackets(MaxChunk, ChunkPeriod)
+
+	ret.wait.Add(1)
+	go ret.processChunks()
 
 	return ret, nil
 }
@@ -222,6 +243,7 @@ func (s *LinkServer) sendFact(ip net.IP, fact *fact.Fact, wg *sync.WaitGroup, co
 }
 
 func (s *LinkServer) readPackets() {
+	defer close(s.packets)
 	defer s.wait.Done()
 	// longest possible fact packet is an ipv6 endpoint
 	// which is 1(attr) + 1(ttl) + 1(len)+wgtypes.KeyLen + 1(len)+net.IPv6len+2
@@ -255,6 +277,73 @@ func (s *LinkServer) readPackets() {
 			}
 			rcv := &ReceivedFact{fact: pp, source: addr.IP}
 			s.packets <- rcv
+		}
+	}
+}
+
+func (s *LinkServer) receivePackets(maxChunk int, chunkPeriod time.Duration) {
+	defer s.wait.Done()
+
+	var buffer []*ReceivedFact
+	ticker := time.NewTicker(chunkPeriod)
+
+	for {
+		sendBuffer := false
+		select {
+		case p, ok := <-s.packets:
+			if !ok {
+				// don't care about any pending facts at this point, this is the quit signal
+				close(s.newFacts)
+				return
+			}
+			buffer = append(buffer, p)
+			if len(buffer) >= maxChunk {
+				sendBuffer = true
+			}
+		case <-ticker.C:
+			sendBuffer = true
+		}
+
+		if sendBuffer {
+			s.newFacts <- buffer
+			buffer = nil
+		}
+	}
+}
+
+func (s *LinkServer) processChunks() {
+	defer s.wait.Done()
+
+	for chunk := range s.newFacts {
+		now := time.Now()
+		fmt.Printf("chunk received: %d\n", len(chunk))
+		// accumulate all the still valid and newly valid facts
+		newFacts := make([]*fact.Fact, 0, len(s.currentFacts)+len(chunk))
+		// add all the not-expired facts
+		for _, f := range s.currentFacts {
+			if now.Before(f.Expires) {
+				newFacts = append(newFacts, f)
+			} else {
+				fmt.Printf("Fact expired: %v\n", f)
+			}
+		}
+		// add all the new not-expired and _trusted_ facts
+		dev, err := s.ctrl.Device(s.deviceName)
+		if err != nil {
+			// TODO: report error better
+			fmt.Printf("Unable to load device info to evaluate trust: %v\n", err)
+		} else {
+			trust := trust.CreateRouteBasedTrust(dev.Peers)
+			for _, rf := range chunk {
+				if now.Before(rf.fact.Expires) && trust.IsTrusted(rf.fact, rf.source) {
+					newFacts = append(newFacts, rf.fact)
+				} else {
+					fmt.Printf("Received fact is no good: %v\n", rf)
+				}
+			}
+			// TODO: this needs to be atomic or mutex'd
+			fmt.Printf("replacing facts: %d with %d\n", len(s.currentFacts), len(newFacts))
+			s.currentFacts = newFacts
 		}
 	}
 }

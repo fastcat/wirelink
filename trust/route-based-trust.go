@@ -11,11 +11,11 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-func CreateRouteBasedTrust(peers []*wgtypes.Peer) TrustEvaluator {
+func CreateRouteBasedTrust(peers []wgtypes.Peer) TrustEvaluator {
 	var pps []peerWithAddr
 	for _, p := range peers {
 		a := autopeer.AutoAddress(p.PublicKey)
-		pps = append(pps, peerWithAddr{p, a})
+		pps = append(pps, peerWithAddr{&p, a})
 	}
 	return &routeBasedTrust{pps}
 }
