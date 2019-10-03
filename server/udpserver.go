@@ -34,6 +34,8 @@ type LinkServer struct {
 	currentFacts []*fact.Fact
 	// the packet receiver will periodically emit groups of new facts here when it's time to refresh state
 	newFacts chan []*ReceivedFact
+	// sends a copy of the new value of `currentFacts` each time it is updated
+	factsRefreshed chan []*fact.Fact
 }
 
 // DefaultPort is used by default, one up from the normal wireguard port
@@ -70,14 +72,15 @@ func Create(ctrl *wgctrl.Client, deviceName string, port int) (*LinkServer, erro
 	}
 
 	ret := &LinkServer{
-		conn:       conn,
-		addr:       addr,
-		ctrl:       ctrl,
-		deviceName: deviceName,
-		wait:       &sync.WaitGroup{},
-		endReader:  make(chan bool),
-		packets:    make(chan *ReceivedFact, 10),
-		newFacts:   make(chan []*ReceivedFact, 1),
+		conn:           conn,
+		addr:           addr,
+		ctrl:           ctrl,
+		deviceName:     deviceName,
+		wait:           &sync.WaitGroup{},
+		endReader:      make(chan bool),
+		packets:        make(chan *ReceivedFact, 10),
+		newFacts:       make(chan []*ReceivedFact, 1),
+		factsRefreshed: make(chan []*fact.Fact),
 	}
 
 	ret.wait.Add(1)
@@ -88,6 +91,9 @@ func Create(ctrl *wgctrl.Client, deviceName string, port int) (*LinkServer, erro
 
 	ret.wait.Add(1)
 	go ret.processChunks()
+
+	ret.wait.Add(1)
+	go ret.broadcastFactUpdates()
 
 	return ret, nil
 }
@@ -102,6 +108,8 @@ func (s *LinkServer) Close() {
 	s.ctrl = nil
 	s.wait = nil
 	s.endReader = nil
+	s.packets = nil
+	s.newFacts = nil
 }
 
 // Address returns the local IP address on which the server listens
@@ -166,18 +174,6 @@ func printFact(f *fact.Fact) {
 		panic(err)
 	}
 	fmt.Printf("  ==> %v\n", pf)
-}
-
-func (s *LinkServer) BroadcastFacts(timeout time.Duration) (int, []error) {
-	dev, err := s.ctrl.Device(s.deviceName)
-	if err != nil {
-		panic(err)
-	}
-	facts, err := s.collectFacts(dev)
-	if err != nil {
-		panic(err)
-	}
-	return s.broadcastFacts(dev.Peers, facts, timeout)
 }
 
 // broadcastFacts tries to send every fact to every peer
@@ -340,6 +336,41 @@ func (s *LinkServer) processChunks() {
 			// TODO: this needs to be atomic or mutex'd
 			fmt.Printf("replacing facts: %d with %d\n", len(s.currentFacts), len(newFacts))
 			s.currentFacts = newFacts
+
+			s.factsRefreshed <- newFacts
 		}
+	}
+
+	close(s.factsRefreshed)
+}
+
+func (s *LinkServer) broadcastFactUpdates() {
+	defer s.wait.Done()
+
+	// TODO: should we fire this off into a goroutine when we call it?
+	broadcast := func(newFacts []*fact.Fact) (int, []error) {
+		dev, err := s.ctrl.Device(s.deviceName)
+		if err != nil {
+			return 0, []error{err}
+		}
+		facts, err := s.collectFacts(dev)
+		if err != nil {
+			return 0, []error{err}
+		}
+		facts = append(facts, newFacts...)
+		count, errs := s.broadcastFacts(dev.Peers, facts, ChunkPeriod-time.Second)
+		if errs != nil {
+			fmt.Println("Failed to send some facts", errs)
+		}
+		fmt.Printf("Sent %d fact packets\n", count)
+		return count, errs
+	}
+
+	// broadcast local facts once at startup
+	broadcast(nil)
+
+	// TODO: naming here is confusing with the `newFacts` channel
+	for newFacts := range s.factsRefreshed {
+		broadcast(newFacts)
 	}
 }
