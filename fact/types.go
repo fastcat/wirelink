@@ -1,4 +1,4 @@
-package types
+package fact
 
 import (
 	"encoding/binary"

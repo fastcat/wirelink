@@ -3,26 +3,24 @@ package fact
 import (
 	"fmt"
 	"time"
-
-	"github.com/fastcat/wirelink/fact/types"
 )
 
 // fact types, denoted as attributes of a subject
 const (
-	AttributeUnknown       types.Attribute = 0
-	AttributeEndpointV4    types.Attribute = 'e'
-	AttributeEndpointV6    types.Attribute = 'E'
-	AttributeAllowedCidrV4 types.Attribute = 'a'
-	AttributeAllowedCidrV6 types.Attribute = 'A'
+	AttributeUnknown       Attribute = 0
+	AttributeEndpointV4    Attribute = 'e'
+	AttributeEndpointV6    Attribute = 'E'
+	AttributeAllowedCidrV4 Attribute = 'a'
+	AttributeAllowedCidrV6 Attribute = 'A'
 )
 
 // Fact represents a single piece of information about a subject, with an
 // associated expiration time
 type Fact struct {
-	Attribute types.Attribute
+	Attribute Attribute
 	Expires   time.Time
-	Subject   types.Subject
-	Value     types.Value
+	Subject   Subject
+	Value     Value
 }
 
 func (f *Fact) String() string {

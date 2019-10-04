@@ -6,7 +6,6 @@ import (
 
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/fact"
-	"github.com/fastcat/wirelink/fact/types"
 	"github.com/fastcat/wirelink/util"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -33,9 +32,9 @@ type routeBasedTrust struct {
 // *routeBasedTrust should implement TrustEvaluator
 var _ TrustEvaluator = &routeBasedTrust{}
 
-func (rbt *routeBasedTrust) IsTrusted(fact *fact.Fact, source net.IP) bool {
+func (rbt *routeBasedTrust) IsTrusted(f *fact.Fact, source net.IP) bool {
 	// trust peer to provide facts about itself
-	ps, ok := fact.Subject.(*types.PeerSubject)
+	ps, ok := f.Subject.(*fact.PeerSubject)
 	// we only look at PeerSubject facts for this model
 	if !ok {
 		return false

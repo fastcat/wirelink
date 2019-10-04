@@ -3,14 +3,12 @@ package fact
 import (
 	"sort"
 	"time"
-
-	"github.com/fastcat/wirelink/fact/types"
 )
 
 // this type MUST always be comparable
 type factKey struct {
 	// Attribute is a byte, nothing to worry about in comparisons
-	attribute types.Attribute
+	attribute Attribute
 	// subject/value are likely to contain slices which are not comparable in a useful sense
 	// so instead convert to bytes and then coerce that to a "string"
 	subject string

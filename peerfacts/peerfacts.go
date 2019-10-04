@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/fastcat/wirelink/fact"
-	"github.com/fastcat/wirelink/fact/types"
 
 	"golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -19,10 +18,10 @@ func LocalFacts(peer *wgtypes.Peer, ttl time.Duration) (ret []*fact.Fact, err er
 
 	expiration := time.Now().Add(ttl)
 
-	addAttr := func(attr types.Attribute, value types.Value) {
+	addAttr := func(attr fact.Attribute, value fact.Value) {
 		ret = append(ret, &fact.Fact{
 			Attribute: attr,
-			Subject:   types.PeerSubject{Key: peer.PublicKey},
+			Subject:   fact.PeerSubject{Key: peer.PublicKey},
 			Value:     value,
 			Expires:   expiration,
 		})
@@ -31,9 +30,9 @@ func LocalFacts(peer *wgtypes.Peer, ttl time.Duration) (ret []*fact.Fact, err er
 	// the endpoint is trustable if the last handshake age is less than the TTL
 	if peer.Endpoint != nil && peer.LastHandshakeTime.After(time.Now().Add(-device.RekeyAfterTime)) {
 		if peer.Endpoint.IP.To4() != nil {
-			addAttr(fact.AttributeEndpointV4, types.IPPortValue{IP: peer.Endpoint.IP, Port: peer.Endpoint.Port})
+			addAttr(fact.AttributeEndpointV4, fact.IPPortValue{IP: peer.Endpoint.IP, Port: peer.Endpoint.Port})
 		} else if peer.Endpoint.IP.To16() != nil {
-			addAttr(fact.AttributeEndpointV6, types.IPPortValue{IP: peer.Endpoint.IP, Port: peer.Endpoint.Port})
+			addAttr(fact.AttributeEndpointV6, fact.IPPortValue{IP: peer.Endpoint.IP, Port: peer.Endpoint.Port})
 		}
 	}
 
@@ -43,13 +42,13 @@ func LocalFacts(peer *wgtypes.Peer, ttl time.Duration) (ret []*fact.Fact, err er
 	for _, peerIP := range peer.AllowedIPs {
 		// TODO: ignore the auto-generated v6 address
 		if peerIP.IP.To4() != nil {
-			addAttr(fact.AttributeAllowedCidrV4, types.IPNetValue{IPNet: peerIP})
+			addAttr(fact.AttributeAllowedCidrV4, fact.IPNetValue{IPNet: peerIP})
 		} else if peerIP.IP.To16() != nil {
 			// ignore link-local addresses, particularly the auto-generated v6 one
 			if peerIP.IP[0] == 0xfe && peerIP.IP[1] == 0x80 {
 				continue
 			}
-			addAttr(fact.AttributeAllowedCidrV6, types.IPNetValue{IPNet: peerIP})
+			addAttr(fact.AttributeAllowedCidrV6, fact.IPNetValue{IPNet: peerIP})
 		}
 	}
 

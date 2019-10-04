@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/fastcat/wirelink/fact"
-	"github.com/fastcat/wirelink/fact/types"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -19,10 +18,10 @@ func DeviceFacts(dev *wgtypes.Device, ttl time.Duration) (ret []*fact.Fact, err 
 
 	expiration := time.Now().Add(ttl)
 
-	addAttr := func(attr types.Attribute, value types.Value) {
+	addAttr := func(attr fact.Attribute, value fact.Value) {
 		ret = append(ret, &fact.Fact{
 			Attribute: attr,
-			Subject:   types.PeerSubject{Key: dev.PublicKey},
+			Subject:   fact.PeerSubject{Key: dev.PublicKey},
 			Value:     value,
 			Expires:   expiration,
 		})
@@ -50,9 +49,9 @@ func DeviceFacts(dev *wgtypes.Device, ttl time.Duration) (ret []*fact.Fact, err 
 				continue
 			}
 			if ip4 := ipn.IP.To4(); ip4 != nil {
-				addAttr(fact.AttributeEndpointV4, types.IPPortValue{IP: ip4, Port: dev.ListenPort})
+				addAttr(fact.AttributeEndpointV4, fact.IPPortValue{IP: ip4, Port: dev.ListenPort})
 			} else {
-				addAttr(fact.AttributeEndpointV6, types.IPPortValue{IP: ipn.IP, Port: dev.ListenPort})
+				addAttr(fact.AttributeEndpointV6, fact.IPPortValue{IP: ipn.IP, Port: dev.ListenPort})
 			}
 		}
 	}
