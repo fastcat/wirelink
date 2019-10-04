@@ -40,8 +40,10 @@ func Deserialize(data []byte) (*OnWire, error) {
 		return nil, fmt.Errorf("data is too short for header values")
 	}
 
-	subject := data[4 : 4+subjectLen]
-	value := data[4+subjectLen:]
+	subject := make([]byte, subjectLen)
+	copy(subject, data[4:4+subjectLen])
+	value := make([]byte, valueLen)
+	copy(value, data[4+subjectLen:])
 
 	return &OnWire{
 		attribute: attribute,

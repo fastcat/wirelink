@@ -1,0 +1,87 @@
+package fact
+
+import (
+	"sort"
+	"time"
+
+	"github.com/fastcat/wirelink/fact/types"
+)
+
+// this type MUST always be comparable
+type factKey struct {
+	// Attribute is a byte, nothing to worry about in comparisons
+	attribute types.Attribute
+	// subject/value are likely to contain slices which are not comparable in a useful sense
+	// so instead convert to bytes and then coerce that to a "string"
+	subject string
+	value   string
+}
+
+func keyOf(fact *Fact) factKey {
+	return factKey{
+		attribute: fact.Attribute,
+		subject:   string(fact.Subject.Bytes()),
+		value:     string(fact.Value.Bytes()),
+	}
+}
+
+// factSet is used to map fact keys to the "best" fact for that key
+type factSet map[factKey]*Fact
+
+func (s factSet) has(fact *Fact) bool {
+	_, ret := s[keyOf((fact))]
+	return ret
+}
+
+func (s factSet) upsert(fact *Fact) time.Time {
+	key := keyOf(fact)
+
+	best, ok := s[key]
+	if !ok || best.Expires.Before(fact.Expires) {
+		best = fact
+		s[key] = best
+	}
+	return best.Expires
+}
+
+func (s factSet) delete(fact *Fact) {
+	delete(s, keyOf(fact))
+}
+
+// MergeList merges duplicate facts in a slice, keeping the latest Expires value
+func MergeList(facts []*Fact) []*Fact {
+	s := make(factSet)
+	for _, f := range facts {
+		s.upsert(f)
+	}
+	ret := make([]*Fact, 0, len(s))
+	for _, fact := range s {
+		ret = append(ret, fact)
+	}
+	return ret
+}
+
+// SortedCopy makes a copy of the list and then sorts it "naturally"
+func SortedCopy(facts []*Fact) []*Fact {
+	sorted := make([]*Fact, len(facts))
+	copy(sorted, facts)
+	sort.Slice(sorted, func(i, j int) bool {
+		l, r := sorted[i], sorted[j]
+		if l.Subject.String() < r.Subject.String() {
+			return true
+		} else if l.Subject.String() > r.Subject.String() {
+			return false
+		} else if l.Attribute < r.Attribute {
+			return true
+		} else if l.Attribute > r.Attribute {
+			return false
+		} else if l.Value.String() < r.Value.String() {
+			return true
+		} else if l.Value.String() > r.Value.String() {
+			return false
+		} else {
+			return l.Expires.Before(r.Expires)
+		}
+	})
+	return sorted
+}

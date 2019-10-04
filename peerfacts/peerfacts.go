@@ -2,10 +2,8 @@ package peerfacts
 
 import (
 	"fmt"
-	"net"
 	"time"
 
-	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/fact/types"
 
@@ -39,13 +37,8 @@ func LocalFacts(peer *wgtypes.Peer, ttl time.Duration) (ret []*fact.Fact, err er
 		}
 	}
 
-	autoAddress := autopeer.AutoAddress(peer.PublicKey)
-	if autoAddress != nil {
-		addAttr(fact.AttributeAllowedCidrV6, types.IPNetValue{IPNet: net.IPNet{
-			IP:   autoAddress,
-			Mask: net.CIDRMask(128, 128),
-		}})
-	}
+	// don't publish the autoaddress, everyone can figure that out on their own,
+	// and must already know it in order to receive the data anyways
 
 	for _, peerIP := range peer.AllowedIPs {
 		// TODO: ignore the auto-generated v6 address

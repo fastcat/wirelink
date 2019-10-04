@@ -47,19 +47,27 @@ func (rbt *routeBasedTrust) IsTrusted(fact *fact.Fact, source net.IP) bool {
 			if bytes.Equal(ps.Key[:], peer.peer.PublicKey[:]) {
 				return true
 			}
-			// peers that have an allowed ip with a cidr mask less than the length
-			// arre trusted to tell us about any other peer -- they are inferred to
-			// be routers that control the network
-			for _, aip := range peer.peer.AllowedIPs {
-				if !aip.IP.IsGlobalUnicast() {
-					continue
-				}
-				aipn := util.NormalizeIP(aip.IP)
-				ones, size := aip.Mask.Size()
-				if len(aipn)*8 == size && ones < size {
-					return true
-				}
+			// peers that are allowed to route traffic are trusted to tell us about
+			// any other peer, as they are inferred to control the network
+			if isRouter(peer.peer) {
+				return true
 			}
+		}
+	}
+	return false
+}
+
+// isRouter considers a router to be a peer that has a global unicast allowed IP
+// with a CIDR mask less than the full IP
+func isRouter(peer *wgtypes.Peer) bool {
+	for _, aip := range peer.AllowedIPs {
+		if !aip.IP.IsGlobalUnicast() {
+			continue
+		}
+		aipn := util.NormalizeIP(aip.IP)
+		ones, size := aip.Mask.Size()
+		if len(aipn)*8 == size && ones < size {
+			return true
 		}
 	}
 	return false

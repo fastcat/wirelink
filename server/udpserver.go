@@ -36,6 +36,8 @@ type LinkServer struct {
 	newFacts chan []*ReceivedFact
 	// sends a copy of the new value of `currentFacts` each time it is updated
 	factsRefreshed chan []*fact.Fact
+	// tracks if we already ran close
+	closed bool
 }
 
 // DefaultPort is used by default, one up from the normal wireguard port
@@ -98,18 +100,32 @@ func Create(ctrl *wgctrl.Client, deviceName string, port int) (*LinkServer, erro
 	return ret, nil
 }
 
-// Close stops the server and closes its socket
-func (s *LinkServer) Close() {
+// Stop halts the background goroutines and releases resources associated with
+// them, but leaves open resources associated with the local device so that
+// final state can be inspected
+func (s *LinkServer) Stop() {
+	if s.conn == nil {
+		return
+	}
 	s.endReader <- true
 	s.wait.Wait()
 	s.conn.Close()
-	s.ctrl.Close()
+
 	s.conn = nil
-	s.ctrl = nil
 	s.wait = nil
 	s.endReader = nil
 	s.packets = nil
 	s.newFacts = nil
+}
+
+// Close stops the server and closes its socket
+func (s *LinkServer) Close() {
+	if s.closed {
+		return
+	}
+	s.ctrl.Close()
+	s.ctrl = nil
+	s.closed = true
 }
 
 // Address returns the local IP address on which the server listens
@@ -132,6 +148,9 @@ func (s *LinkServer) PrintFacts() {
 	if err != nil {
 		panic(err)
 	}
+	facts = append(facts, s.currentFacts...)
+	facts = fact.MergeList(facts)
+	facts = fact.SortedCopy(facts)
 	for _, fact := range facts {
 		printFact(fact)
 	}
@@ -156,24 +175,26 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device) (ret []*fact.Fact, err er
 
 func printFact(f *fact.Fact) {
 	fmt.Printf("%v\n", f)
-	wf, err := f.ToWire()
-	if err != nil {
-		panic(err)
-	}
-	wfd, err := wf.Serialize()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("  => (%d) %v\n", len(wfd), wfd)
-	dwfd, err := fact.Deserialize(wfd)
-	if err != nil {
-		panic(err)
-	}
-	pf, err := fact.Parse(dwfd)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("  ==> %v\n", pf)
+	/*
+		wf, err := f.ToWire()
+		if err != nil {
+			panic(err)
+		}
+		wfd, err := wf.Serialize()
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("  => (%d) %v\n", len(wfd), wfd)
+		dwfd, err := fact.Deserialize(wfd)
+		if err != nil {
+			panic(err)
+		}
+		pf, err := fact.Parse(dwfd)
+		if err != nil {
+			panic(err)
+		}
+		fmt.Printf("  ==> %v\n", pf)
+	*/
 }
 
 // broadcastFacts tries to send every fact to every peer
@@ -283,14 +304,16 @@ func (s *LinkServer) receivePackets(maxChunk int, chunkPeriod time.Duration) {
 	var buffer []*ReceivedFact
 	ticker := time.NewTicker(chunkPeriod)
 
-	for {
+	for done := false; !done; {
 		sendBuffer := false
 		select {
 		case p, ok := <-s.packets:
 			if !ok {
-				// don't care about any pending facts at this point, this is the quit signal
-				close(s.newFacts)
-				return
+				// we don't care about transmitting the accumulated facts to peers,
+				// but we do want to evaluate them so we can report final state
+				sendBuffer = true
+				done = true
+				break
 			}
 			buffer = append(buffer, p)
 			if len(buffer) >= maxChunk {
@@ -305,6 +328,8 @@ func (s *LinkServer) receivePackets(maxChunk int, chunkPeriod time.Duration) {
 			buffer = nil
 		}
 	}
+
+	close(s.newFacts)
 }
 
 func (s *LinkServer) processChunks() {
@@ -333,11 +358,12 @@ func (s *LinkServer) processChunks() {
 					newFacts = append(newFacts, rf.fact)
 				}
 			}
+			uniqueFacts := fact.MergeList(newFacts)
 			// TODO: this needs to be atomic or mutex'd
-			fmt.Printf("replacing facts: %d with %d\n", len(s.currentFacts), len(newFacts))
-			s.currentFacts = newFacts
+			fmt.Printf("replacing facts: %d with %d -> %d\n", len(s.currentFacts), len(newFacts), len(uniqueFacts))
+			s.currentFacts = uniqueFacts
 
-			s.factsRefreshed <- newFacts
+			s.factsRefreshed <- uniqueFacts
 		}
 	}
 
