@@ -40,9 +40,6 @@ type LinkServer struct {
 	closed bool
 }
 
-// DefaultPort is used by default, one up from the normal wireguard port
-const DefaultPort = 51821
-
 // MaxChunk is the max number of packets to receive before processing them
 const MaxChunk = 100
 
@@ -53,13 +50,14 @@ const ChunkPeriod = 5 * time.Second
 // Create starts the server up.
 // Have to take a deviceFactory instead of a Device since you can't refresh a device.
 // Will take ownership of the wg client and close it when the server is closed
+// If port <= 0, will use the wireguard device's listen port plus one
 func Create(ctrl *wgctrl.Client, deviceName string, port int) (*LinkServer, error) {
-	if port <= 0 {
-		port = DefaultPort
-	}
 	device, err := ctrl.Device(deviceName)
 	if err != nil {
 		return nil, err
+	}
+	if port <= 0 {
+		port = device.ListenPort + 1
 	}
 	ip := autopeer.AutoAddress(device.PublicKey)
 	addr := net.UDPAddr{
