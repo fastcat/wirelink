@@ -375,9 +375,14 @@ func (s *LinkServer) processChunks() {
 			// TODO: report error better
 			fmt.Printf("Unable to load device info to evaluate trust: %v\n", err)
 		} else {
-			trust := trust.CreateRouteBasedTrust(dev.Peers)
+			evaluator := trust.CreateRouteBasedTrust(dev.Peers)
 			for _, rf := range chunk {
-				if now.Before(rf.fact.Expires) && trust.IsTrusted(rf.fact, rf.source) {
+				if now.After(rf.fact.Expires) {
+					continue
+				}
+				level := evaluator.TrustLevel(rf.fact, rf.source)
+				known := evaluator.IsKnown(rf.fact.Subject)
+				if trust.ShouldAccept(rf.fact.Attribute, known, level) {
 					newFacts = append(newFacts, rf.fact)
 				}
 			}
