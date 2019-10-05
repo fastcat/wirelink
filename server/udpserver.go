@@ -73,8 +73,14 @@ func Create(ctrl *wgctrl.Client, deviceName string, port int) (*LinkServer, erro
 	}
 	if setll {
 		fmt.Println("Configured IPv6-LL address on local interface")
-	} else {
-		fmt.Println("Already have IPv6-LL on local interface")
+	}
+
+	peerips, err := apply.EnsurePeerAutoIP(ctrl, device)
+	if err != nil {
+		return nil, err
+	}
+	if peerips > 0 {
+		fmt.Printf("Added IPv6-LL for %d peers\n", peerips)
 	}
 
 	ip := autopeer.AutoAddress(device.PublicKey)
