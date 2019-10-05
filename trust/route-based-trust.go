@@ -10,9 +10,14 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-func CreateRouteBasedTrust(peers []wgtypes.Peer) TrustEvaluator {
+// CreateRouteBasedTrust factories a TrustEvaluator for the given set of peers,
+// using the "routers are trusted" model, wherein peers are allowed to provide
+// information only about themselves, unless they appear to be a "router",
+// by virtue of having an AllowedIP that has a mask less than its length,
+// in which case they are trusted to provide information about any peer
+func CreateRouteBasedTrust(peers []wgtypes.Peer) Evaluator {
 	var pps []peerWithAddr
-	for i, _ := range peers {
+	for i := range peers {
 		a := autopeer.AutoAddress(peers[i].PublicKey)
 		// need to take the address of the array element not a local iterator var here
 		pps = append(pps, peerWithAddr{&peers[i], a})
@@ -30,7 +35,7 @@ type routeBasedTrust struct {
 }
 
 // *routeBasedTrust should implement TrustEvaluator
-var _ TrustEvaluator = &routeBasedTrust{}
+var _ Evaluator = &routeBasedTrust{}
 
 func (rbt *routeBasedTrust) IsTrusted(f *fact.Fact, source net.IP) bool {
 	// trust peer to provide facts about itself

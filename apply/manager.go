@@ -5,11 +5,12 @@ import (
 	"github.com/vishvananda/netlink"
 )
 
+// Manager is a wrapper for applying local configuration changes
 type Manager struct {
 	nlh *netlink.Handle
 }
 
-// Create a new Manager
+// NewManager instantiates a new Manager object with its own netlink handle
 func NewManager() (*Manager, error) {
 	var ret Manager
 	nlh, err := netlink.NewHandle()

@@ -8,10 +8,17 @@ compile:
 wirelink: compile
 vet: compile
 	go vet ./...
-test: vet
+lint: lint-golint lint-gopls
+lint-golint:
+	golint -set_exit_status ./...
+lint-gopls:
+# need to group files to gopls check by directory it seems
+# unclear if this does anything useful at all
+	find -type f -name \*.go -print0 | xargs -0 dirname -z | sort -uz | xargs -P0 -0 -n1 sh -c 'set -x ; gopls check "$$1"/*.go' --
+test: vet lint
 	go test ./...
 
-run: test
+run: wirelink
 	sudo ./wirelink
 
-.PHONY: all fmt compile vet test run
+.PHONY: all fmt compile vet lint lint-golint lint-gopls test run

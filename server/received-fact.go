@@ -7,6 +7,9 @@ import (
 	"github.com/fastcat/wirelink/fact"
 )
 
+// ReceivedFact is a tuple of a fact and its source.
+// It is used for the queue of parsed packets received over the network,
+// to hold them in a batch before evaluating them for acceptance
 type ReceivedFact struct {
 	fact   *fact.Fact
 	source net.IP
