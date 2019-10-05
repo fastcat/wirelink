@@ -1,12 +1,12 @@
 package apply
 
 import (
-	"bytes"
 	"net"
 
 	"github.com/pkg/errors"
 
 	"github.com/fastcat/wirelink/autopeer"
+	"github.com/fastcat/wirelink/util"
 	"github.com/vishvananda/netlink"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -26,9 +26,7 @@ func (m *Manager) EnsureLocalAutoIP(dev *wgtypes.Device) (bool, error) {
 
 	autoaddr := autopeer.AutoAddress(dev.PublicKey)
 	for _, addr := range addrs {
-		ones, bits := addr.Mask.Size()
-		// looking for fe:80::.../64
-		if ones == 4*net.IPv6len && bits == 8*net.IPv6len && bytes.Equal(autoaddr, addr.IP) {
+		if util.IsIPv6LLMatch(autoaddr, addr.IPNet, true) {
 			return false, nil
 		}
 	}
