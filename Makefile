@@ -21,4 +21,7 @@ test: vet lint
 run: wirelink
 	sudo ./wirelink
 
-.PHONY: all fmt compile vet lint lint-golint lint-gopls test run
+install: compile
+	go install -v
+
+.PHONY: all fmt compile vet lint lint-golint lint-gopls test run install
