@@ -12,6 +12,7 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
+	"github.com/fastcat/wirelink/apply"
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/peerfacts"
@@ -21,6 +22,7 @@ import (
 // LinkServer represents the server component of wirelink
 // sending/receiving on a socket
 type LinkServer struct {
+	mgr        *apply.Manager
 	conn       *net.UDPConn
 	addr       net.UDPAddr
 	ctrl       *wgctrl.Client
@@ -59,6 +61,22 @@ func Create(ctrl *wgctrl.Client, deviceName string, port int) (*LinkServer, erro
 	if port <= 0 {
 		port = device.ListenPort + 1
 	}
+
+	// have to make sure we have the local IPv6-LL address configured before we can use it
+	mgr, err := apply.NewManager()
+	if err != nil {
+		return nil, err
+	}
+	setll, err := mgr.EnsureLocalAutoIP(device)
+	if err != nil {
+		return nil, err
+	}
+	if setll {
+		fmt.Println("Configured IPv6-LL address on local interface")
+	} else {
+		fmt.Println("Already have IPv6-LL on local interface")
+	}
+
 	ip := autopeer.AutoAddress(device.PublicKey)
 	addr := net.UDPAddr{
 		IP:   ip,
@@ -72,6 +90,7 @@ func Create(ctrl *wgctrl.Client, deviceName string, port int) (*LinkServer, erro
 	}
 
 	ret := &LinkServer{
+		mgr:            mgr,
 		conn:           conn,
 		addr:           addr,
 		ctrl:           ctrl,
