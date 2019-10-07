@@ -6,9 +6,10 @@ all: wirelink
 fmt:
 	go fmt ./...
 compile:
-# both spread and . to compile everything (not just deps) and make sure it links the exe
-	go build -v ./... .
+	go build -v ./...
 wirelink: compile
+# for some reason it only puts the exe in if you tell it to build just .
+	go build -v .
 vet: compile
 	go vet ./...
 lint: lint-golint lint-gopls

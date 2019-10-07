@@ -42,12 +42,14 @@ func ShouldAccept(attr fact.Attribute, known bool, level Level) bool {
 	}
 	switch attr {
 	case fact.AttributeEndpointV4:
+		fallthrough
 	case fact.AttributeEndpointV6:
 		return level >= Endpoint
+
 	case fact.AttributeAllowedCidrV4:
+		fallthrough
 	case fact.AttributeAllowedCidrV6:
 		return level >= AllowedIPs
-		// TODO: This function signature doesn't work for asking if we should add the peer
 	}
 	return false
 }

@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-// this type MUST always be comparable
-type factKey struct {
+// Key is a comparable version of the subject, attribute, and value of a Fact
+type Key struct {
 	// Attribute is a byte, nothing to worry about in comparisons
 	attribute Attribute
 	// subject/value are likely to contain slices which are not comparable in a useful sense
@@ -15,8 +15,9 @@ type factKey struct {
 	value   string
 }
 
-func keyOf(fact *Fact) factKey {
-	return factKey{
+// KeyOf returns the FactKey for a Fact
+func KeyOf(fact *Fact) Key {
+	return Key{
 		attribute: fact.Attribute,
 		subject:   string(fact.Subject.Bytes()),
 		value:     string(fact.Value.Bytes()),
@@ -24,15 +25,15 @@ func keyOf(fact *Fact) factKey {
 }
 
 // factSet is used to map fact keys to the "best" fact for that key
-type factSet map[factKey]*Fact
+type factSet map[Key]*Fact
 
 func (s factSet) has(fact *Fact) bool {
-	_, ret := s[keyOf((fact))]
+	_, ret := s[KeyOf((fact))]
 	return ret
 }
 
 func (s factSet) upsert(fact *Fact) time.Time {
-	key := keyOf(fact)
+	key := KeyOf(fact)
 
 	best, ok := s[key]
 	if !ok || best.Expires.Before(fact.Expires) {
@@ -43,7 +44,7 @@ func (s factSet) upsert(fact *Fact) time.Time {
 }
 
 func (s factSet) delete(fact *Fact) {
-	delete(s, keyOf(fact))
+	delete(s, KeyOf(fact))
 }
 
 // MergeList merges duplicate facts in a slice, keeping the latest Expires value

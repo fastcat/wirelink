@@ -39,7 +39,8 @@ type LinkServer struct {
 	// sends a copy of the new value of `currentFacts` each time it is updated
 	factsRefreshed chan []*fact.Fact
 	// tracks if we already ran close
-	closed bool
+	closed        bool
+	peerKnowledge *peerKnowledgeSet
 }
 
 // MaxChunk is the max number of packets to receive before processing them
@@ -106,6 +107,7 @@ func Create(ctrl *wgctrl.Client, deviceName string, port int) (*LinkServer, erro
 		packets:        make(chan *ReceivedFact, 10),
 		newFacts:       make(chan []*ReceivedFact, 1),
 		factsRefreshed: make(chan []*fact.Fact),
+		peerKnowledge:  newPKS(),
 	}
 
 	ret.wait.Add(1)
@@ -175,7 +177,7 @@ func (s *LinkServer) PrintFacts() {
 	facts = fact.MergeList(facts)
 	facts = fact.SortedCopy(facts)
 	for _, fact := range facts {
-		printFact(fact)
+		fmt.Println(fact)
 	}
 }
 
@@ -196,30 +198,6 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device) (ret []*fact.Fact, err er
 	return
 }
 
-func printFact(f *fact.Fact) {
-	fmt.Printf("%v\n", f)
-	/*
-		wf, err := f.ToWire()
-		if err != nil {
-			panic(err)
-		}
-		wfd, err := wf.Serialize()
-		if err != nil {
-			panic(err)
-		}
-		fmt.Printf("  => (%d) %v\n", len(wfd), wfd)
-		dwfd, err := fact.Deserialize(wfd)
-		if err != nil {
-			panic(err)
-		}
-		pf, err := fact.Parse(dwfd)
-		if err != nil {
-			panic(err)
-		}
-		fmt.Printf("  ==> %v\n", pf)
-	*/
-}
-
 // broadcastFacts tries to send every fact to every peer
 // it returns the number of sends performed
 func (s *LinkServer) broadcastFacts(peers []wgtypes.Peer, facts []*fact.Fact, timeout time.Duration) (int, []error) {
@@ -227,11 +205,27 @@ func (s *LinkServer) broadcastFacts(peers []wgtypes.Peer, facts []*fact.Fact, ti
 	var wg sync.WaitGroup
 	s.conn.SetWriteDeadline(time.Now().Add(timeout))
 	errs := make(chan error)
-	for _, fact := range facts {
-		for _, peer := range peers {
-			pa := autopeer.AutoAddress(peer.PublicKey)
+	for _, f := range facts {
+		for i, p := range peers {
+			// don't try to send info to the peer if we don't have an endpoint for it
+			if p.Endpoint == nil {
+				continue
+			}
+			// don't tell peers things about themselves
+			// they won't accept it unless we are a router,
+			// the only way this would be useful would be to tell them their external endpoint,
+			// but that's only useful if they can tell others and we can't, but if they can tell others,
+			// then those others don't need to know it because they are already connected
+			if f.Subject == (fact.PeerSubject{Key: p.PublicKey}) {
+				continue
+			}
+			// don't tell peers other things they already know
+			if s.peerKnowledge.peerKnows(&p, f, ChunkPeriod+time.Second) {
+				continue
+			}
 			wg.Add(1)
-			go s.sendFact(pa, fact, &wg, &counter, errs)
+			// can't use &p here because we get the loop var instead of the array element
+			go s.sendFact(&peers[i], f, &wg, &counter, errs)
 		}
 	}
 	go func() { wg.Wait(); close(errs) }()
@@ -245,9 +239,9 @@ func (s *LinkServer) broadcastFacts(peers []wgtypes.Peer, facts []*fact.Fact, ti
 	return int(counter), nil
 }
 
-func (s *LinkServer) sendFact(ip net.IP, fact *fact.Fact, wg *sync.WaitGroup, counter *int32, errs chan<- error) {
+func (s *LinkServer) sendFact(peer *wgtypes.Peer, f *fact.Fact, wg *sync.WaitGroup, counter *int32, errs chan<- error) {
 	defer wg.Done()
-	wp, err := fact.ToWire()
+	wp, err := f.ToWire()
 	if err != nil {
 		errs <- err
 		return
@@ -258,7 +252,7 @@ func (s *LinkServer) sendFact(ip net.IP, fact *fact.Fact, wg *sync.WaitGroup, co
 		return
 	}
 	addr := net.UDPAddr{
-		IP:   ip,
+		IP:   autopeer.AutoAddress(peer.PublicKey),
 		Port: s.addr.Port,
 		Zone: s.addr.Zone,
 	}
@@ -280,6 +274,10 @@ func (s *LinkServer) sendFact(ip net.IP, fact *fact.Fact, wg *sync.WaitGroup, co
 
 	// else/fall-through: sent OK
 	atomic.AddInt32(counter, 1)
+
+	// assume peers know things we send them
+	// if they ignore us, sending it again is not going to help
+	s.peerKnowledge.upsertSent(peer, f)
 }
 
 func (s *LinkServer) readPackets() {
@@ -374,25 +372,32 @@ func (s *LinkServer) processChunks() {
 		if err != nil {
 			// TODO: report error better
 			fmt.Printf("Unable to load device info to evaluate trust: %v\n", err)
-		} else {
-			evaluator := trust.CreateRouteBasedTrust(dev.Peers)
-			for _, rf := range chunk {
-				if now.After(rf.fact.Expires) {
-					continue
-				}
-				level := evaluator.TrustLevel(rf.fact, rf.source)
-				known := evaluator.IsKnown(rf.fact.Subject)
-				if trust.ShouldAccept(rf.fact.Attribute, known, level) {
-					newFacts = append(newFacts, rf.fact)
-				}
-			}
-			uniqueFacts := fact.MergeList(newFacts)
-			// TODO: this needs to be atomic or mutex'd
-			fmt.Printf("replacing facts: %d with %d -> %d\n", len(s.currentFacts), len(newFacts), len(uniqueFacts))
-			s.currentFacts = uniqueFacts
-
-			s.factsRefreshed <- uniqueFacts
+			continue
 		}
+
+		pl := createPeerLookup(dev.Peers)
+
+		evaluator := trust.CreateRouteBasedTrust(dev.Peers)
+		for _, rf := range chunk {
+			// add to what the peer knows, even if we otherwise discard the information
+			s.peerKnowledge.upsertReceived(rf, pl)
+
+			if now.After(rf.fact.Expires) {
+				continue
+			}
+
+			level := evaluator.TrustLevel(rf.fact, rf.source)
+			known := evaluator.IsKnown(rf.fact.Subject)
+			if trust.ShouldAccept(rf.fact.Attribute, known, level) {
+				newFacts = append(newFacts, rf.fact)
+			}
+		}
+		uniqueFacts := fact.MergeList(newFacts)
+		// TODO: this needs to be atomic or mutex'd
+		fmt.Printf("replacing facts: %d with %d -> %d\n", len(s.currentFacts), len(newFacts), len(uniqueFacts))
+		s.currentFacts = uniqueFacts
+
+		s.factsRefreshed <- uniqueFacts
 	}
 
 	close(s.factsRefreshed)
