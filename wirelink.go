@@ -32,7 +32,7 @@ func main() {
 
 	sigs := make(chan os.Signal, 5)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
-	timedout := time.After(45 * time.Second)
+	timedout := time.After(45 * time.Minute)
 
 DONE:
 	for {
