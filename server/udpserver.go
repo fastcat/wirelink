@@ -31,19 +31,6 @@ type LinkServer struct {
 	wait       *sync.WaitGroup
 	// sending on endReader will stop the packet reader goroutine
 	endReader chan bool
-	// the packet reader goroutine sends each packet on the packets channel as it
-	// is parsed
-	packets chan *ReceivedFact
-	// currentFacts holds a snapshot of the current list of known facts _from
-	// other peers_ (no local facts here). This is updated by replacing the slice,
-	// not by modifying the contents of the slice.
-	currentFacts []*fact.Fact
-	// newFacts is used for the packet receiver to periodically emit groups of
-	// newly received facts when it's time to refresh state
-	newFacts chan []*ReceivedFact
-	// factsRefreshed is used to send the new value of `currentFacts` each time it
-	// is updated
-	factsRefreshed chan []*fact.Fact
 	// closed tracks if we already ran `Close()`
 	closed bool
 	// peerKnowledgeSet tracks what is known by each peer to avoid sending them
@@ -105,33 +92,54 @@ func Create(ctrl *wgctrl.Client, deviceName string, port int) (*LinkServer, erro
 	}
 
 	ret := &LinkServer{
-		mgr:            mgr,
-		conn:           conn,
-		addr:           addr,
-		ctrl:           ctrl,
-		ctrlAccess:     &sync.Mutex{},
-		deviceName:     deviceName,
-		wait:           &sync.WaitGroup{},
-		endReader:      make(chan bool),
-		packets:        make(chan *ReceivedFact, MaxChunk),
-		newFacts:       make(chan []*ReceivedFact, 1),
-		factsRefreshed: make(chan []*fact.Fact, 1),
-		peerKnowledge:  newPKS(),
+		mgr:           mgr,
+		conn:          conn,
+		addr:          addr,
+		ctrl:          ctrl,
+		ctrlAccess:    &sync.Mutex{},
+		deviceName:    deviceName,
+		wait:          &sync.WaitGroup{},
+		endReader:     make(chan bool),
+		peerKnowledge: newPKS(),
 	}
 
+	packets := make(chan *ReceivedFact, MaxChunk)
 	ret.wait.Add(1)
-	go ret.readPackets()
+	go ret.readPackets(ret.endReader, packets)
+
+	newFacts := make(chan []*ReceivedFact, 1)
+	ret.wait.Add(1)
+	go ret.receivePackets(packets, newFacts, MaxChunk, ChunkPeriod)
+
+	factsRefreshed := make(chan []*fact.Fact, 1)
+	factsRefreshedForBroadcast := make(chan []*fact.Fact, 1)
+	factsRefreshedForConfig := make(chan []*fact.Fact, 1)
 
 	ret.wait.Add(1)
-	go ret.receivePackets(MaxChunk, ChunkPeriod)
+	go multiplexFactChunks(ret.wait, factsRefreshed, factsRefreshedForBroadcast, factsRefreshedForConfig)
 
 	ret.wait.Add(1)
-	go ret.processChunks()
+	go ret.processChunks(newFacts, factsRefreshed)
 
 	ret.wait.Add(1)
-	go ret.broadcastFactUpdates()
+	go ret.broadcastFactUpdates(factsRefreshedForBroadcast)
+
+	ret.wait.Add(1)
+	go ret.configurePeers(factsRefreshedForConfig)
 
 	return ret, nil
+}
+
+// multiplexFactChunks copies values from input to each output. It will only
+// work smoothly if the outputs are buffered so that it doesn't block much
+func multiplexFactChunks(wg *sync.WaitGroup, input <-chan []*fact.Fact, outputs ...chan<- []*fact.Fact) {
+	defer wg.Done()
+
+	for chunk := range input {
+		for _, output := range outputs {
+			output <- chunk
+		}
+	}
 }
 
 // Stop halts the background goroutines and releases resources associated with
@@ -148,8 +156,6 @@ func (s *LinkServer) Stop() {
 	s.conn = nil
 	s.wait = nil
 	s.endReader = nil
-	s.packets = nil
-	s.newFacts = nil
 }
 
 // Close stops the server and closes all resources
@@ -183,6 +189,7 @@ func (s *LinkServer) deviceState() (dev *wgtypes.Device, err error) {
 	return s.ctrl.Device(s.deviceName)
 }
 
+/*
 // PrintFacts is just a debug tool, it is not concurrency safe and will panic if
 // something goes wrong
 func (s *LinkServer) PrintFacts() {
@@ -201,6 +208,7 @@ func (s *LinkServer) PrintFacts() {
 		fmt.Println(fact)
 	}
 }
+*/
 
 func (s *LinkServer) collectFacts(dev *wgtypes.Device) (ret []*fact.Fact, err error) {
 	pf, err := peerfacts.DeviceFacts(dev, 30*time.Second)
@@ -301,15 +309,16 @@ func (s *LinkServer) sendFact(peer *wgtypes.Peer, f *fact.Fact, wg *sync.WaitGro
 	s.peerKnowledge.upsertSent(peer, f)
 }
 
-func (s *LinkServer) readPackets() {
-	defer close(s.packets)
+func (s *LinkServer) readPackets(endReader <-chan bool, packets chan<- *ReceivedFact) {
 	defer s.wait.Done()
+	defer close(packets)
+
 	// longest possible fact packet is an ipv6 endpoint
 	// which is 1(attr) + 1(ttl) + 1(len)+wgtypes.KeyLen + 1(len)+net.IPv6len+2
 	var buffer [4 + wgtypes.KeyLen + net.IPv6len + 2]byte
 	for {
 		select {
-		case <-s.endReader:
+		case <-endReader:
 			return
 		default:
 			s.conn.SetReadDeadline(time.Now().Add(time.Second))
@@ -335,13 +344,19 @@ func (s *LinkServer) readPackets() {
 				continue
 			}
 			rcv := &ReceivedFact{fact: pp, source: addr.IP}
-			s.packets <- rcv
+			packets <- rcv
 		}
 	}
 }
 
-func (s *LinkServer) receivePackets(maxChunk int, chunkPeriod time.Duration) {
+func (s *LinkServer) receivePackets(
+	packets <-chan *ReceivedFact,
+	newFacts chan<- []*ReceivedFact,
+	maxChunk int,
+	chunkPeriod time.Duration,
+) {
 	defer s.wait.Done()
+	defer close(newFacts)
 
 	var buffer []*ReceivedFact
 	ticker := time.NewTicker(chunkPeriod)
@@ -349,7 +364,7 @@ func (s *LinkServer) receivePackets(maxChunk int, chunkPeriod time.Duration) {
 	for done := false; !done; {
 		sendBuffer := false
 		select {
-		case p, ok := <-s.packets:
+		case p, ok := <-packets:
 			if !ok {
 				// we don't care about transmitting the accumulated facts to peers,
 				// but we do want to evaluate them so we can report final state
@@ -366,24 +381,29 @@ func (s *LinkServer) receivePackets(maxChunk int, chunkPeriod time.Duration) {
 		}
 
 		if sendBuffer {
-			s.newFacts <- buffer
+			newFacts <- buffer
+			// always make a new buffer after we send it
 			buffer = nil
 		}
 	}
-
-	close(s.newFacts)
 }
 
-func (s *LinkServer) processChunks() {
+func (s *LinkServer) processChunks(
+	newFacts <-chan []*ReceivedFact,
+	factsRefreshed chan<- []*fact.Fact,
+) {
 	defer s.wait.Done()
+	defer close(factsRefreshed)
 
-	for chunk := range s.newFacts {
+	var currentFacts []*fact.Fact
+
+	for chunk := range newFacts {
 		now := time.Now()
 		fmt.Printf("chunk received: %d\n", len(chunk))
 		// accumulate all the still valid and newly valid facts
-		newFacts := make([]*fact.Fact, 0, len(s.currentFacts)+len(chunk))
+		newFacts := make([]*fact.Fact, 0, len(currentFacts)+len(chunk))
 		// add all the not-expired facts
-		for _, f := range s.currentFacts {
+		for _, f := range currentFacts {
 			if now.Before(f.Expires) {
 				newFacts = append(newFacts, f)
 			}
@@ -415,16 +435,14 @@ func (s *LinkServer) processChunks() {
 		}
 		uniqueFacts := fact.MergeList(newFacts)
 		// TODO: this needs to be atomic or mutex'd
-		fmt.Printf("replacing facts: %d with %d -> %d\n", len(s.currentFacts), len(newFacts), len(uniqueFacts))
-		s.currentFacts = uniqueFacts
+		fmt.Printf("replacing facts: %d with %d -> %d\n", len(currentFacts), len(newFacts), len(uniqueFacts))
+		currentFacts = uniqueFacts
 
-		s.factsRefreshed <- uniqueFacts
+		factsRefreshed <- uniqueFacts
 	}
-
-	close(s.factsRefreshed)
 }
 
-func (s *LinkServer) broadcastFactUpdates() {
+func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) {
 	defer s.wait.Done()
 
 	// TODO: should we fire this off into a goroutine when we call it?
@@ -450,7 +468,53 @@ func (s *LinkServer) broadcastFactUpdates() {
 	broadcast(nil)
 
 	// TODO: naming here is confusing with the `newFacts` channel
-	for newFacts := range s.factsRefreshed {
+	for newFacts := range factsRefreshed {
+		// error printing is handled inside `broadcast`, so we ignore the return
 		broadcast(newFacts)
 	}
+}
+
+func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
+	defer s.wait.Done()
+
+	for newFacts := range factsRefreshed {
+		if len(newFacts) == 0 {
+			continue
+		}
+
+		dev, err := s.deviceState()
+		if err != nil {
+			// TODO: report error better
+			fmt.Println("Unable to load device state: ", err)
+		}
+
+		// group facts by peer
+		factsByPeer := make(map[wgtypes.Key][]*fact.Fact)
+		for _, f := range newFacts {
+			ps, ok := f.Subject.(*fact.PeerSubject)
+			if !ok {
+				// WAT
+				continue
+			}
+			factsByPeer[ps.Key] = append(factsByPeer[ps.Key], f)
+		}
+
+		wg := &sync.WaitGroup{}
+		for i := range dev.Peers {
+			peer := &dev.Peers[i]
+			fg, ok := factsByPeer[peer.PublicKey]
+			if !ok {
+				continue
+			}
+			wg.Add(1)
+			go s.configurePeer(wg, peer, fg)
+		}
+		wg.Wait()
+	}
+}
+
+func (s *LinkServer) configurePeer(wait *sync.WaitGroup, peer *wgtypes.Peer, facts []*fact.Fact) {
+	defer wait.Done()
+
+	// TODO: update the peer config if needed
 }

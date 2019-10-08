@@ -35,8 +35,8 @@ DONE:
 		select {
 		case sig := <-sigs:
 			if sig == syscall.SIGUSR1 {
-				fmt.Println("Current facts")
-				server.PrintFacts()
+				fmt.Println("Current facts: ???")
+				// server.PrintFacts()
 			} else {
 				fmt.Printf("Received signal %v, stopping\n", sig)
 				break DONE
@@ -50,6 +50,6 @@ DONE:
 	fmt.Println("Stopping server")
 	server.Stop()
 
-	fmt.Println("Final facts")
-	server.PrintFacts()
+	fmt.Println("Final facts: ???")
+	// server.PrintFacts()
 }
