@@ -568,8 +568,10 @@ func (s *LinkServer) configurePeer(
 	// on a router, we are the network's memory of the AllowedIPs, so we must not
 	// clear them, but on leaf devices we should remove them from the peer when
 	// we don't have a direct connection so that the peer is reachable through a
-	// router
-	if !s.isRouter {
+	// router. for much the same reason, we don't want to remove AllowedIPs from
+	// routers.
+	// TODO: IsRouter doesn't belong in trust
+	if !s.isRouter && !trust.IsRouter(peer) {
 		changed, err := apply.OnlyAutoIP(s.ctrl, s.deviceName, peer)
 		if err != nil {
 			fmt.Println("Failed to restrict peer to IPv6-LL only:", err)

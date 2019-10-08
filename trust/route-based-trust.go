@@ -50,7 +50,7 @@ func (rbt routeBasedTrust) TrustLevel(f *fact.Fact, source net.IP) Level {
 			// any other peer, as they are inferred to control the network this has
 			// to come before the peer self check, because the routers need to be
 			// permitted to tell us their own AllowedIPs, not just others
-			if isRouter(peer.peer) {
+			if IsRouter(peer.peer) {
 				return AllowedIPs
 			}
 
@@ -84,9 +84,9 @@ func (rbt routeBasedTrust) IsKnown(s fact.Subject) bool {
 	return ok
 }
 
-// isRouter considers a router to be a peer that has a global unicast allowed
+// IsRouter considers a router to be a peer that has a global unicast allowed
 // IP with a CIDR mask less than the full IP
-func isRouter(peer *wgtypes.Peer) bool {
+func IsRouter(peer *wgtypes.Peer) bool {
 	for _, aip := range peer.AllowedIPs {
 		if !aip.IP.IsGlobalUnicast() {
 			continue
