@@ -4,6 +4,10 @@
 
 * How do we detect if the local system is a router?
 
+  * Why do we care? Because routers should not drop peer AllowedIPs when they
+    lose contact with the peer.
+  * For now just use a command line arg to specify that we are a router?
+
 * How do we detect when a connection to a peer is operational enough that we
   should stop trying new endpoints?
 

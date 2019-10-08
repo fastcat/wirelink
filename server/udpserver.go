@@ -477,6 +477,8 @@ func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) {
 func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 	defer s.wait.Done()
 
+	peerStates := make(map[wgtypes.Key]*apply.PeerConfigState)
+
 	for newFacts := range factsRefreshed {
 		if len(newFacts) == 0 {
 			continue
@@ -500,21 +502,46 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 		}
 
 		wg := &sync.WaitGroup{}
+		psm := &sync.Mutex{}
 		for i := range dev.Peers {
 			peer := &dev.Peers[i]
 			fg, ok := factsByPeer[peer.PublicKey]
 			if !ok {
 				continue
 			}
+			psm.Lock()
+			ps := peerStates[peer.PublicKey]
+			psm.Unlock()
 			wg.Add(1)
-			go s.configurePeer(wg, peer, fg)
+			go func() {
+				defer wg.Done()
+				newState := s.configurePeer(ps, peer, fg)
+				psm.Lock()
+				peerStates[peer.PublicKey] = newState
+				psm.Unlock()
+			}()
 		}
 		wg.Wait()
 	}
 }
 
-func (s *LinkServer) configurePeer(wait *sync.WaitGroup, peer *wgtypes.Peer, facts []*fact.Fact) {
-	defer wait.Done()
+func (s *LinkServer) configurePeer(
+	inputState *apply.PeerConfigState,
+	peer *wgtypes.Peer,
+	facts []*fact.Fact,
+) (state *apply.PeerConfigState) {
+	state = inputState.Update(peer)
+	if state.IsHealthy() {
+		// no peer config is needed
+		return
+	}
+
+	if !state.TimeForNextEndpoint() {
+		// not time to try another endpoint yet
+		return
+	}
 
 	// TODO: update the peer config if needed
+
+	return
 }
