@@ -84,3 +84,16 @@ func (pks peerKnowledgeSet) peerKnows(peer *wgtypes.Peer, f *fact.Fact, hysteres
 	// after the fact's expiration, or no more than hysteresis behind it
 	return ok && e.Add(hysteresis).After(f.Expires)
 }
+
+func (pks peerKnowledgeSet) peerNeeds(peer *wgtypes.Peer, f *fact.Fact, maxTTL time.Duration) bool {
+	k := peerKnowledgeKey{
+		Key:  fact.KeyOf(f),
+		peer: peer.PublicKey,
+	}
+	pks.access.RLock()
+	defer pks.access.RUnlock()
+	e, ok := pks.data[k]
+	// peer needs a fact if it doesnt know it at all, or if it's going to forget
+	// it within maxTTL and we have something fresher
+	return !ok || e.Add(maxTTL).Before(time.Now()) && e.Before(f.Expires)
+}

@@ -254,7 +254,7 @@ func (s *LinkServer) broadcastFacts(peers []wgtypes.Peer, facts []*fact.Fact, ti
 				continue
 			}
 			// don't tell peers other things they already know
-			if s.peerKnowledge.peerKnows(&p, f, ChunkPeriod+time.Second) {
+			if !s.peerKnowledge.peerNeeds(&p, f, ChunkPeriod+time.Second) {
 				continue
 			}
 			wg.Add(1)
