@@ -73,10 +73,7 @@ var _ Value = IPNetValue{}
 
 // Bytes gives the binary representation of the ip and cidr prefix
 func (ipn IPNetValue) Bytes() []byte {
-	ipnorm := ipn.IP.To4()
-	if ipnorm == nil {
-		ipnorm = ipn.IP.To16()
-	}
+	ipnorm := util.NormalizeIP(ipn.IP)
 	ones, _ := ipn.Mask.Size()
 	ret := make([]byte, len(ipnorm), len(ipnorm)+1)
 	copy(ret, ipnorm)

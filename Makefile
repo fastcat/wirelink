@@ -5,6 +5,7 @@ all: wirelink
 
 fmt:
 	go fmt ./...
+	goimports -w -l .
 compile:
 	go build -v ./...
 wirelink: compile

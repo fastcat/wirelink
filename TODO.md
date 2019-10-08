@@ -1,37 +1,19 @@
 # TODO
 
-## Detection
+## Endpoint Selection
 
-* How do we detect if the local system is a router?
+* Prefer RFC1918 addresses that match a local interface over those that
+  don't. TBD exactly what "prefer" means outside the first set of attempts.
 
-  * Why do we care? Because routers should not drop peer AllowedIPs when they
-    lose contact with the peer.
-  * For now just use a command line arg to specify that we are a router?
+## Peer Configuration
 
-* How do we detect when a connection to a peer is operational enough that we
-  should stop trying new endpoints?
-
-  * Last handshake less than `RekeyAfterTime`?
-  * Last handshake newer than we last observed?
-
-* How do we detect when an endpoint isn't going to work and move on to the
-  next one?
-
-  * Last handshake hasn't changed in over `RekeyAfterTime`?
-  * Last handshake hasn't changed in over `RekeyTimeout` +
-    `KeepaliveTimeout`?
-
-* How do we detect which endpoints we should try?
-
-  * All of them? Filtering for RFC1918 addresses that match local
-    interfaces may be a waste of time? At least save that for post MvP.
-
-* How do we detect the order in which we should try endpoints?
-
-  * Does it matter?
-
-* How do we detect which endpoint we should try next, to ensure we try them
-  all?
-
-  * Remember a last attempted time for each one, prune that to only
-    still-valid ones, sort?
+* Don't configure `AllowedIPs` until we know the other peer is going to
+  reciprocate.
+  
+  * Check peer knowledge for these values? That won't work right in curent form
+    because we assume peer knows things we sent it, but we don't know if it
+    actually received them. Could have peer go live at crypto layer without
+    `wirelink` running.
+  * Use a null fact (`Attribute = 0`) as an "I'm here" which we only track in
+    peer knowledge state based on receiving it? Don't configure AIPs on a peer
+    unless this is live, but don't deconfigure them if it is dead.

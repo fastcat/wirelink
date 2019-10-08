@@ -488,7 +488,7 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 		dev, err := s.deviceState()
 		if err != nil {
 			// TODO: report error better
-			fmt.Println("Unable to load device state: ", err)
+			fmt.Println("Unable to load device state:", err)
 		}
 
 		allFacts, err := s.collectFacts(dev)
@@ -549,23 +549,32 @@ func (s *LinkServer) configurePeer(
 	facts []*fact.Fact,
 ) (state *apply.PeerConfigState) {
 	state = inputState.Update(peer)
-	if state.IsHealthy() {
-		// TODO: configure peer AllowedIPs
-		return
-	}
 
 	// TODO: make the lock window here smaller
+	// only want to take the lock for the regions where we change config
 	s.ctrlAccess.Lock()
 	defer s.ctrlAccess.Unlock()
+
+	if state.IsHealthy() {
+		added, err := apply.EnsureAllowedIPs(s.ctrl, s.deviceName, peer, facts)
+		if err != nil {
+			fmt.Println("Failed to update peer AllowedIPs:", err)
+		} else if added > 0 {
+			fmt.Printf("Added AIPs to peer %v: %d\n", peer.PublicKey, added)
+		}
+		return
+	}
 
 	// on a router, we are the network's memory of the AllowedIPs, so we must not
 	// clear them, but on leaf devices we should remove them from the peer when
 	// we don't have a direct connection so that the peer is reachable through a
 	// router
 	if !s.isRouter {
-		err := apply.OnlyAutoIP(s.ctrl, s.deviceName, peer)
+		changed, err := apply.OnlyAutoIP(s.ctrl, s.deviceName, peer)
 		if err != nil {
-			fmt.Println("Failed to restrict peer to IPv6-LL only: ", err)
+			fmt.Println("Failed to restrict peer to IPv6-LL only:", err)
+		} else if changed {
+			fmt.Println("Peer is now IPv6-LL only:", peer.PublicKey)
 		}
 	}
 
