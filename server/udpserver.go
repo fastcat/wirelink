@@ -22,6 +22,7 @@ import (
 // LinkServer represents the server component of wirelink
 // sending/receiving on a socket
 type LinkServer struct {
+	isRouter   bool
 	mgr        *apply.Manager
 	conn       *net.UDPConn
 	addr       net.UDPAddr
@@ -49,7 +50,7 @@ const ChunkPeriod = 5 * time.Second
 // Have to take a deviceFactory instead of a Device since you can't refresh a device.
 // Will take ownership of the wg client and close it when the server is closed
 // If port <= 0, will use the wireguard device's listen port plus one
-func Create(ctrl *wgctrl.Client, deviceName string, port int) (*LinkServer, error) {
+func Create(ctrl *wgctrl.Client, deviceName string, port int, isRouter bool) (*LinkServer, error) {
 	device, err := ctrl.Device(deviceName)
 	if err != nil {
 		return nil, err
@@ -92,6 +93,7 @@ func Create(ctrl *wgctrl.Client, deviceName string, port int) (*LinkServer, erro
 	}
 
 	ret := &LinkServer{
+		isRouter:      isRouter,
 		mgr:           mgr,
 		conn:          conn,
 		addr:          addr,
@@ -134,6 +136,9 @@ func Create(ctrl *wgctrl.Client, deviceName string, port int) (*LinkServer, erro
 // work smoothly if the outputs are buffered so that it doesn't block much
 func multiplexFactChunks(wg *sync.WaitGroup, input <-chan []*fact.Fact, outputs ...chan<- []*fact.Fact) {
 	defer wg.Done()
+	for _, output := range outputs {
+		defer close(output)
+	}
 
 	for chunk := range input {
 		for _, output := range outputs {
@@ -245,7 +250,7 @@ func (s *LinkServer) broadcastFacts(peers []wgtypes.Peer, facts []*fact.Fact, ti
 			// the only way this would be useful would be to tell them their external endpoint,
 			// but that's only useful if they can tell others and we can't, but if they can tell others,
 			// then those others don't need to know it because they are already connected
-			if f.Subject == (fact.PeerSubject{Key: p.PublicKey}) {
+			if ps, ok := f.Subject.(*fact.PeerSubject); ok && *ps == (fact.PeerSubject{Key: p.PublicKey}) {
 				continue
 			}
 			// don't tell peers other things they already know
@@ -480,25 +485,38 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 	peerStates := make(map[wgtypes.Key]*apply.PeerConfigState)
 
 	for newFacts := range factsRefreshed {
-		if len(newFacts) == 0 {
-			continue
-		}
-
 		dev, err := s.deviceState()
 		if err != nil {
 			// TODO: report error better
 			fmt.Println("Unable to load device state: ", err)
 		}
 
+		allFacts, err := s.collectFacts(dev)
+		if err != nil {
+			fmt.Println("Unable to collect local facts, skipping peer config", err)
+			continue
+		}
+		// it's safe for us to mutate the facts list from the local device,
+		// but not the one from the channel
+		allFacts = fact.MergeList(append(allFacts, newFacts...))
+
 		// group facts by peer
 		factsByPeer := make(map[wgtypes.Key][]*fact.Fact)
-		for _, f := range newFacts {
+		for _, f := range allFacts {
 			ps, ok := f.Subject.(*fact.PeerSubject)
 			if !ok {
 				// WAT
+				fmt.Printf("WAT: fact subject is a %T: %v\n", f.Subject, f)
 				continue
 			}
 			factsByPeer[ps.Key] = append(factsByPeer[ps.Key], f)
+		}
+
+		// trim `peerStates` to just the current peers
+		for k := range peerStates {
+			if _, ok := factsByPeer[k]; !ok {
+				delete(peerStates, k)
+			}
 		}
 
 		wg := &sync.WaitGroup{}
@@ -532,16 +550,51 @@ func (s *LinkServer) configurePeer(
 ) (state *apply.PeerConfigState) {
 	state = inputState.Update(peer)
 	if state.IsHealthy() {
-		// no peer config is needed
+		// TODO: configure peer AllowedIPs
 		return
 	}
 
+	// TODO: make the lock window here smaller
+	s.ctrlAccess.Lock()
+	defer s.ctrlAccess.Unlock()
+
+	// on a router, we are the network's memory of the AllowedIPs, so we must not
+	// clear them, but on leaf devices we should remove them from the peer when
+	// we don't have a direct connection so that the peer is reachable through a
+	// router
+	if !s.isRouter {
+		err := apply.OnlyAutoIP(s.ctrl, s.deviceName, peer)
+		if err != nil {
+			fmt.Println("Failed to restrict peer to IPv6-LL only: ", err)
+		}
+	}
+
 	if !state.TimeForNextEndpoint() {
+		fmt.Println("Unhealthy peer, but delaying", peer.PublicKey)
 		// not time to try another endpoint yet
 		return
 	}
 
-	// TODO: update the peer config if needed
+	nextEndpoint := state.NextEndpoint(facts)
+	if nextEndpoint == nil {
+		fmt.Printf("No EP available for %v\n", peer.PublicKey)
+		return
+	}
+
+	fmt.Printf("Trying EP for %v: %v\n", peer.PublicKey, nextEndpoint)
+
+	err := s.ctrl.ConfigureDevice(s.deviceName, wgtypes.Config{
+		Peers: []wgtypes.PeerConfig{
+			wgtypes.PeerConfig{
+				PublicKey: peer.PublicKey,
+				Endpoint:  nextEndpoint,
+			},
+		},
+	})
+	if err != nil {
+		// TODO: return error
+		fmt.Printf("Failed to configure EP for %v: %v: %v\n", peer.PublicKey, nextEndpoint, err)
+	}
 
 	return
 }

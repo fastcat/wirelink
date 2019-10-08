@@ -11,7 +11,7 @@ import (
 
 // Parse tries to parse the intermediate packet format to a full data structure
 func Parse(p *OnWire) (f *Fact, err error) {
-	var subject Subject
+	var subject *PeerSubject
 	var value Value
 
 	switch p.attribute {

@@ -18,14 +18,14 @@ func TestFactKeyEquality(t *testing.T) {
 	fact1 := Fact{
 		Attribute: AttributeEndpointV4,
 		Expires:   time.Now().Add(30 * time.Second),
-		Subject:   PeerSubject{Key: key},
-		Value:     IPPortValue{IP: net.IPv4(127, 0, 0, 1), Port: 51820},
+		Subject:   &PeerSubject{Key: key},
+		Value:     &IPPortValue{IP: net.IPv4(127, 0, 0, 1), Port: 51820},
 	}
 	fact2 := Fact{
 		Attribute: AttributeEndpointV4,
 		Expires:   time.Now().Add(30 * time.Second),
-		Subject:   PeerSubject{Key: key},
-		Value:     IPPortValue{IP: net.IPv4(127, 0, 0, 1), Port: 51820},
+		Subject:   &PeerSubject{Key: key},
+		Value:     &IPPortValue{IP: net.IPv4(127, 0, 0, 1), Port: 51820},
 	}
 
 	fkey1 := KeyOf(&fact1)

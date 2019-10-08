@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -18,7 +19,10 @@ func main() {
 		panic(err)
 	}
 
-	server, err := server.Create(wgc, "wg0", 0)
+	isRouter := flag.Bool("router", false, "Is the local device a router")
+	flag.Parse()
+
+	server, err := server.Create(wgc, "wg0", 0, *isRouter)
 	if err != nil {
 		panic(err)
 	}

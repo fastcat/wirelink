@@ -44,9 +44,16 @@ PEERS:
 
 // OnlyAutoIP configures a peer to have _only_ its IPv6-LL IP in its AllowedIPs
 // it returns any error that happens
-func OnlyAutoIP(ctrl *wgctrl.Client, dev *wgtypes.Device, peer wgtypes.Peer) error {
-	var cfg wgtypes.Config
+func OnlyAutoIP(ctrl *wgctrl.Client, deviceName string, peer *wgtypes.Peer) error {
 	autoaddr := autopeer.AutoAddress(peer.PublicKey)
+	if len(peer.AllowedIPs) == 1 && peer.AllowedIPs[0].IP.Equal(autoaddr) {
+		ones, bits := peer.AllowedIPs[0].Mask.Size()
+		if ones == 8*net.IPv6len && bits == 8*net.IPv6len {
+			// no change required
+			return nil
+		}
+	}
+	var cfg wgtypes.Config
 	cfg.Peers = append(cfg.Peers, wgtypes.PeerConfig{
 		PublicKey:         peer.PublicKey,
 		ReplaceAllowedIPs: true,
@@ -55,10 +62,10 @@ func OnlyAutoIP(ctrl *wgctrl.Client, dev *wgtypes.Device, peer wgtypes.Peer) err
 			Mask: net.CIDRMask(8*net.IPv6len, 8*net.IPv6len),
 		}},
 	})
-	err := ctrl.ConfigureDevice(dev.Name, cfg)
+	err := ctrl.ConfigureDevice(deviceName, cfg)
 	if err != nil {
 		return errors.Wrapf(err, "Unable to configure %s to restrict peer %s to IPv6-LL only",
-			dev.Name, peer.PublicKey)
+			deviceName, peer.PublicKey)
 	}
 	return nil
 }

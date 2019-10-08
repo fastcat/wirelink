@@ -31,12 +31,14 @@ type PeerSubject struct {
 }
 
 // Bytes gives the binary representation of a peer's public key
-func (s PeerSubject) Bytes() []byte {
+func (s *PeerSubject) Bytes() []byte {
 	return s.Key[:]
 }
 
-// PeerSubject must implement Subject
-var _ Subject = PeerSubject{}
+// *PeerSubject must implement Subject
+// we do this with the pointer because if we do it with the struct, the pointer
+// matches too, and that confuses things
+var _ Subject = &PeerSubject{}
 
 // IPPortValue represents an IP:port pair as an Attribute of a Subject
 type IPPortValue struct {
@@ -45,10 +47,11 @@ type IPPortValue struct {
 }
 
 // IPValue must implement Value
-var _ Value = IPPortValue{}
+// same pointer criteria as for PeerSubject
+var _ Value = &IPPortValue{}
 
 // Bytes returns the normalized binary representation
-func (ipp IPPortValue) Bytes() []byte {
+func (ipp *IPPortValue) Bytes() []byte {
 	normalized := util.NormalizeIP(ipp.IP)
 	ret := make([]byte, len(normalized)+2)
 	copy(ret, normalized)
@@ -56,7 +59,7 @@ func (ipp IPPortValue) Bytes() []byte {
 	return ret
 }
 
-func (ipp IPPortValue) String() string {
+func (ipp *IPPortValue) String() string {
 	return fmt.Sprintf("%v:%v", ipp.IP, ipp.Port)
 }
 
