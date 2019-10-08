@@ -25,21 +25,29 @@ type LinkServer struct {
 	mgr        *apply.Manager
 	conn       *net.UDPConn
 	addr       net.UDPAddr
+	ctrlAccess *sync.Mutex
 	ctrl       *wgctrl.Client
 	deviceName string
 	wait       *sync.WaitGroup
-	// sending on this channel will stop the packet reader goroutine
+	// sending on endReader will stop the packet reader goroutine
 	endReader chan bool
-	// the packet reader goroutine emits each packet as it is parsed on this channel
+	// the packet reader goroutine sends each packet on the packets channel as it
+	// is parsed
 	packets chan *ReceivedFact
-	// the current list of known facts _from other peers_ (no local facts here)
+	// currentFacts holds a snapshot of the current list of known facts _from
+	// other peers_ (no local facts here). This is updated by replacing the slice,
+	// not by modifying the contents of the slice.
 	currentFacts []*fact.Fact
-	// the packet receiver will periodically emit groups of new facts here when it's time to refresh state
+	// newFacts is used for the packet receiver to periodically emit groups of
+	// newly received facts when it's time to refresh state
 	newFacts chan []*ReceivedFact
-	// sends a copy of the new value of `currentFacts` each time it is updated
+	// factsRefreshed is used to send the new value of `currentFacts` each time it
+	// is updated
 	factsRefreshed chan []*fact.Fact
-	// tracks if we already ran close
-	closed        bool
+	// closed tracks if we already ran `Close()`
+	closed bool
+	// peerKnowledgeSet tracks what is known by each peer to avoid sending them
+	// redundant information
 	peerKnowledge *peerKnowledgeSet
 }
 
@@ -101,12 +109,13 @@ func Create(ctrl *wgctrl.Client, deviceName string, port int) (*LinkServer, erro
 		conn:           conn,
 		addr:           addr,
 		ctrl:           ctrl,
+		ctrlAccess:     &sync.Mutex{},
 		deviceName:     deviceName,
 		wait:           &sync.WaitGroup{},
 		endReader:      make(chan bool),
-		packets:        make(chan *ReceivedFact, 10),
+		packets:        make(chan *ReceivedFact, MaxChunk),
 		newFacts:       make(chan []*ReceivedFact, 1),
-		factsRefreshed: make(chan []*fact.Fact),
+		factsRefreshed: make(chan []*fact.Fact, 1),
 		peerKnowledge:  newPKS(),
 	}
 
@@ -126,7 +135,7 @@ func Create(ctrl *wgctrl.Client, deviceName string, port int) (*LinkServer, erro
 }
 
 // Stop halts the background goroutines and releases resources associated with
-// them, but leaves open resources associated with the local device so that
+// them, but leaves open some resources associated with the local device so that
 // final state can be inspected
 func (s *LinkServer) Stop() {
 	if s.conn == nil {
@@ -143,11 +152,14 @@ func (s *LinkServer) Stop() {
 	s.newFacts = nil
 }
 
-// Close stops the server and closes its socket
+// Close stops the server and closes all resources
 func (s *LinkServer) Close() {
 	if s.closed {
 		return
 	}
+	s.Stop()
+	s.ctrlAccess.Lock()
+	defer s.ctrlAccess.Unlock()
 	s.ctrl.Close()
 	s.ctrl = nil
 	s.closed = true
@@ -163,9 +175,18 @@ func (s *LinkServer) Port() int {
 	return s.addr.Port
 }
 
-// PrintFacts is just a debug tool, it will panic if something goes wrong
+// deviceState does a mutex-protected access to read the current state of the
+// wireguard device
+func (s *LinkServer) deviceState() (dev *wgtypes.Device, err error) {
+	s.ctrlAccess.Lock()
+	defer s.ctrlAccess.Unlock()
+	return s.ctrl.Device(s.deviceName)
+}
+
+// PrintFacts is just a debug tool, it is not concurrency safe and will panic if
+// something goes wrong
 func (s *LinkServer) PrintFacts() {
-	dev, err := s.ctrl.Device(s.deviceName)
+	dev, err := s.deviceState()
 	if err != nil {
 		panic(err)
 	}
@@ -368,7 +389,7 @@ func (s *LinkServer) processChunks() {
 			}
 		}
 		// add all the new not-expired and _trusted_ facts
-		dev, err := s.ctrl.Device(s.deviceName)
+		dev, err := s.deviceState()
 		if err != nil {
 			// TODO: report error better
 			fmt.Printf("Unable to load device info to evaluate trust: %v\n", err)
@@ -408,7 +429,7 @@ func (s *LinkServer) broadcastFactUpdates() {
 
 	// TODO: should we fire this off into a goroutine when we call it?
 	broadcast := func(newFacts []*fact.Fact) (int, []error) {
-		dev, err := s.ctrl.Device(s.deviceName)
+		dev, err := s.deviceState()
 		if err != nil {
 			return 0, []error{err}
 		}
@@ -416,7 +437,7 @@ func (s *LinkServer) broadcastFactUpdates() {
 		if err != nil {
 			return 0, []error{err}
 		}
-		facts = append(facts, newFacts...)
+		facts = fact.MergeList(append(facts, newFacts...))
 		count, errs := s.broadcastFacts(dev.Peers, facts, ChunkPeriod-time.Second)
 		if errs != nil {
 			fmt.Println("Failed to send some facts", errs)
