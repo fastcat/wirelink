@@ -60,7 +60,7 @@ func (rbt routeBasedTrust) TrustLevel(f *fact.Fact, source net.IP) Level {
 				return Endpoint
 			}
 
-			// ... actually, peers are allowed to tell us endpoints for _any_ known peer,
+			// actually, peers are allowed to tell us endpoints for _any_ known peer,
 			// but not to add peers
 			return Endpoint
 		}
