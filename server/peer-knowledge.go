@@ -22,7 +22,7 @@ type peerKnowledgeSet struct {
 func newPKS() *peerKnowledgeSet {
 	return &peerKnowledgeSet{
 		data:   make(map[peerKnowledgeKey]time.Time),
-		access: &sync.RWMutex{},
+		access: new(sync.RWMutex),
 	}
 }
 

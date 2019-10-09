@@ -540,8 +540,8 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 			}
 		}
 
-		wg := &sync.WaitGroup{}
-		psm := &sync.Mutex{}
+		wg := new(sync.WaitGroup)
+		psm := new(sync.Mutex)
 		for i := range dev.Peers {
 			peer := &dev.Peers[i]
 			fg, ok := factsByPeer[peer.PublicKey]
