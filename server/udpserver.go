@@ -124,10 +124,10 @@ func Create(ctrl *wgctrl.Client, deviceName string, port int, isRouter bool) (*L
 	factsRefreshedForConfig := make(chan []*fact.Fact, 1)
 
 	ret.wait.Add(1)
-	go multiplexFactChunks(ret.wait, factsRefreshed, factsRefreshedForBroadcast, factsRefreshedForConfig)
+	go ret.processChunks(newFacts, factsRefreshed)
 
 	ret.wait.Add(1)
-	go ret.processChunks(newFacts, factsRefreshed)
+	go multiplexFactChunks(ret.wait, factsRefreshed, factsRefreshedForBroadcast, factsRefreshedForConfig)
 
 	ret.wait.Add(1)
 	go ret.broadcastFactUpdates(factsRefreshedForBroadcast)
@@ -405,11 +405,11 @@ func (s *LinkServer) processChunks(
 		now := time.Now()
 		// fmt.Printf("chunk received: %d\n", len(chunk))
 		// accumulate all the still valid and newly valid facts
-		newFacts := make([]*fact.Fact, 0, len(currentFacts)+len(chunk))
+		newFactsChunk := make([]*fact.Fact, 0, len(currentFacts)+len(chunk))
 		// add all the not-expired facts
 		for _, f := range currentFacts {
 			if now.Before(f.Expires) {
-				newFacts = append(newFacts, f)
+				newFactsChunk = append(newFactsChunk, f)
 			}
 		}
 		// add all the new not-expired and _trusted_ facts
@@ -434,10 +434,10 @@ func (s *LinkServer) processChunks(
 			level := evaluator.TrustLevel(rf.fact, rf.source)
 			known := evaluator.IsKnown(rf.fact.Subject)
 			if trust.ShouldAccept(rf.fact.Attribute, known, level) {
-				newFacts = append(newFacts, rf.fact)
+				newFactsChunk = append(newFactsChunk, rf.fact)
 			}
 		}
-		uniqueFacts := fact.MergeList(newFacts)
+		uniqueFacts := fact.MergeList(newFactsChunk)
 		// fmt.Printf("replacing facts: %d with %d -> %d\n", len(currentFacts), len(newFacts), len(uniqueFacts))
 		// TODO: just log new/removed facts, ignoring TTL
 		currentFacts = uniqueFacts
@@ -505,6 +505,10 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 
 	peerStates := make(map[wgtypes.Key]*apply.PeerConfigState)
 
+	// the first chunk we get is usually pretty incomplete
+	// avoid deconfiguring peers until we get a second chunk
+	firstRefresh := false
+
 	for newFacts := range factsRefreshed {
 		dev, err := s.deviceState()
 		if err != nil {
@@ -554,13 +558,15 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				newState := s.configurePeer(ps, peer, fg)
+				newState := s.configurePeer(ps, peer, fg, !firstRefresh)
 				psm.Lock()
 				peerStates[peer.PublicKey] = newState
 				psm.Unlock()
 			}()
 		}
 		wg.Wait()
+
+		firstRefresh = false
 	}
 }
 
@@ -568,6 +574,7 @@ func (s *LinkServer) configurePeer(
 	inputState *apply.PeerConfigState,
 	peer *wgtypes.Peer,
 	facts []*fact.Fact,
+	allowDeconfigure bool,
 ) (state *apply.PeerConfigState) {
 	state = inputState.Update(peer)
 
@@ -590,6 +597,10 @@ func (s *LinkServer) configurePeer(
 		} else {
 			fmt.Println("Peer is healthy but not alive:", peer.PublicKey)
 		}
+		return
+	}
+
+	if !allowDeconfigure {
 		return
 	}
 
