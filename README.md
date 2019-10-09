@@ -70,7 +70,7 @@ router nodes since they are the source of that information, and removing them
 from the router node would cause the network to forget that, and also obstruct
 that peer from reconnecting to the network.
 
-### Contact
+### Contact Detection
 
 Determining when there is a live connection to a peer is based on two things:
 
@@ -78,3 +78,13 @@ Determining when there is a live connection to a peer is based on two things:
   based on a combination of timeout values from the wireguard go
   implementation.
 * Have we received any fact packets from the peer recently.
+
+## Inspiration
+
+A couple key items from upstream inspired this:
+
+* Automatic assigning of link-local IPv6 addresses:
+  https://lists.zx2c4.com/pipermail/wireguard/2017-April/001177.html
+  (and following messages, about the `wg set wg0 llv6 on` proposal)
+* The NAT hole-punching example that ships with the wireguard source:
+  https://git.zx2c4.com/WireGuard/tree/contrib/examples/nat-hole-punching
