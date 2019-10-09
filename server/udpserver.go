@@ -37,6 +37,8 @@ type LinkServer struct {
 	// peerKnowledgeSet tracks what is known by each peer to avoid sending them
 	// redundant information
 	peerKnowledge *peerKnowledgeSet
+	// counter for asking it to print out its current info
+	printsRequested *int32
 }
 
 // MaxChunk is the max number of packets to receive before processing them
@@ -96,16 +98,17 @@ func Create(ctrl *wgctrl.Client, deviceName string, port int, isRouter bool) (*L
 	}
 
 	ret := &LinkServer{
-		isRouter:      isRouter,
-		mgr:           mgr,
-		conn:          conn,
-		addr:          addr,
-		ctrl:          ctrl,
-		ctrlAccess:    &sync.Mutex{},
-		deviceName:    deviceName,
-		wait:          &sync.WaitGroup{},
-		endReader:     make(chan bool),
-		peerKnowledge: newPKS(),
+		isRouter:        isRouter,
+		mgr:             mgr,
+		conn:            conn,
+		addr:            addr,
+		ctrl:            ctrl,
+		ctrlAccess:      new(sync.Mutex),
+		deviceName:      deviceName,
+		wait:            new(sync.WaitGroup),
+		endReader:       make(chan bool),
+		peerKnowledge:   newPKS(),
+		printsRequested: new(int32),
 	}
 
 	packets := make(chan *ReceivedFact, MaxChunk)
@@ -133,6 +136,11 @@ func Create(ctrl *wgctrl.Client, deviceName string, port int, isRouter bool) (*L
 	go ret.configurePeers(factsRefreshedForConfig)
 
 	return ret, nil
+}
+
+// RequestPrint asks the packet receiver to print out the full set of known facts (local and remote)
+func (s *LinkServer) RequestPrint() {
+	atomic.AddInt32(s.printsRequested, 1)
 }
 
 // multiplexFactChunks copies values from input to each output. It will only
@@ -196,27 +204,6 @@ func (s *LinkServer) deviceState() (dev *wgtypes.Device, err error) {
 	defer s.ctrlAccess.Unlock()
 	return s.ctrl.Device(s.deviceName)
 }
-
-/*
-// PrintFacts is just a debug tool, it is not concurrency safe and will panic if
-// something goes wrong
-func (s *LinkServer) PrintFacts() {
-	dev, err := s.deviceState()
-	if err != nil {
-		panic(err)
-	}
-	facts, err := s.collectFacts(dev)
-	if err != nil {
-		panic(err)
-	}
-	facts = append(facts, s.currentFacts...)
-	facts = fact.MergeList(facts)
-	facts = fact.SortedCopy(facts)
-	for _, fact := range facts {
-		fmt.Println(fact)
-	}
-}
-*/
 
 func (s *LinkServer) collectFacts(dev *wgtypes.Device) (ret []*fact.Fact, err error) {
 	pf, err := peerfacts.DeviceFacts(dev, FactTTL)
@@ -456,6 +443,28 @@ func (s *LinkServer) processChunks(
 		currentFacts = uniqueFacts
 
 		factsRefreshed <- uniqueFacts
+
+		s.printFactsIfRequested(dev, uniqueFacts)
+	}
+}
+
+func (s *LinkServer) printFactsIfRequested(dev *wgtypes.Device, facts []*fact.Fact) {
+	printsRequested := atomic.LoadInt32(s.printsRequested)
+	if printsRequested == 0 {
+		return
+	}
+	defer atomic.CompareAndSwapInt32(s.printsRequested, printsRequested, 0)
+
+	localFacts, err := s.collectFacts(dev)
+	if err != nil {
+		fmt.Println("Unable to load facts:", err)
+		return
+	}
+	// safe to mutate our private localFacts, but not the shared facts we received
+	facts = fact.SortedCopy(fact.MergeList(append(localFacts, facts...)))
+	fmt.Println("Current facts")
+	for _, fact := range facts {
+		fmt.Println(fact)
 	}
 }
 
