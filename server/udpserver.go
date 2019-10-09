@@ -595,6 +595,7 @@ func (s *LinkServer) configurePeer(
 				fmt.Printf("Added AIPs to peer %v: %d\n", peer.PublicKey, added)
 			}
 		} else {
+			// TODO: only print this when it changes
 			fmt.Println("Peer is healthy but not alive:", peer.PublicKey)
 		}
 		return
