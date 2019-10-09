@@ -616,7 +616,6 @@ func (s *LinkServer) configurePeer(
 
 	nextEndpoint := state.NextEndpoint(facts)
 	if nextEndpoint == nil {
-		fmt.Printf("No EP available for %v\n", peer.PublicKey)
 		return
 	}
 

@@ -8,10 +8,10 @@ fmt:
 	goimports -w -l .
 compile:
 	go build -v ./...
-wirelink: compile
+wirelink:
 # for some reason it only puts the exe in if you tell it to build just .
 	go build -v .
-vet: compile
+vet:
 	go vet ./...
 lint: lint-golint lint-gopls
 lint-golint:
@@ -23,13 +23,15 @@ lint-gopls:
 test: vet lint
 	go test ./...
 
-run: wirelink
-	sudo ./wirelink
+run:
+	go run -exec sudo .
 
 #NOTE: this will delete ./wirelink *sigh
-install: compile
+install:
 	go install -v
 
 everything: fmt vet lint compile wirelink test
 
 .PHONY: all fmt compile vet lint lint-golint lint-gopls test run install everything
+# wirelink isn't actually phony, but we can't compute deps for it, so pretend
+.PHONY: wirelink
