@@ -30,7 +30,11 @@ func (pcs *PeerConfigState) Update(peer *wgtypes.Peer) *PeerConfigState {
 	pcs.lastHandshake = peer.LastHandshakeTime
 	newHealthy := isHealthy(pcs, peer)
 	if newHealthy != pcs.lastHealthy {
-		fmt.Printf("Peer %v is now healthy: %v\n", peer.PublicKey, newHealthy)
+		if newHealthy {
+			fmt.Printf("Peer %v is now healthy\n", peer.PublicKey)
+		} else {
+			fmt.Printf("Peer %v is now unhealthy\n", peer.PublicKey)
+		}
 	}
 	pcs.lastHealthy = newHealthy
 	return pcs

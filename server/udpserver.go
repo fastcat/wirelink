@@ -403,7 +403,7 @@ func (s *LinkServer) processChunks(
 
 	for chunk := range newFacts {
 		now := time.Now()
-		fmt.Printf("chunk received: %d\n", len(chunk))
+		// fmt.Printf("chunk received: %d\n", len(chunk))
 		// accumulate all the still valid and newly valid facts
 		newFacts := make([]*fact.Fact, 0, len(currentFacts)+len(chunk))
 		// add all the not-expired facts
@@ -438,8 +438,8 @@ func (s *LinkServer) processChunks(
 			}
 		}
 		uniqueFacts := fact.MergeList(newFacts)
-		// TODO: this needs to be atomic or mutex'd
-		fmt.Printf("replacing facts: %d with %d -> %d\n", len(currentFacts), len(newFacts), len(uniqueFacts))
+		// fmt.Printf("replacing facts: %d with %d -> %d\n", len(currentFacts), len(newFacts), len(uniqueFacts))
+		// TODO: just log new/removed facts, ignoring TTL
 		currentFacts = uniqueFacts
 
 		factsRefreshed <- uniqueFacts
@@ -486,7 +486,7 @@ func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) {
 		if errs != nil {
 			fmt.Println("Failed to send some facts", errs)
 		}
-		fmt.Printf("Sent %d fact packets\n", count)
+		// fmt.Printf("Sent %d fact packets\n", count)
 		return count, errs
 	}
 
@@ -609,7 +609,6 @@ func (s *LinkServer) configurePeer(
 	}
 
 	if !state.TimeForNextEndpoint() {
-		fmt.Println("Unhealthy peer, but delaying", peer.PublicKey)
 		// not time to try another endpoint yet
 		return
 	}
