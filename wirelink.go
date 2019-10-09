@@ -11,6 +11,7 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl"
 
 	"github.com/fastcat/wirelink/server"
+	"github.com/fastcat/wirelink/trust"
 )
 
 func main() {
@@ -19,16 +20,50 @@ func main() {
 		panic(err)
 	}
 
-	isRouter := flag.Bool("router", false, "Is the local device a router")
+	const RouterFlag = "router"
+	isRouter := flag.Bool(RouterFlag, false, "Is the local device a router")
+	iface := flag.String("iface", "wg0", "Interface on which to operate")
+	isRouterSet := false
 	flag.Parse()
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == RouterFlag {
+			isRouterSet = true
+		}
+	})
 
-	server, err := server.Create(wgc, "wg0", 0, *isRouter)
+	if !isRouterSet {
+		// try to auto-detect router mode
+		// if there are no other routers ... then we're probably a router
+		// this is pretty weak, better would be to check if our IP is within some other peer's AllowedIPs
+		dev, err := wgc.Device(*iface)
+		if err != nil {
+			panic(err)
+		}
+
+		otherRouters := false
+		for _, p := range dev.Peers {
+			if trust.IsRouter(&p) {
+				otherRouters = true
+				break
+			}
+		}
+
+		if !otherRouters {
+			*isRouter = true
+		}
+	}
+
+	server, err := server.Create(wgc, *iface, 0, *isRouter)
 	if err != nil {
 		panic(err)
 	}
 	defer server.Close()
 
-	fmt.Printf("Server running on [%v]:%v\n", server.Address(), server.Port())
+	routerString := "leaf"
+	if *isRouter {
+		routerString = "router"
+	}
+	fmt.Printf("Server running on {%s} [%v]:%v (%s)\n", *iface, server.Address(), server.Port(), routerString)
 
 	sigs := make(chan os.Signal, 5)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
