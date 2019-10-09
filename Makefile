@@ -1,7 +1,7 @@
 export PATH:=$(GOPATH)/bin:$(PATH)
 export GO111MODULE=on
 
-all: wirelink
+all: everything
 
 fmt:
 	go fmt ./...
@@ -26,7 +26,10 @@ test: vet lint
 run: wirelink
 	sudo ./wirelink
 
+#NOTE: this will delete ./wirelink *sigh
 install: compile
 	go install -v
 
-.PHONY: all fmt compile vet lint lint-golint lint-gopls test run install
+everything: fmt vet lint compile wirelink test
+
+.PHONY: all fmt compile vet lint lint-golint lint-gopls test run install everything
