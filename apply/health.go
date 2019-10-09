@@ -9,7 +9,9 @@ import (
 
 // isHealthy checks the state of a peer to see if connectivity to it is probably
 // healthy (and thus we shouldn't change its config), or if it is unhealthy and
-// we should consider updating its config to try to find a working setup
+// we should consider updating its config to try to find a working setup.
+// note that this is separate from being "Alive", which means that we have heard
+// fact packet(s) from it recently
 func isHealthy(state *PeerConfigState, peer *wgtypes.Peer) bool {
 	// if the peer doesn't have an endpoint, it's not healthy
 	if peer.Endpoint == nil {

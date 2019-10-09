@@ -46,6 +46,9 @@ const MaxChunk = 100
 // TODO: set this based on TTL instead
 const ChunkPeriod = 5 * time.Second
 
+// FactTTL is the TTL we apply to any locally generated Facts
+const FactTTL = 30 * time.Second
+
 // Create starts the server up.
 // Have to take a deviceFactory instead of a Device since you can't refresh a device.
 // Will take ownership of the wg client and close it when the server is closed
@@ -216,14 +219,14 @@ func (s *LinkServer) PrintFacts() {
 */
 
 func (s *LinkServer) collectFacts(dev *wgtypes.Device) (ret []*fact.Fact, err error) {
-	pf, err := peerfacts.DeviceFacts(dev, 30*time.Second)
+	pf, err := peerfacts.DeviceFacts(dev, FactTTL)
 	if err != nil {
 		return
 	}
 	ret = make([]*fact.Fact, len(pf))
 	copy(ret, pf)
 	for _, peer := range dev.Peers {
-		pf, err = peerfacts.LocalFacts(&peer, 30*time.Second)
+		pf, err = peerfacts.LocalFacts(&peer, FactTTL)
 		if err != nil {
 			return
 		}
@@ -234,17 +237,26 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device) (ret []*fact.Fact, err er
 
 // broadcastFacts tries to send every fact to every peer
 // it returns the number of sends performed
-func (s *LinkServer) broadcastFacts(peers []wgtypes.Peer, facts []*fact.Fact, timeout time.Duration) (int, []error) {
+func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, facts []*fact.Fact, timeout time.Duration) (int, []error) {
 	var counter int32
 	var wg sync.WaitGroup
 	s.conn.SetWriteDeadline(time.Now().Add(timeout))
 	errs := make(chan error)
-	for _, f := range facts {
-		for i, p := range peers {
-			// don't try to send info to the peer if we don't have an endpoint for it
-			if p.Endpoint == nil {
-				continue
-			}
+	pingFact := &fact.Fact{
+		Subject:   &fact.PeerSubject{Key: self},
+		Attribute: fact.AttributeUnknown,
+		Value:     fact.EmptyValue{},
+		Expires:   time.Now().Add(FactTTL),
+	}
+	for i, p := range peers {
+		// don't try to send info to the peer if we don't have an endpoint for it
+		if p.Endpoint == nil {
+			continue
+		}
+		// always send an "I'm here" pseudo-fact
+		wg.Add(1)
+		go s.sendFact(&peers[i], pingFact, &wg, &counter, errs)
+		for _, f := range facts {
 			// don't tell peers things about themselves
 			// they won't accept it unless we are a router,
 			// the only way this would be useful would be to tell them their external endpoint,
@@ -461,7 +473,7 @@ func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) {
 			return 0, []error{err}
 		}
 		facts = fact.MergeList(append(facts, newFacts...))
-		count, errs := s.broadcastFacts(dev.Peers, facts, ChunkPeriod-time.Second)
+		count, errs := s.broadcastFacts(dev.PublicKey, dev.Peers, facts, ChunkPeriod-time.Second)
 		if errs != nil {
 			fmt.Println("Failed to send some facts", errs)
 		}
@@ -556,11 +568,18 @@ func (s *LinkServer) configurePeer(
 	defer s.ctrlAccess.Unlock()
 
 	if state.IsHealthy() {
-		added, err := apply.EnsureAllowedIPs(s.ctrl, s.deviceName, peer, facts)
-		if err != nil {
-			fmt.Println("Failed to update peer AllowedIPs:", err)
-		} else if added > 0 {
-			fmt.Printf("Added AIPs to peer %v: %d\n", peer.PublicKey, added)
+		// don't setup the AllowedIPs until it's both healthy and alive,
+		// as we don't want to start routing traffic to it if it won't accept it
+		// and reciprocate
+		if s.peerKnowledge.peerAlive(peer, ChunkPeriod) {
+			added, err := apply.EnsureAllowedIPs(s.ctrl, s.deviceName, peer, facts)
+			if err != nil {
+				fmt.Println("Failed to update peer AllowedIPs:", err)
+			} else if added > 0 {
+				fmt.Printf("Added AIPs to peer %v: %d\n", peer.PublicKey, added)
+			}
+		} else {
+			fmt.Println("Peer is healthy but not alive:", peer.PublicKey)
 		}
 		return
 	}

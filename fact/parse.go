@@ -15,6 +15,17 @@ func Parse(p *OnWire) (f *Fact, err error) {
 	var value Value
 
 	switch p.attribute {
+	case byte(AttributeUnknown):
+		// ping packet
+		subject, err = ParsePeerSubject(p.subject)
+		if err != nil {
+			return
+		}
+		if len(p.value) != 0 {
+			return nil, fmt.Errorf("No-attribute packets must have empty value, not %d", len(p.value))
+		}
+		value = EmptyValue{}
+
 	case byte(AttributeEndpointV4):
 		subject, err = ParsePeerSubject(p.subject)
 		if err != nil {

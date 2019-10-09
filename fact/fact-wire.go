@@ -15,7 +15,8 @@ func (f *OnWire) Serialize() ([]byte, error) {
 	if len(f.subject) < 1 || len(f.subject) > 255 {
 		return nil, fmt.Errorf("subject length %d is out of range", len(f.subject))
 	}
-	if len(f.value) < 1 || len(f.value) > 255 {
+	// value can be empty for "ping" packets
+	if len(f.value) > 255 {
 		return nil, fmt.Errorf("value length %d is out of range", len(f.value))
 	}
 	ret := make([]byte, 0, 4+len(f.subject)+len(f.value))

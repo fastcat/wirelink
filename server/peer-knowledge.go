@@ -14,6 +14,7 @@ type peerKnowledgeKey struct {
 }
 
 type peerKnowledgeSet struct {
+	// data maps a PKK (fact key + source peer) to its expiration time for that peer
 	data   map[peerKnowledgeKey]time.Time
 	access *sync.RWMutex
 }
@@ -93,7 +94,23 @@ func (pks peerKnowledgeSet) peerNeeds(peer *wgtypes.Peer, f *fact.Fact, maxTTL t
 	pks.access.RLock()
 	defer pks.access.RUnlock()
 	e, ok := pks.data[k]
-	// peer needs a fact if it doesnt know it at all, or if it's going to forget
-	// it within maxTTL and we have something fresher
-	return !ok || e.Add(maxTTL).Before(time.Now()) && e.Before(f.Expires)
+	// peer needs a fact if it doesnt know it at all,
+	// or if it's going to forget it within maxTTL and we have something fresher
+	return !ok || time.Now().Add(maxTTL).After(e) && e.Before(f.Expires)
+}
+
+func (pks peerKnowledgeSet) peerAlive(peer *wgtypes.Peer, maxTTL time.Duration) bool {
+	k := peerKnowledgeKey{
+		Key: fact.KeyOf(&fact.Fact{
+			Attribute: fact.AttributeUnknown,
+			Subject:   &fact.PeerSubject{Key: peer.PublicKey},
+			Value:     fact.EmptyValue{},
+		}),
+		peer: peer.PublicKey,
+	}
+	pks.access.RLock()
+	defer pks.access.RUnlock()
+	e, ok := pks.data[k]
+	// a peer is alive if it has sent us a null fact that is not going to expire within maxTTL
+	return ok && time.Now().Add(maxTTL).Before(e)
 }

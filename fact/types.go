@@ -84,3 +84,18 @@ func (ipn IPNetValue) Bytes() []byte {
 func (ipn IPNetValue) String() string {
 	return ipn.IPNet.String()
 }
+
+// EmptyValue is used to represent facts of AttributeUnknown with a zero length value,
+// which indicate just that a remote peer is alive and talking to us
+type EmptyValue struct{}
+
+var _ Value = EmptyValue{}
+
+// Bytes always returns an empty slice for EmptyValue
+func (v EmptyValue) Bytes() []byte {
+	return []byte{}
+}
+
+func (v EmptyValue) String() string {
+	return "<empty>"
+}

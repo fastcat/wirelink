@@ -41,6 +41,10 @@ func ShouldAccept(attr fact.Attribute, known bool, level Level) bool {
 		return level >= AddPeer
 	}
 	switch attr {
+	case fact.AttributeUnknown:
+		// these are just "ping" packets, we should never store or relay them
+		// we only keep track of who has sent us one
+		return false
 	case fact.AttributeEndpointV4:
 		fallthrough
 	case fact.AttributeEndpointV6:
