@@ -34,7 +34,6 @@
   * Verbosity levels
 * Allow env vars to set cli args to make local overrides of systemd unit easy (e.g. to force router mode)
 * CLI/ENV args to control which interfaces to report for local endpoints
-* Run forever, not just 45m
 * Faster AIP config when receiving the first ping fact from a peer
   * Check received ping facts against `peerAlive`, if new force ending the current receive chunk?
 * Intelligent prioritizaiton of peer EPs to try

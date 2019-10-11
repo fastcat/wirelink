@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"golang.zx2c4.com/wireguard/wgctrl"
 
@@ -67,7 +66,6 @@ func main() {
 
 	sigs := make(chan os.Signal, 5)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
-	timedout := time.After(45 * time.Minute)
 
 DONE:
 	for {
@@ -79,9 +77,6 @@ DONE:
 				fmt.Printf("Received signal %v, stopping\n", sig)
 				break DONE
 			}
-		case <-timedout:
-			fmt.Println("Bored, quitting")
-			break DONE
 		}
 	}
 
