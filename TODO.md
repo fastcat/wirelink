@@ -16,10 +16,7 @@
 
 ## Packaging
 
-* Versioning
-* Debian package
-  * `checkinstall` probably good enough to start
-  * Does need some postinst/prerm scripts
+* pre/post inst/rm scripts for systemd service
 * Release script
 
 ## Systemd Integration

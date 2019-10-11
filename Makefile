@@ -1,6 +1,12 @@
 export PATH:=$(GOPATH)/bin:$(PATH)
 export GO111MODULE=on
 
+# can be overridden
+PREFIX=/usr
+PKGVER=$(shell git describe)
+PKGVERREL=$(shell git describe --long --dirty=+)
+PKGREL=$(PKGVERREL:$(PKGVER)-%=%)
+
 all: everything
 
 fmt:
@@ -29,6 +35,30 @@ run:
 #NOTE: this will delete ./wirelink *sigh
 install:
 	go install -v
+
+sysinstall: wirelink
+	install wirelink $(PREFIX)/bin/
+
+checkinstall: wirelink
+# extra quoting on some args to work around checkinstall bugs:
+# https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=785441
+	fakeroot checkinstall \
+		--type=debian \
+		--install=no \
+		--fstrans=yes \
+		--pkgname=wirelink \
+		--pkgversion=$(PKGVER) \
+		--pkgrelease=$(PKGREL) \
+		--pkglicense=AGPL-3 \
+		--pkggroup=net \
+		--pkgsource=https://github.com/fastcat/wirelink \
+		--maintainer="'Matthew Gabeler-Lee <cheetah@fastcat.org>'" \
+		--requires=wireguard-tools \
+		--recommends="'wireguard-dkms | wireguard-modules'" \
+		--strip=yes \
+		--reset-uids=yes \
+		--backup=no \
+		make sysinstall
 
 everything: fmt vet lint compile wirelink test
 
