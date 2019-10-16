@@ -22,9 +22,6 @@
 ## Systemd Integration
 
 * `sd_notify`
-* Template unit
-  * Tied to `wg-quick`?
-  * Variant with and without?
 
 ## Functionality
 

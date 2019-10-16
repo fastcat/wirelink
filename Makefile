@@ -38,6 +38,8 @@ install:
 
 sysinstall: wirelink
 	install wirelink $(PREFIX)/bin/
+	install -m 644 packaging/wirelink@.service /lib/systemd/system/
+	install -m 644 packaging/wl-quick@.service /lib/systemd/system/
 
 checkinstall: wirelink
 # extra quoting on some args to work around checkinstall bugs:
@@ -63,6 +65,11 @@ checkinstall: wirelink
 
 everything: fmt vet lint compile wirelink test
 
-.PHONY: all fmt compile vet lint lint-golint lint-gopls test run install everything
+clean:
+	rm -vf ./wirelink
+	rm -vf packaging/checkinstall/*.deb
+#TODO: any way to clean the go cache for just this package?
+
+.PHONY: all fmt compile vet lint lint-golint lint-gopls test run install everything clean
 # wirelink isn't actually phony, but we can't compute deps for it, so pretend
 .PHONY: wirelink

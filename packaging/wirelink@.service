@@ -1,0 +1,11 @@
+[Unit]
+Description=Wirelink for %I (manual)
+After=network-online.target nss-lookup.target
+Wants=network-online.target nss-lookup.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/wirelink -iface %I
+
+[Install]
+WantedBy=multi-user.target
