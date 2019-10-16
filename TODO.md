@@ -16,7 +16,7 @@
 
 ## Packaging
 
-* pre/post inst/rm scripts for systemd service
+* Better pre/post inst/rm scripts for systemd service
 * Release script
 
 ## Systemd Integration
@@ -29,7 +29,6 @@
 * Real logging, not `Printf`
   * Error reporting, esp. instead of `panic`
   * Verbosity levels
-* Allow env vars to set cli args to make local overrides of systemd unit easy (e.g. to force router mode)
 * CLI/ENV args to control which interfaces to report for local endpoints
 * Faster AIP config when receiving the first ping fact from a peer
   * Check received ping facts against `peerAlive`, if new force ending the current receive chunk?
