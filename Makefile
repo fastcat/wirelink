@@ -42,7 +42,7 @@ sysinstall: wirelink
 checkinstall: wirelink
 # extra quoting on some args to work around checkinstall bugs:
 # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=785441
-	fakeroot checkinstall \
+	cd packaging/checkinstall && fakeroot checkinstall \
 		--type=debian \
 		--install=no \
 		--fstrans=yes \
@@ -58,7 +58,8 @@ checkinstall: wirelink
 		--strip=yes \
 		--reset-uids=yes \
 		--backup=no \
-		make sysinstall
+		make -C ../../ sysinstall \
+		</dev/null
 
 everything: fmt vet lint compile wirelink test
 

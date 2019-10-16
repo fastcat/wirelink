@@ -14,3 +14,5 @@
 # binaries
 wirelink
 push.sh
+
+packaging/checkinstall/*.deb
