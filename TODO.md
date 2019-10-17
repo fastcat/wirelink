@@ -44,6 +44,9 @@
 * Improved trust models
   * Peer trust level override (e.g. to set `AddPeer`)
 * Implement `AddPeer` trust level
+* Validate source port for received fact packets
+* Sign facts with peer keys (protects against forgery from other processes on the same host)
+  * This would obviate source port validation
 
 ## Fancy
 
@@ -60,3 +63,17 @@
   * Only tell leaves info about peers they want
 * Multi-fact packets
   * How to find out path MTU to avoid fragmentation?
+
+### Config
+
+* Use [Viper](https://github.com/spf13/viper) to have a coherent config pattern
+  * Allow configuring trust in peers
+  * Allow giving peers friendly names
+* Allow configuring various parameters
+  * `MaxChunk`
+  * `ChunkPeriod`
+  * `FactTTL`
+  * listen port / offset
+    * This one is a bit tricky as it needs to be consistent across the network for now
+    * With signed facts, could have a fact for the fact port,
+      though deciding among multiple values could get weird
