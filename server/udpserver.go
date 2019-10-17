@@ -576,7 +576,7 @@ func (s *LinkServer) configurePeer(
 	facts []*fact.Fact,
 	allowDeconfigure bool,
 ) (state *apply.PeerConfigState) {
-	state = inputState.Update(peer)
+	state = inputState.Update(peer, s.peerKnowledge.peerAlive(peer, ChunkPeriod))
 
 	// TODO: make the lock window here smaller
 	// only want to take the lock for the regions where we change config
@@ -587,16 +587,13 @@ func (s *LinkServer) configurePeer(
 		// don't setup the AllowedIPs until it's both healthy and alive,
 		// as we don't want to start routing traffic to it if it won't accept it
 		// and reciprocate
-		if s.peerKnowledge.peerAlive(peer, ChunkPeriod) {
+		if state.IsAlive() {
 			added, err := apply.EnsureAllowedIPs(s.ctrl, s.deviceName, peer, facts)
 			if err != nil {
 				fmt.Println("Failed to update peer AllowedIPs:", err)
 			} else if added > 0 {
 				fmt.Printf("Added AIPs to peer %v: %d\n", peer.PublicKey, added)
 			}
-		} else {
-			// TODO: only print this when it changes
-			fmt.Println("Peer is healthy but not alive:", peer.PublicKey)
 		}
 		return
 	}

@@ -15,13 +15,15 @@ import (
 type PeerConfigState struct {
 	lastHandshake time.Time
 	lastHealthy   bool
+	lastAlive     bool
 	// the string key is really just the bytes value
 	endpointLastUsed map[string]time.Time
 }
 
 // Update refreshes the PeerConfigState with new data from the wireguard device.
 // NOTE: It is safe to call this on a `nil` pointer, it will return a new state
-func (pcs *PeerConfigState) Update(peer *wgtypes.Peer) *PeerConfigState {
+// TODO: give this access to the `peerKnowledgeSet` instead of passing in the alive state
+func (pcs *PeerConfigState) Update(peer *wgtypes.Peer, newAlive bool) *PeerConfigState {
 	if pcs == nil {
 		pcs = &PeerConfigState{
 			endpointLastUsed: make(map[string]time.Time),
@@ -29,20 +31,37 @@ func (pcs *PeerConfigState) Update(peer *wgtypes.Peer) *PeerConfigState {
 	}
 	pcs.lastHandshake = peer.LastHandshakeTime
 	newHealthy := isHealthy(pcs, peer)
-	if newHealthy != pcs.lastHealthy {
+	if newHealthy != pcs.lastHealthy || newAlive != pcs.lastAlive {
+		var stateDesc string
 		if newHealthy {
-			fmt.Printf("Peer %v is now healthy\n", peer.PublicKey)
+			if newAlive {
+				stateDesc = "healthy and alive"
+			} else {
+				stateDesc = "healthy but not alive"
+			}
+		} else if newAlive {
+			stateDesc = "unhealthy but alive?"
 		} else {
-			fmt.Printf("Peer %v is now unhealthy\n", peer.PublicKey)
+			// not alive is implicit here
+			stateDesc = "unhealthy"
 		}
+		hsAge := time.Now().Sub(pcs.lastHandshake)
+		fmt.Printf("Peer %v is now %s (%v)\n", peer.PublicKey, stateDesc, hsAge)
 	}
 	pcs.lastHealthy = newHealthy
+	pcs.lastAlive = newAlive
 	return pcs
 }
 
 // IsHealthy returns if the peer looked healthy on the last call to `Update`
 func (pcs *PeerConfigState) IsHealthy() bool {
 	return pcs != nil && pcs.lastHealthy
+}
+
+// IsAlive returns if the peer looked alive on the last call to `Update`.
+// note that a peer can be alive but unhealthy!
+func (pcs *PeerConfigState) IsAlive() bool {
+	return pcs != nil && pcs.lastAlive
 }
 
 const endpointInterval = device.RekeyTimeout + device.KeepaliveTimeout
