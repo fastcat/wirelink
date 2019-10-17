@@ -1,5 +1,9 @@
 #!/bin/sh
 
 if [ -d /run/systemd/system ]; then
-	systemctl --system stop 'wl-quick@*' 'wirelink@*'
+	# TODO: this bit is dpkg specific, make it work for RPMs too?
+	if [ "$1" = "remove" ]; then
+		echo "Stopping wirelink units..."
+		systemctl --system stop 'wl-quick@*' 'wirelink@*'
+	fi
 fi

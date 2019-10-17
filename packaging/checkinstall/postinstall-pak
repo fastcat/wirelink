@@ -2,7 +2,16 @@
 
 if [ -d /run/systemd/system ]; then
 	systemctl --system daemon-reload
+
+	# TODO: enable the service on first install
+	# this requires some debhelper stuff to do right
+
+	# restart any active instances
+	# technique borrowed from the wireguard package
+	units=$(systemctl list-units --state=active --plain --no-legend 'wl-quick@*.service' 'wirelink@*.service' | awk '{print $1}')
+	if [ -n "$units" ]; then
+		echo "Restarting active wirelink units ($units)..."
+		systemctl restart $units
+	fi
 fi
 
-# TODO: enable the service
-# this requires some debhelper stuff to do right
