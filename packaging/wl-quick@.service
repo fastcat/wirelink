@@ -6,6 +6,11 @@ Requires=wg-quick@%i.service
 [Service]
 Type=simple
 ExecStart=/usr/bin/wirelink -iface %I
+# if the interface isn't ready, or goes down, wirelink will likely exit
+# try to restart it so it comes back alive for when the interface comes back up,
+Restart=on-failure
+# but not too often, as the underlying errors are unlikely to resolve that fast
+RestartSec=15
 
 [Install]
 WantedBy=multi-user.target
