@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
@@ -14,6 +15,7 @@ import (
 	"github.com/fastcat/wirelink/trust"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 )
 
 func main() {
@@ -31,41 +33,76 @@ func realMain() error {
 	}
 
 	flags := pflag.NewFlagSet(os.Args[0], pflag.ContinueOnError)
-
+	vcfg := viper.New()
 	const RouterFlag = "router"
-	isRouter := flags.Bool(RouterFlag, false, "Is the local device a router (default is autodetected)")
-	iface := "wg0"
-	// TODO: make the env var formulation & parsing from flags more programatic
-	// pull this one from the env before declaring the flag so the env var can be the flag "default"
-	if ifaceEnv, ifaceEnvPresent := os.LookupEnv("WIRELINK_IFACE"); ifaceEnvPresent {
-		iface = ifaceEnv
-	}
-	flags.StringVar(&iface, "iface", iface, "Interface on which to operate")
-	isRouterSet := false
-	// TODO: make the env var formulation & parsing from flags more programatic
-	if routerEnv, routerEnvPresent := os.LookupEnv("WIRELINK_ROUTER"); routerEnvPresent {
-		if routerEnvValue, err := strconv.ParseBool(routerEnv); err == nil {
-			*isRouter = routerEnvValue
-			isRouterSet = true
-		} else {
-			// TODO: printing usage before the error doesn't match how actual flag handling works,
-			// but doesn't match our normal flags handling is done
-			flags.Usage()
-			return errors.Wrapf(err, "Invalid value \"%s\" for WIRELINK_ROUTER", routerEnv)
-		}
-	}
+	const RouterAuto = "auto"
+	const IfaceFlag = "iface"
+	const DumpConfigFlag = "dump"
+	// viper.IsSet is useless when flags are in play, so we have to make this a string we parse ourselves
+	vcfg.SetDefault(RouterFlag, RouterAuto)
+	flags.String(RouterFlag, RouterAuto, "Is the local device a router (bool or \"auto\")")
+	vcfg.SetDefault(IfaceFlag, "wg0")
+	flags.String("iface", "wg0", "Interface on which to operate")
+	vcfg.SetDefault(DumpConfigFlag, false)
+	flags.Bool(DumpConfigFlag, false, "Dump configuration instead of running")
+
+	vcfg.BindPFlags(flags)
+	vcfg.SetEnvPrefix("wirelink")
+	vcfg.AutomaticEnv()
+
 	err = flags.Parse(os.Args[1:])
 	if err != nil {
 		// TODO: this causes the error to be printed twice: once by flags and once by `main`
 		// TODO: this also causes an error to be printed & returned when run with `--help`
 		return err
 	}
-	flags.Visit(func(f *pflag.Flag) {
-		if f.Name == RouterFlag {
-			isRouterSet = true
+
+	iface := vcfg.GetString(IfaceFlag)
+
+	// setup the config file -- can't do this until after we've parsed the iface flag
+	// in theory the config file can override the iface, but ... that would be bad
+	// this needs to happen _before_ the `router` processing since the config may set that
+	vcfg.SetConfigName(fmt.Sprintf("wirelink.%s", iface))
+	vcfg.AddConfigPath("/etc/wireguard/")
+	err = vcfg.ReadInConfig()
+	if err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			// Config file not found, harmless
+		} else {
+			return errors.Wrap(err, "Unable to read config file")
 		}
-	})
-	if !isRouterSet {
+	}
+
+	// replace anything other than "auto" with a boolean
+	routerStrVal := vcfg.GetString(RouterFlag)
+	if routerStrVal != RouterAuto {
+		// force it to be a real bool for later
+		routerBoolVal, err := strconv.ParseBool(routerStrVal)
+		if err != nil {
+			// TODO: this doesn't print the program name header
+			flags.PrintDefaults()
+			return errors.Wrapf(err, "Invalid value for 'router'")
+		}
+		vcfg.Set(RouterFlag, routerBoolVal)
+	}
+
+	// dump settings _before_ we replace auto with a boolean
+	if vcfg.GetBool(DumpConfigFlag) {
+		all := vcfg.AllSettings()
+		// don't dump the dump setting
+		delete(all, DumpConfigFlag)
+		dump, err := json.MarshalIndent(all, "", "  ")
+		if err != nil {
+			return errors.Wrapf(err, "Unable to serialize settings to JSON")
+		}
+		// marshal output never has the trailing newline
+		dump = append(dump, '\n')
+		_, err = os.Stdout.Write(dump)
+		return err
+	}
+
+	// replace "auto" with the real value
+	if routerStrVal == RouterAuto {
 		// try to auto-detect router mode
 		// if there are no other routers ... then we're probably a router
 		// this is pretty weak, better would be to check if our IP is within some other peer's AllowedIPs
@@ -82,22 +119,21 @@ func realMain() error {
 			}
 		}
 
-		if !otherRouters {
-			*isRouter = true
-		}
+		vcfg.Set(RouterFlag, !otherRouters)
 	}
 
-	server, err := server.Create(wgc, iface, 0, *isRouter)
+	isRouter := vcfg.GetBool(RouterFlag)
+	server, err := server.Create(wgc, iface, 0, isRouter)
 	if err != nil {
 		return errors.Wrapf(err, "Unable to initialize server for interface %s", iface)
 	}
 	defer server.Close()
 
-	routerString := "leaf"
-	if *isRouter {
-		routerString = "router"
+	nodeTypeDesc := "leaf"
+	if isRouter {
+		nodeTypeDesc = "router"
 	}
-	log.Info("Server running on {%s} [%v]:%v (%s)", iface, server.Address(), server.Port(), routerString)
+	log.Info("Server running on {%s} [%v]:%v (%s)", iface, server.Address(), server.Port(), nodeTypeDesc)
 
 	sigs := make(chan os.Signal, 5)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)

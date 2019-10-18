@@ -8,6 +8,7 @@ require (
 	github.com/mdlayher/netlink v0.0.0-20190906145618-4e5dd4017dae // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/spf13/pflag v1.0.5
+	github.com/spf13/viper v1.4.0
 	github.com/vishvananda/netlink v1.0.0
 	github.com/vishvananda/netns v0.0.0-20190625233234-7109fa855b0f // indirect
 	golang.org/x/crypto v0.0.0-20191001170739-f9e2070545dc // indirect

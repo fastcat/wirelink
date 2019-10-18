@@ -73,9 +73,8 @@
 
 ### Config
 
-* Use [Viper](https://github.com/spf13/viper) to have a coherent config pattern
-  * Allow configuring trust in peers
-  * Allow giving peers friendly names
+* Allow configuring trust in peers
+* Allow giving peers friendly names
 * Allow configuring various parameters
   * `MaxChunk`
   * `ChunkPeriod`

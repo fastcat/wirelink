@@ -12,7 +12,35 @@ wireguard by:
 * Using that to try to automatically setup direct connections between peers
   (when possible) instead of routing through a central "server".
 
-## Overview
+## Configuration
+
+`wirelink` will read basic configuration from:
+
+* A config file `/etc/wireguard/wirelink.<interface>.json`
+  * Some other extensions such as `.yaml` will be accepted too
+  * Some settings can _only_ be set in the config file for now
+* Environment variables of the form `WIRELINK_<setting>`
+* Command line args (see `--help`)
+
+### Systemd
+
+Two systemd template units are provided:
+
+`wl-quick@.service`, when enabled for an interface, will bind tightly to
+`wg-quick@.service`.  If you are using `wg-quick`, this is the recommended
+method. If you have `wg-quick@wg0` enabled, then to activate the wirelink pair,
+run `systemctl enable wl-quick@wg0 && systemctl start wl-quick@wg0`. In the
+future, the `wirelink` instance will automatically start & stop along with the
+`wg-quick` instance.
+
+`wirelink@.service` is provided for more manual configurations, such as if you
+configure your wireguard interface in `/etc/network/interfaces`. Enable and
+start it with e.g. `systemctl enable wirelink@wg0 && systemctl start wirelink@wg0`
+similar to how `wl-quick@` works. If the wireguard interface goes down, the
+service will fail, but it is configured to auto-restart periodically until the
+link comes back up.
+
+## How It Works
 
 Peers produce a list of local "facts" based on information from the
 wireguard device and the local network interfaces.  Facts have:
