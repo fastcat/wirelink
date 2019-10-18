@@ -34,6 +34,8 @@
 * Intelligent prioritizaiton of peer EPs to try
   * EPs that are on a local subnet, then EPs on the internet, then everything else?
   * Implement via LRU penalty?
+* Option to de-configure at exit for leaves
+  * i.e. reset wg config to as if every peer was unhealthy, only talk to routers
 
 ## Security
 
