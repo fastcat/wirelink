@@ -46,7 +46,7 @@ func (pcs *PeerConfigState) Update(peer *wgtypes.Peer, newAlive bool) *PeerConfi
 			stateDesc = "unhealthy"
 		}
 		hsAge := time.Now().Sub(pcs.lastHandshake)
-		log.Info("Peer %v is now %s (%v)", peer.PublicKey, stateDesc, hsAge)
+		log.Info("Peer %v is now %s (%v)", peer.PublicKey, stateDesc, hsAge.Truncate(time.Millisecond))
 	}
 	pcs.lastHealthy = newHealthy
 	pcs.lastAlive = newAlive
