@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -14,6 +13,7 @@ import (
 	"github.com/fastcat/wirelink/server"
 	"github.com/fastcat/wirelink/trust"
 	"github.com/pkg/errors"
+	"github.com/spf13/pflag"
 )
 
 func main() {
@@ -30,7 +30,7 @@ func realMain() error {
 		return errors.Wrapf(err, "Unable to initialize wgctrl")
 	}
 
-	flags := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+	flags := pflag.NewFlagSet(os.Args[0], pflag.ContinueOnError)
 
 	const RouterFlag = "router"
 	isRouter := flags.Bool(RouterFlag, false, "Is the local device a router (default is autodetected)")
@@ -57,9 +57,10 @@ func realMain() error {
 	err = flags.Parse(os.Args[1:])
 	if err != nil {
 		// TODO: this causes the error to be printed twice: once by flags and once by `main`
+		// TODO: this also causes an error to be printed & returned when run with `--help`
 		return err
 	}
-	flags.Visit(func(f *flag.Flag) {
+	flags.Visit(func(f *pflag.Flag) {
 		if f.Name == RouterFlag {
 			isRouterSet = true
 		}

@@ -26,7 +26,6 @@
 
 ## Functionality
 
-* Handle wireguard interface shutdown gracefully
 * Output verbosity levels
   * Esp. add debug/trace
 * CLI/ENV args to control which interfaces to report for local endpoints
