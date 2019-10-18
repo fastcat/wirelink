@@ -18,6 +18,7 @@
 
 * Better pre/post inst/rm scripts for systemd service
 * Release script
+* ChangeLog generation
 
 ## Systemd Integration
 

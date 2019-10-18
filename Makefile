@@ -7,6 +7,8 @@ PKGVER=$(shell git describe)
 PKGVERREL=$(shell git describe --long --dirty=+)
 PKGREL=$(PKGVERREL:$(PKGVER)-%=%)
 
+DOCSFILES:=LICENSE README.md TODO.md
+
 all: everything
 
 fmt:
@@ -41,10 +43,13 @@ sysinstall: wirelink
 	install -m 644 packaging/wirelink@.service /lib/systemd/system/
 	install -m 644 packaging/wl-quick@.service /lib/systemd/system/
 
-checkinstall: wirelink
+checkinstall-prep: wirelink
+	mkdir -p ./packaging/checkinstall/doc-pak/
+	install -m 644 $(DOCSFILES) ./packaging/checkinstall/doc-pak/
+checkinstall: checkinstall-prep
 # extra quoting on some args to work around checkinstall bugs:
 # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=785441
-	cd packaging/checkinstall && fakeroot checkinstall \
+	cd ./packaging/checkinstall && fakeroot checkinstall \
 		--type=debian \
 		--install=no \
 		--fstrans=yes \
@@ -67,9 +72,11 @@ everything: fmt vet lint compile wirelink test
 
 clean:
 	rm -vf ./wirelink
-	rm -vf packaging/checkinstall/*.deb
+	rm -vf ./packaging/checkinstall/*.deb
+	rm -rvf ./packaging/checkinstall/doc-pak/
 #TODO: any way to clean the go cache for just this package?
 
 .PHONY: all fmt compile vet lint lint-golint lint-gopls test run install everything clean
+.PHONY: checkinstall checkinstall-prep
 # wirelink isn't actually phony, but we can't compute deps for it, so pretend
 .PHONY: wirelink
