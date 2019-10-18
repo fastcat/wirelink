@@ -10,7 +10,7 @@ import (
 // HealthHysteresisBandaid is an extra delay to add before considering a peer
 // unhealthy, based on as-yet undiagnosed observations of handshakes not
 // refreshing as often as documentation seems to suggest they should
-const HealthHysteresisBandaid = 10 * time.Second
+const HealthHysteresisBandaid = 30 * time.Second
 
 // isHealthy checks the state of a peer to see if connectivity to it is probably
 // healthy (and thus we shouldn't change its config), or if it is unhealthy and

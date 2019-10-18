@@ -41,6 +41,8 @@
   * Shouldn't be fatal as routers can't be deconfigured, but will make for some packet loss
   * Happens even with persistent keepalive enabled between the peers
   * For now, handled with `HealthHysteresisBandiad`
+  * For super-idle peers, is this related to the interaction between persistent keepalive
+    and the peer alive fact interval?
 
 ## Security
 
