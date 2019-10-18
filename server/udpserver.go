@@ -22,14 +22,14 @@ import (
 // LinkServer represents the server component of wirelink
 // sending/receiving on a socket
 type LinkServer struct {
-	isRouter   bool
-	mgr        *apply.Manager
-	conn       *net.UDPConn
-	addr       net.UDPAddr
-	ctrlAccess *sync.Mutex
-	ctrl       *wgctrl.Client
-	deviceName string
-	wait       *sync.WaitGroup
+	stateAccess *sync.Mutex
+	isRouter    bool
+	mgr         *apply.Manager
+	conn        *net.UDPConn
+	addr        net.UDPAddr
+	ctrl        *wgctrl.Client
+	deviceName  string
+	wait        *sync.WaitGroup
 	// sending on endReader will stop the packet reader goroutine
 	endReader chan bool
 	// closed tracks if we already ran `Close()`
@@ -39,6 +39,8 @@ type LinkServer struct {
 	peerKnowledge *peerKnowledgeSet
 	// counter for asking it to print out its current info
 	printsRequested *int32
+	// folks listening for notification that we have closed
+	stopWatchers []chan<- bool
 }
 
 // MaxChunk is the max number of packets to receive before processing them
@@ -103,7 +105,7 @@ func Create(ctrl *wgctrl.Client, deviceName string, port int, isRouter bool) (*L
 		conn:            conn,
 		addr:            addr,
 		ctrl:            ctrl,
-		ctrlAccess:      new(sync.Mutex),
+		stateAccess:     new(sync.Mutex),
 		deviceName:      deviceName,
 		wait:            new(sync.WaitGroup),
 		endReader:       make(chan bool),
@@ -162,6 +164,14 @@ func multiplexFactChunks(wg *sync.WaitGroup, input <-chan []*fact.Fact, outputs 
 // them, but leaves open some resources associated with the local device so that
 // final state can be inspected
 func (s *LinkServer) Stop() {
+	s.stop(true)
+}
+
+func (s *LinkServer) onError(err error) {
+	go s.stop(false)
+}
+
+func (s *LinkServer) stop(normal bool) {
 	if s.conn == nil {
 		return
 	}
@@ -172,6 +182,10 @@ func (s *LinkServer) Stop() {
 	s.conn = nil
 	s.wait = nil
 	s.endReader = nil
+
+	for _, stopWatcher := range s.stopWatchers {
+		stopWatcher <- normal
+	}
 }
 
 // Close stops the server and closes all resources
@@ -180,11 +194,21 @@ func (s *LinkServer) Close() {
 		return
 	}
 	s.Stop()
-	s.ctrlAccess.Lock()
-	defer s.ctrlAccess.Unlock()
+	s.stateAccess.Lock()
+	defer s.stateAccess.Unlock()
 	s.ctrl.Close()
 	s.ctrl = nil
 	s.closed = true
+}
+
+// OnStopped creates and returns a channel that will emit a single bool when the server is stopped
+// it will emit `true` if the server stopped by normal request, or `false` if it failed with an error
+func (s *LinkServer) OnStopped() <-chan bool {
+	c := make(chan bool, 1)
+	s.stateAccess.Lock()
+	s.stopWatchers = append(s.stopWatchers, c)
+	s.stateAccess.Unlock()
+	return c
 }
 
 // Address returns the local IP address on which the server listens
@@ -200,8 +224,8 @@ func (s *LinkServer) Port() int {
 // deviceState does a mutex-protected access to read the current state of the
 // wireguard device
 func (s *LinkServer) deviceState() (dev *wgtypes.Device, err error) {
-	s.ctrlAccess.Lock()
-	defer s.ctrlAccess.Unlock()
+	s.stateAccess.Lock()
+	defer s.stateAccess.Unlock()
 	return s.ctrl.Device(s.deviceName)
 }
 
@@ -331,8 +355,9 @@ func (s *LinkServer) readPackets(endReader <-chan bool, packets chan<- *Received
 				if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
 					continue
 				}
-				// TODO: handle read errors better
-				panic(err)
+				fmt.Printf("Failed to read from socket, giving up: %v\n", err)
+				s.onError(err)
+				break
 			}
 			// TODO: parse the packet
 			p, err := fact.Deserialize(buffer[:n])
@@ -415,8 +440,9 @@ func (s *LinkServer) processChunks(
 		// add all the new not-expired and _trusted_ facts
 		dev, err := s.deviceState()
 		if err != nil {
-			// TODO: report error better
-			fmt.Printf("Unable to load device info to evaluate trust: %v\n", err)
+			fmt.Printf("Unable to load device info to evaluate trust, giving up: %v\n", err)
+			// device is probably gone, give up
+			s.onError(err)
 			continue
 		}
 
@@ -484,9 +510,13 @@ func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) {
 		facts = fact.MergeList(append(facts, newFacts...))
 		count, errs := s.broadcastFacts(dev.PublicKey, dev.Peers, facts, ChunkPeriod-time.Second)
 		if errs != nil {
-			fmt.Println("Failed to send some facts", errs)
+			// don't print more than a handful of errors
+			if len(errs) > 5 {
+				fmt.Printf("Failed to send some facts: %v ...\n", errs)
+			} else {
+				fmt.Printf("Failed to send some facts: %v\n", errs)
+			}
 		}
-		// fmt.Printf("Sent %d fact packets\n", count)
 		return count, errs
 	}
 
@@ -512,8 +542,9 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 	for newFacts := range factsRefreshed {
 		dev, err := s.deviceState()
 		if err != nil {
-			// TODO: report error better
-			fmt.Println("Unable to load device state:", err)
+			// this probably means the interface is down
+			fmt.Printf("Unable to load device state, giving up: %v\n", err)
+			s.onError(err)
 		}
 
 		allFacts, err := s.collectFacts(dev)
@@ -580,8 +611,8 @@ func (s *LinkServer) configurePeer(
 
 	// TODO: make the lock window here smaller
 	// only want to take the lock for the regions where we change config
-	s.ctrlAccess.Lock()
-	defer s.ctrlAccess.Unlock()
+	s.stateAccess.Lock()
+	defer s.stateAccess.Unlock()
 
 	if state.IsHealthy() {
 		// don't setup the AllowedIPs until it's both healthy and alive,

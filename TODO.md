@@ -27,7 +27,7 @@
 
 * Handle wireguard interface shutdown gracefully
 * Real logging, not `Printf`
-  * Error reporting, esp. instead of `panic`
+  * Error reporting
   * Verbosity levels
 * CLI/ENV args to control which interfaces to report for local endpoints
 * Faster AIP config when receiving the first ping fact from a peer
