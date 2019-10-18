@@ -36,6 +36,11 @@
   * Implement via LRU penalty?
 * Option to de-configure at exit for leaves
   * i.e. reset wg config to as if every peer was unhealthy, only talk to routers
+* Every now and then the handshakes don't refresh as often as they seem they should?
+  * Causes peers to appear unhealthy and get deconfigured until reconnected
+  * Shouldn't be fatal as routers can't be deconfigured, but will make for some packet loss
+  * Happens even with persistent keepalive enabled between the peers
+  * For now, handled with `HealthHysteresisBandiad`
 
 ## Security
 

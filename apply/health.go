@@ -7,6 +7,11 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
+// HealthHysteresisBandaid is an extra delay to add before considering a peer
+// unhealthy, based on as-yet undiagnosed observations of handshakes not
+// refreshing as often as documentation seems to suggest they should
+const HealthHysteresisBandaid = 10 * time.Second
+
 // isHealthy checks the state of a peer to see if connectivity to it is probably
 // healthy (and thus we shouldn't change its config), or if it is unhealthy and
 // we should consider updating its config to try to find a working setup.
@@ -18,11 +23,11 @@ func isHealthy(state *PeerConfigState, peer *wgtypes.Peer) bool {
 		return false
 	}
 	// if the peer handshake is still valid, the peer is healthy
-	// TODO: determination of the handshake validity is a bit questionable
 	const HandshakeValidity = device.RekeyAfterTime +
 		device.RekeyTimeout +
 		device.KeepaliveTimeout +
-		device.RekeyTimeoutJitterMaxMs*time.Millisecond
+		device.RekeyTimeoutJitterMaxMs*time.Millisecond +
+		HealthHysteresisBandaid
 	if peer.LastHandshakeTime.Add(HandshakeValidity).After(time.Now()) {
 		return true
 	}
