@@ -15,6 +15,7 @@ import (
 	"github.com/fastcat/wirelink/apply"
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/fact"
+	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/peerfacts"
 	"github.com/fastcat/wirelink/trust"
 )
@@ -76,7 +77,7 @@ func Create(ctrl *wgctrl.Client, deviceName string, port int, isRouter bool) (*L
 		return nil, err
 	}
 	if setll {
-		fmt.Println("Configured IPv6-LL address on local interface")
+		log.Info("Configured IPv6-LL address on local interface")
 	}
 
 	peerips, err := apply.EnsurePeerAutoIP(ctrl, device)
@@ -84,7 +85,7 @@ func Create(ctrl *wgctrl.Client, deviceName string, port int, isRouter bool) (*L
 		return nil, err
 	}
 	if peerips > 0 {
-		fmt.Printf("Added IPv6-LL for %d peers\n", peerips)
+		log.Info("Added IPv6-LL for %d peers", peerips)
 	}
 
 	ip := autopeer.AutoAddress(device.PublicKey)
@@ -355,21 +356,18 @@ func (s *LinkServer) readPackets(endReader <-chan bool, packets chan<- *Received
 				if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
 					continue
 				}
-				fmt.Printf("Failed to read from socket, giving up: %v\n", err)
+				log.Error("Failed to read from socket, giving up: %v", err)
 				s.onError(err)
 				break
 			}
-			// TODO: parse the packet
 			p, err := fact.Deserialize(buffer[:n])
 			if err != nil {
-				// TODO: report errors better
-				fmt.Println(err)
+				log.Error("Unable to deserialize fact: %v", err)
 				continue
 			}
 			pp, err := fact.Parse(p)
 			if err != nil {
-				// TODO: report errors better
-				fmt.Println(err)
+				log.Error("Unable to parse fact: %v", err)
 				continue
 			}
 			rcv := &ReceivedFact{fact: pp, source: addr.IP}
@@ -428,7 +426,6 @@ func (s *LinkServer) processChunks(
 
 	for chunk := range newFacts {
 		now := time.Now()
-		// fmt.Printf("chunk received: %d\n", len(chunk))
 		// accumulate all the still valid and newly valid facts
 		newFactsChunk := make([]*fact.Fact, 0, len(currentFacts)+len(chunk))
 		// add all the not-expired facts
@@ -437,11 +434,9 @@ func (s *LinkServer) processChunks(
 				newFactsChunk = append(newFactsChunk, f)
 			}
 		}
-		// add all the new not-expired and _trusted_ facts
 		dev, err := s.deviceState()
 		if err != nil {
-			fmt.Printf("Unable to load device info to evaluate trust, giving up: %v\n", err)
-			// device is probably gone, give up
+			log.Error("Unable to load device info to evaluate trust, giving up: %v", err)
 			s.onError(err)
 			continue
 		}
@@ -449,6 +444,7 @@ func (s *LinkServer) processChunks(
 		pl := createPeerLookup(dev.Peers)
 
 		evaluator := trust.CreateRouteBasedTrust(dev.Peers)
+		// add all the new not-expired and _trusted_ facts
 		for _, rf := range chunk {
 			// add to what the peer knows, even if we otherwise discard the information
 			s.peerKnowledge.upsertReceived(rf, pl)
@@ -464,8 +460,7 @@ func (s *LinkServer) processChunks(
 			}
 		}
 		uniqueFacts := fact.MergeList(newFactsChunk)
-		// fmt.Printf("replacing facts: %d with %d -> %d\n", len(currentFacts), len(newFacts), len(uniqueFacts))
-		// TODO: just log new/removed facts, ignoring TTL
+		// TODO: log new/removed facts, ignoring TTL
 		currentFacts = uniqueFacts
 
 		factsRefreshed <- uniqueFacts
@@ -483,15 +478,18 @@ func (s *LinkServer) printFactsIfRequested(dev *wgtypes.Device, facts []*fact.Fa
 
 	localFacts, err := s.collectFacts(dev)
 	if err != nil {
-		fmt.Println("Unable to load facts:", err)
+		log.Error("Unable to load facts: %v", err)
+		// note that we do NOT kill the server in this case
 		return
 	}
 	// safe to mutate our private localFacts, but not the shared facts we received
 	facts = fact.SortedCopy(fact.MergeList(append(localFacts, facts...)))
-	fmt.Println("Current facts")
+	str := "Current facts"
 	for _, fact := range facts {
-		fmt.Println(fact)
+		str += "\n"
+		str += fact.String()
 	}
+	log.Info("%s", str)
 }
 
 func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) {
@@ -512,9 +510,9 @@ func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) {
 		if errs != nil {
 			// don't print more than a handful of errors
 			if len(errs) > 5 {
-				fmt.Printf("Failed to send some facts: %v ...\n", errs)
+				log.Error("Failed to send some facts: %v ...", errs)
 			} else {
-				fmt.Printf("Failed to send some facts: %v\n", errs)
+				log.Error("Failed to send some facts: %v", errs)
 			}
 		}
 		return count, errs
@@ -543,13 +541,13 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 		dev, err := s.deviceState()
 		if err != nil {
 			// this probably means the interface is down
-			fmt.Printf("Unable to load device state, giving up: %v\n", err)
+			log.Error("Unable to load device state, giving up: %v", err)
 			s.onError(err)
 		}
 
 		allFacts, err := s.collectFacts(dev)
 		if err != nil {
-			fmt.Println("Unable to collect local facts, skipping peer config", err)
+			log.Error("Unable to collect local facts, skipping peer config: %v", err)
 			continue
 		}
 		// it's safe for us to mutate the facts list from the local device,
@@ -562,7 +560,7 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 			ps, ok := f.Subject.(*fact.PeerSubject)
 			if !ok {
 				// WAT
-				fmt.Printf("WAT: fact subject is a %T: %v\n", f.Subject, f)
+				log.Error("WAT: fact subject is a %T: %v", f.Subject, f)
 				continue
 			}
 			factsByPeer[ps.Key] = append(factsByPeer[ps.Key], f)
@@ -589,7 +587,8 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				newState := s.configurePeer(ps, peer, fg, !firstRefresh)
+				// TODO: inspect returned error?
+				newState, _ := s.configurePeer(ps, peer, fg, !firstRefresh)
 				psm.Lock()
 				peerStates[peer.PublicKey] = newState
 				psm.Unlock()
@@ -606,7 +605,7 @@ func (s *LinkServer) configurePeer(
 	peer *wgtypes.Peer,
 	facts []*fact.Fact,
 	allowDeconfigure bool,
-) (state *apply.PeerConfigState) {
+) (state *apply.PeerConfigState, err error) {
 	state = inputState.Update(peer, s.peerKnowledge.peerAlive(peer, ChunkPeriod))
 
 	// TODO: make the lock window here smaller
@@ -621,9 +620,9 @@ func (s *LinkServer) configurePeer(
 		if state.IsAlive() {
 			added, err := apply.EnsureAllowedIPs(s.ctrl, s.deviceName, peer, facts)
 			if err != nil {
-				fmt.Println("Failed to update peer AllowedIPs:", err)
+				log.Error("Failed to update peer AllowedIPs: %v", err)
 			} else if added > 0 {
-				fmt.Printf("Added AIPs to peer %v: %d\n", peer.PublicKey, added)
+				log.Info("Added AIPs to peer %v: %d", peer.PublicKey, added)
 			}
 		}
 		return
@@ -642,9 +641,9 @@ func (s *LinkServer) configurePeer(
 	if !s.isRouter && !trust.IsRouter(peer) {
 		changed, err := apply.OnlyAutoIP(s.ctrl, s.deviceName, peer)
 		if err != nil {
-			fmt.Println("Failed to restrict peer to IPv6-LL only:", err)
+			log.Error("Failed to restrict peer to IPv6-LL only: %v", err)
 		} else if changed {
-			fmt.Println("Peer is now IPv6-LL only:", peer.PublicKey)
+			log.Info("Peer is now IPv6-LL only: %v", peer.PublicKey)
 		}
 	}
 
@@ -658,9 +657,9 @@ func (s *LinkServer) configurePeer(
 		return
 	}
 
-	fmt.Printf("Trying EP for %v: %v\n", peer.PublicKey, nextEndpoint)
+	log.Info("Trying EP for %v: %v", peer.PublicKey, nextEndpoint)
 
-	err := s.ctrl.ConfigureDevice(s.deviceName, wgtypes.Config{
+	err = s.ctrl.ConfigureDevice(s.deviceName, wgtypes.Config{
 		Peers: []wgtypes.PeerConfig{
 			wgtypes.PeerConfig{
 				PublicKey: peer.PublicKey,
@@ -669,8 +668,8 @@ func (s *LinkServer) configurePeer(
 		},
 	})
 	if err != nil {
-		// TODO: return error
-		fmt.Printf("Failed to configure EP for %v: %v: %v\n", peer.PublicKey, nextEndpoint, err)
+		log.Error("Failed to configure EP for %v: %v: %v", peer.PublicKey, nextEndpoint, err)
+		return
 	}
 
 	return

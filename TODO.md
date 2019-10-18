@@ -26,9 +26,8 @@
 ## Functionality
 
 * Handle wireguard interface shutdown gracefully
-* Real logging, not `Printf`
-  * Error reporting
-  * Verbosity levels
+* Output verbosity levels
+  * Esp. add debug/trace
 * CLI/ENV args to control which interfaces to report for local endpoints
 * Faster AIP config when receiving the first ping fact from a peer
   * Check received ping facts against `peerAlive`, if new force ending the current receive chunk?

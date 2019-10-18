@@ -1,11 +1,11 @@
 package apply
 
 import (
-	"fmt"
 	"net"
 	"time"
 
 	"github.com/fastcat/wirelink/fact"
+	"github.com/fastcat/wirelink/log"
 	"golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -46,7 +46,7 @@ func (pcs *PeerConfigState) Update(peer *wgtypes.Peer, newAlive bool) *PeerConfi
 			stateDesc = "unhealthy"
 		}
 		hsAge := time.Now().Sub(pcs.lastHandshake)
-		fmt.Printf("Peer %v is now %s (%v)\n", peer.PublicKey, stateDesc, hsAge)
+		log.Info("Peer %v is now %s (%v)", peer.PublicKey, stateDesc, hsAge)
 	}
 	pcs.lastHealthy = newHealthy
 	pcs.lastAlive = newAlive

@@ -10,6 +10,7 @@ import (
 
 	"golang.zx2c4.com/wireguard/wgctrl"
 
+	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/server"
 	"github.com/fastcat/wirelink/trust"
 	"github.com/pkg/errors"
@@ -95,7 +96,7 @@ func realMain() error {
 	if *isRouter {
 		routerString = "router"
 	}
-	fmt.Printf("Server running on {%s} [%v]:%v (%s)\n", iface, server.Address(), server.Port(), routerString)
+	log.Info("Server running on {%s} [%v]:%v (%s)", iface, server.Address(), server.Port(), routerString)
 
 	sigs := make(chan os.Signal, 5)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
@@ -109,16 +110,16 @@ DONE:
 			if sig == syscall.SIGUSR1 {
 				server.RequestPrint()
 			} else {
-				fmt.Printf("Received signal %v, stopping\n", sig)
+				log.Info("Received signal %v, stopping", sig)
 				// request stop in the background, we'll catch the channel message when it's complete
 				go server.Stop()
 			}
 		case exitOk := <-onStopped:
 			if !exitOk {
-				fmt.Println("Server hit an error")
+				log.Error("Server hit an error")
 				defer os.Exit(1)
 			} else {
-				fmt.Println("Server stopped")
+				log.Info("Server stopped")
 				server.RequestPrint()
 			}
 			break DONE
