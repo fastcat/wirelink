@@ -269,8 +269,10 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 		if p.Endpoint == nil {
 			continue
 		}
-		// ping facts have their own period rules
-		if s.peerKnowledge.peerNeeds(&p, pingFact, AlivePeriod) {
+		// we want alive facts to live for the normal FactTTL, but we want to send them every AlivePeriod
+		// so the "forgetting window" is the difference between those
+		// we don't need to add the extra ChunkPeriod+1 buffer in this case
+		if s.peerKnowledge.peerNeeds(&p, pingFact, FactTTL-AlivePeriod) {
 			wg.Add(1)
 			go s.sendFact(&peers[i], pingFact, &wg, &counter, errs)
 		}
