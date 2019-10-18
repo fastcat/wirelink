@@ -33,7 +33,10 @@ local IP addresses and their listening port in case they are on a public IP or
 other peers are on the same LAN.
 
 Peers periodically send all their locally known facts to all the other peers,
-with some logic to avoid sending facts they think the other peer already knows.
+along with a generic placeholder "I'm here" fact that is used to detect link
+health. What facts are sent when is filtered to avoid sending facts they think
+the other peer already knows and is not going to forget before the next send
+time comes around.
 
 Peers receive facts from other peers as they arrive, but filter them based on a
 trust model. For now trust is simple:
@@ -56,7 +59,9 @@ renewed as fresh versions come in from trusted sources.
 To connect two peers that aren't directly connected, each end (independently)
 configures the remote peer in the local wireguard interface with that peer's
 automatic link local address. It then cycles through the known endpoints and
-attempts to contact the peer.
+attempts to contact the peer. This should work with simple NATs, but may fail
+for more complex ones where a full STUN/ICE system would succeed, esp. since
+there is no coordination on which endpoints are being tried when.
 
 If contact is successful, then the peers other allowed IPs are added and
 traffic can start to flow directly.
@@ -74,10 +79,10 @@ that peer from reconnecting to the network.
 
 Determining when there is a live connection to a peer is based on two things:
 
-* Does the wireguard interface report a recent handshake? Recent is defined
-  based on a combination of timeout values from the wireguard go
-  implementation.
-* Have we received any fact packets from the peer recently.
+* Does the wireguard interface report a recent handshake?
+  * Recent is defined based on a combination of timeout values from the
+    wireguard go implementation.
+* Have we received an "I'm here" fact packet from the peer recently.
 
 ## Inspiration
 
