@@ -13,6 +13,9 @@
 
 # binaries
 wirelink
+
+# local scripts
 push.sh
+deploy.sh
 
 packaging/checkinstall/*.deb
