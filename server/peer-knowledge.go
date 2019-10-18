@@ -73,6 +73,8 @@ func (pks peerKnowledgeSet) expire() (ret int) {
 	return
 }
 
+// peerKnows returns that a peer knows a fact if we think it knows it (not pruned by `expire`),
+// and its expiration is no more than hysteresis behind the local fact (or later than it)
 func (pks peerKnowledgeSet) peerKnows(peer *wgtypes.Peer, f *fact.Fact, hysteresis time.Duration) bool {
 	k := peerKnowledgeKey{
 		Key:  fact.KeyOf(f),
@@ -81,11 +83,11 @@ func (pks peerKnowledgeSet) peerKnows(peer *wgtypes.Peer, f *fact.Fact, hysteres
 	pks.access.RLock()
 	defer pks.access.RUnlock()
 	e, ok := pks.data[k]
-	// peer knows a fact if it knows it at all, and if its expiration time for the fact is
-	// after the fact's expiration, or no more than hysteresis behind it
 	return ok && e.Add(hysteresis).After(f.Expires)
 }
 
+// peerNeeds returns that a peer needs a fact if it either doesn't know it at all,
+// or if it is going to forget it within maxTTL and the local fact will expire later
 func (pks peerKnowledgeSet) peerNeeds(peer *wgtypes.Peer, f *fact.Fact, maxTTL time.Duration) bool {
 	k := peerKnowledgeKey{
 		Key:  fact.KeyOf(f),
@@ -94,11 +96,11 @@ func (pks peerKnowledgeSet) peerNeeds(peer *wgtypes.Peer, f *fact.Fact, maxTTL t
 	pks.access.RLock()
 	defer pks.access.RUnlock()
 	e, ok := pks.data[k]
-	// peer needs a fact if it doesnt know it at all,
-	// or if it's going to forget it within maxTTL and we have something fresher
 	return !ok || time.Now().Add(maxTTL).After(e) && e.Before(f.Expires)
 }
 
+// peerAlive returns if we have received an alive fact from the peer which is going to be alive
+// for at least `maxTTL`. Commonly `maxTTL` will be set to zero.
 func (pks peerKnowledgeSet) peerAlive(peer *wgtypes.Peer, maxTTL time.Duration) bool {
 	k := peerKnowledgeKey{
 		Key: fact.KeyOf(&fact.Fact{

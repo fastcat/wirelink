@@ -51,8 +51,12 @@ const MaxChunk = 100
 // TODO: set this based on TTL instead
 const ChunkPeriod = 5 * time.Second
 
+// AlivePeriod is how often we send "I'm here" facts to peers
+const AlivePeriod = 30 * time.Second
+
 // FactTTL is the TTL we apply to any locally generated Facts
-const FactTTL = 30 * time.Second
+// This is only meaningful if it is <= 255 seconds, since we encode the TTL as a byte
+const FactTTL = 255 * time.Second
 
 // Create starts the server up.
 // Have to take a deviceFactory instead of a Device since you can't refresh a device.
@@ -265,9 +269,11 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 		if p.Endpoint == nil {
 			continue
 		}
-		// always send an "I'm here" pseudo-fact
-		wg.Add(1)
-		go s.sendFact(&peers[i], pingFact, &wg, &counter, errs)
+		// ping facts have their own period rules
+		if s.peerKnowledge.peerNeeds(&p, pingFact, AlivePeriod) {
+			wg.Add(1)
+			go s.sendFact(&peers[i], pingFact, &wg, &counter, errs)
+		}
 		for _, f := range facts {
 			// don't tell peers things about themselves
 			// they won't accept it unless we are a router,
@@ -606,7 +612,9 @@ func (s *LinkServer) configurePeer(
 	facts []*fact.Fact,
 	allowDeconfigure bool,
 ) (state *apply.PeerConfigState, err error) {
-	state = inputState.Update(peer, s.peerKnowledge.peerAlive(peer, ChunkPeriod))
+	// alive check uses 0 for the maxTTL, as we just care whether the alive fact
+	// is still valid now
+	state = inputState.Update(peer, s.peerKnowledge.peerAlive(peer, 0))
 
 	// TODO: make the lock window here smaller
 	// only want to take the lock for the regions where we change config

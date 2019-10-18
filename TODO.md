@@ -54,7 +54,6 @@
 
 ### Reduced Chatter
 
-* Longer fact TTLs
 * Send to non-routers less
   * Option to disable all p2p chatter except liveness, only send facts to router?
   * Need to be careful not to leave a peer in a dead setup (instead of resetting AllowedIPs)
@@ -71,6 +70,7 @@
 * Allow configuring various parameters
   * `MaxChunk`
   * `ChunkPeriod`
+  * `AlivePeriod`
   * `FactTTL`
   * listen port / offset
     * This one is a bit tricky as it needs to be consistent across the network for now
