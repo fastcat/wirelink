@@ -37,6 +37,10 @@ func DeviceFacts(dev *wgtypes.Device, ttl time.Duration) (ret []*fact.Fact, err 
 		if iface.Flags&net.FlagUp == 0 {
 			continue
 		}
+		// ignore the wireguard interface that we are monitoring
+		if iface.Name == dev.Name {
+			continue
+		}
 		addrs, err := iface.Addrs()
 		if err != nil {
 			return nil, err
