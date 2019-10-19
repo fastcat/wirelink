@@ -78,7 +78,6 @@
 ### Config
 
 * Allow configuring trust in peers
-* Allow giving peers friendly names
 * Allow configuring various parameters
   * `MaxChunk`
   * `ChunkPeriod`
