@@ -1,8 +1,16 @@
 {
-	"peers": {
-		"18dCY1rwCNo4aQaWFccKFfhbqG0FGBxDkCSbyQ3awkw=": {
+	"peers": [
+		{
+			"PublicKey": "18dCY1rwCNo4aQaWFccKFfhbqG0FGBxDkCSbyQ3awkw=",
 			"Name": "test",
 			"Trust": "AddPeer"
+		},
+		{
+			"publickey": "6rxPhfwiMXp40mit6bdCytVlTCubK/qYxdo6K+liS2o="
+		},
+		{
+			"PublicKey": "vlejBUlxwt5c42bP1Y/W0QiDr0bfZR9iH+i/aanR61s=",
+			"Trust": null
 		}
-	}
+	]
 }

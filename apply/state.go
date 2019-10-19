@@ -23,7 +23,7 @@ type PeerConfigState struct {
 // Update refreshes the PeerConfigState with new data from the wireguard device.
 // NOTE: It is safe to call this on a `nil` pointer, it will return a new state
 // TODO: give this access to the `peerKnowledgeSet` instead of passing in the alive state
-func (pcs *PeerConfigState) Update(peer *wgtypes.Peer, newAlive bool) *PeerConfigState {
+func (pcs *PeerConfigState) Update(peer *wgtypes.Peer, name string, newAlive bool) *PeerConfigState {
 	if pcs == nil {
 		pcs = &PeerConfigState{
 			endpointLastUsed: make(map[string]time.Time),
@@ -46,7 +46,7 @@ func (pcs *PeerConfigState) Update(peer *wgtypes.Peer, newAlive bool) *PeerConfi
 			stateDesc = "unhealthy"
 		}
 		hsAge := time.Now().Sub(pcs.lastHandshake)
-		log.Info("Peer %v is now %s (%v)", peer.PublicKey, stateDesc, hsAge.Truncate(time.Millisecond))
+		log.Info("Peer %s is now %s (%v)", name, stateDesc, hsAge.Truncate(time.Millisecond))
 	}
 	pcs.lastHealthy = newHealthy
 	pcs.lastAlive = newAlive

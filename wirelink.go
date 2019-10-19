@@ -10,7 +10,6 @@ import (
 	"syscall"
 
 	"golang.zx2c4.com/wireguard/wgctrl"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
 	"github.com/fastcat/wirelink/config"
 	"github.com/fastcat/wirelink/log"
@@ -112,29 +111,19 @@ func realMain() error {
 	}
 
 	// load peer configuations
-	vpeers := vcfg.Sub("peers")
-	peerConfigs := make(map[wgtypes.Key]*config.Peer)
-	if vpeers != nil {
-		// this feels like a weird way to find the "top level" keys?
-		for peerKeyStr := range vcfg.GetStringMap("peers") {
-			peerKey, err := wgtypes.ParseKey(peerKeyStr)
-			if err != nil {
-				return errors.Wrapf(err, "Peer key is invalid")
-			}
-			var peerConf config.Peer
-			peerSub := vpeers.Sub(peerKeyStr)
-			if peerSub == nil {
-				return errors.Errorf("WAT no sub for peer '%s'", peerKeyStr)
-			}
-			if err = peerSub.UnmarshalExact(&peerConf); err != nil {
-				return errors.Wrapf(err, "Unable to parse config for peer '%s'", peerKeyStr)
-			}
-			if err = peerConf.Validate(); err != nil {
-				return errors.Wrapf(err, "Parsed configuration for peer '%s' is invalid", peerKeyStr)
-			}
-			peerConfigs[peerKey] = &peerConf
-			log.Info("Loaded peer '%s': %+v", peerKey, peerConf)
+	var peerData []config.PeerData
+	// TODO: can't combine UnmarshalExact with UnmarshalKey, so we can't error on bad keys here
+	if err = vcfg.UnmarshalKey("peers", &peerData); err != nil {
+		return errors.Wrapf(err, "Unable to parse config for peers")
+	}
+	peerConfigs := make(config.Peers)
+	for _, peerDatum := range peerData {
+		key, peerConf, err := peerDatum.Parse()
+		if err != nil {
+			return errors.Wrapf(err, "Cannot parse peer config from %+v", peerDatum)
 		}
+		peerConfigs[key] = &peerConf
+		log.Info("Configured peer '%s': %+v", key, peerConf)
 	}
 
 	// replace "auto" with the real value

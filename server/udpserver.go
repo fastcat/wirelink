@@ -615,7 +615,7 @@ func (s *LinkServer) configurePeer(
 ) (state *apply.PeerConfigState, err error) {
 	// alive check uses 0 for the maxTTL, as we just care whether the alive fact
 	// is still valid now
-	state = inputState.Update(peer, s.peerKnowledge.peerAlive(peer, 0))
+	state = inputState.Update(peer, s.config.Peers.Name(peer.PublicKey), s.peerKnowledge.peerAlive(peer, 0))
 
 	// TODO: make the lock window here smaller
 	// only want to take the lock for the regions where we change config
@@ -631,7 +631,7 @@ func (s *LinkServer) configurePeer(
 			if err != nil {
 				log.Error("Failed to update peer AllowedIPs: %v", err)
 			} else if added > 0 {
-				log.Info("Added AIPs to peer %v: %d", peer.PublicKey, added)
+				log.Info("Added AIPs to peer %s: %d", s.config.Peers.Name(peer.PublicKey), added)
 			}
 		}
 		return
@@ -648,11 +648,12 @@ func (s *LinkServer) configurePeer(
 	// routers.
 	// TODO: IsRouter doesn't belong in trust
 	if !s.config.IsRouter && !trust.IsRouter(peer) {
-		changed, err := apply.OnlyAutoIP(s.ctrl, s.config.Iface, peer)
+		changed, err := apply.OnlyAutoIP(s.ctrl, s.config.Iface, peer, s.config.Peers.Name(peer.PublicKey))
 		if err != nil {
-			log.Error("Failed to restrict peer to IPv6-LL only: %v", err)
+			log.Error("Failed to restrict peer %s to IPv6-LL only: %v",
+				s.config.Peers.Name(peer.PublicKey), err)
 		} else if changed {
-			log.Info("Peer is now IPv6-LL only: %v", peer.PublicKey)
+			log.Info("Peer is now IPv6-LL only: %s", s.config.Peers.Name(peer.PublicKey))
 		}
 	}
 
@@ -666,7 +667,7 @@ func (s *LinkServer) configurePeer(
 		return
 	}
 
-	log.Info("Trying EP for %v: %v", peer.PublicKey, nextEndpoint)
+	log.Info("Trying EP for %s: %v", s.config.Peers.Name(peer.PublicKey), nextEndpoint)
 
 	err = s.ctrl.ConfigureDevice(s.config.Iface, wgtypes.Config{
 		Peers: []wgtypes.PeerConfig{
@@ -677,7 +678,8 @@ func (s *LinkServer) configurePeer(
 		},
 	})
 	if err != nil {
-		log.Error("Failed to configure EP for %v: %v: %v", peer.PublicKey, nextEndpoint, err)
+		log.Error("Failed to configure EP for %s: %v: %v",
+			s.config.Peers.Name(peer.PublicKey), nextEndpoint, err)
 		return
 	}
 
