@@ -6,10 +6,13 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"syscall"
 
 	"golang.zx2c4.com/wireguard/wgctrl"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
+	"github.com/fastcat/wirelink/config"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/server"
 	"github.com/fastcat/wirelink/trust"
@@ -38,6 +41,7 @@ func realMain() error {
 	const RouterAuto = "auto"
 	const IfaceFlag = "iface"
 	const DumpConfigFlag = "dump"
+	const ConfigPathFlag = "config-path"
 	// viper.IsSet is useless when flags are in play, so we have to make this a string we parse ourselves
 	vcfg.SetDefault(RouterFlag, RouterAuto)
 	flags.String(RouterFlag, RouterAuto, "Is the local device a router (bool or \"auto\")")
@@ -45,10 +49,14 @@ func realMain() error {
 	flags.String("iface", "wg0", "Interface on which to operate")
 	vcfg.SetDefault(DumpConfigFlag, false)
 	flags.Bool(DumpConfigFlag, false, "Dump configuration instead of running")
+	vcfg.SetDefault(ConfigPathFlag, "/etc/wireguard")
+	// no flag for this one for now, only env
 
 	vcfg.BindPFlags(flags)
 	vcfg.SetEnvPrefix("wirelink")
 	vcfg.AutomaticEnv()
+	// hard to set env vars with hyphens, bash doesn't like it
+	vcfg.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 
 	err = flags.Parse(os.Args[1:])
 	if err != nil {
@@ -63,7 +71,9 @@ func realMain() error {
 	// in theory the config file can override the iface, but ... that would be bad
 	// this needs to happen _before_ the `router` processing since the config may set that
 	vcfg.SetConfigName(fmt.Sprintf("wirelink.%s", iface))
-	vcfg.AddConfigPath("/etc/wireguard/")
+	// this is perversely recursive
+	vcfg.AddConfigPath(vcfg.GetString(ConfigPathFlag))
+
 	err = vcfg.ReadInConfig()
 	if err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
@@ -101,6 +111,32 @@ func realMain() error {
 		return err
 	}
 
+	// load peer configuations
+	vpeers := vcfg.Sub("peers")
+	peerConfigs := make(map[wgtypes.Key]*config.Peer)
+	if vpeers != nil {
+		// this feels like a weird way to find the "top level" keys?
+		for peerKeyStr := range vcfg.GetStringMap("peers") {
+			peerKey, err := wgtypes.ParseKey(peerKeyStr)
+			if err != nil {
+				return errors.Wrapf(err, "Peer key is invalid")
+			}
+			var peerConf config.Peer
+			peerSub := vpeers.Sub(peerKeyStr)
+			if peerSub == nil {
+				return errors.Errorf("WAT no sub for peer '%s'", peerKeyStr)
+			}
+			if err = peerSub.UnmarshalExact(&peerConf); err != nil {
+				return errors.Wrapf(err, "Unable to parse config for peer '%s'", peerKeyStr)
+			}
+			if err = peerConf.Validate(); err != nil {
+				return errors.Wrapf(err, "Parsed configuration for peer '%s' is invalid", peerKeyStr)
+			}
+			peerConfigs[peerKey] = &peerConf
+			log.Info("Loaded peer '%s': %+v", peerKey, peerConf)
+		}
+	}
+
 	// replace "auto" with the real value
 	if routerStrVal == RouterAuto {
 		// try to auto-detect router mode
@@ -123,7 +159,12 @@ func realMain() error {
 	}
 
 	isRouter := vcfg.GetBool(RouterFlag)
-	server, err := server.Create(wgc, iface, 0, isRouter)
+	serverConfig := config.Server{
+		Iface:    iface,
+		IsRouter: isRouter,
+		Peers:    peerConfigs,
+	}
+	server, err := server.Create(wgc, &serverConfig)
 	if err != nil {
 		return errors.Wrapf(err, "Unable to initialize server for interface %s", iface)
 	}

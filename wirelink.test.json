@@ -1,0 +1,8 @@
+{
+	"peers": {
+		"18dCY1rwCNo4aQaWFccKFfhbqG0FGBxDkCSbyQ3awkw=": {
+			"Name": "test",
+			"Trust": "AddPeer"
+		}
+	}
+}

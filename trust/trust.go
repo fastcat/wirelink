@@ -23,7 +23,23 @@ const (
 	// AddPeer means we should trust it enough to add it as a new peer in the
 	// local configuration if we don't have it
 	AddPeer
+	// DelPeer means that that we trust it enough to remove any peers it doesn't
+	// tell us exist (assuming it's online, and no other AddPeer contradicts it)
+	DelPeer
+	// SetTrust means a peer is trusted to tell us the trust level of other peers
+	SetTrust
 )
+
+// Names is a handy map to ease parsing strings to trust levels.
+// FIXME: this is mutable, golang doesn't allow const/immutable maps
+var Names map[string]Level = map[string]Level{
+	"Untrusted":  Untrusted,
+	"Endpoint":   Endpoint,
+	"AllowedIPs": AllowedIPs,
+	"AddPeer":    AddPeer,
+	"DelPeer":    DelPeer,
+	"SetTrust":   SetTrust,
+}
 
 // Evaluator is an interface for implementations that can answer whether
 // a fact received from a remote source should be trusted and accepted into

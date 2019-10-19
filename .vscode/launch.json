@@ -10,9 +10,11 @@
 			"request": "launch",
 			"mode": "auto",
 			"program": "${workspaceFolder}",
-			"env": {},
+			"env": {
+				"WIRELINK_CONFIG_PATH": "."
+			},
 			"args": [
-				"--dump",
+				"--iface=test",
 			]
 		}
 	]

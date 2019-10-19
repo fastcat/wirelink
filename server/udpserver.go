@@ -14,6 +14,7 @@ import (
 
 	"github.com/fastcat/wirelink/apply"
 	"github.com/fastcat/wirelink/autopeer"
+	"github.com/fastcat/wirelink/config"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/peerfacts"
@@ -24,12 +25,11 @@ import (
 // sending/receiving on a socket
 type LinkServer struct {
 	stateAccess *sync.Mutex
-	isRouter    bool
+	config      *config.Server
 	mgr         *apply.Manager
 	conn        *net.UDPConn
 	addr        net.UDPAddr
 	ctrl        *wgctrl.Client
-	deviceName  string
 	wait        *sync.WaitGroup
 	// sending on endReader will stop the packet reader goroutine
 	endReader chan bool
@@ -62,13 +62,13 @@ const FactTTL = 255 * time.Second
 // Have to take a deviceFactory instead of a Device since you can't refresh a device.
 // Will take ownership of the wg client and close it when the server is closed
 // If port <= 0, will use the wireguard device's listen port plus one
-func Create(ctrl *wgctrl.Client, deviceName string, port int, isRouter bool) (*LinkServer, error) {
-	device, err := ctrl.Device(deviceName)
+func Create(ctrl *wgctrl.Client, config *config.Server) (*LinkServer, error) {
+	device, err := ctrl.Device(config.Iface)
 	if err != nil {
 		return nil, err
 	}
-	if port <= 0 {
-		port = device.ListenPort + 1
+	if config.Port <= 0 {
+		config.Port = device.ListenPort + 1
 	}
 
 	// have to make sure we have the local IPv6-LL address configured before we can use it
@@ -95,7 +95,7 @@ func Create(ctrl *wgctrl.Client, deviceName string, port int, isRouter bool) (*L
 	ip := autopeer.AutoAddress(device.PublicKey)
 	addr := net.UDPAddr{
 		IP:   ip,
-		Port: port,
+		Port: config.Port,
 		Zone: device.Name,
 	}
 	// only listen on the local ipv6 auto address on the specific interface
@@ -105,13 +105,12 @@ func Create(ctrl *wgctrl.Client, deviceName string, port int, isRouter bool) (*L
 	}
 
 	ret := &LinkServer{
-		isRouter:        isRouter,
+		config:          config,
 		mgr:             mgr,
 		conn:            conn,
 		addr:            addr,
 		ctrl:            ctrl,
 		stateAccess:     new(sync.Mutex),
-		deviceName:      deviceName,
 		wait:            new(sync.WaitGroup),
 		endReader:       make(chan bool),
 		peerKnowledge:   newPKS(),
@@ -231,7 +230,7 @@ func (s *LinkServer) Port() int {
 func (s *LinkServer) deviceState() (dev *wgtypes.Device, err error) {
 	s.stateAccess.Lock()
 	defer s.stateAccess.Unlock()
-	return s.ctrl.Device(s.deviceName)
+	return s.ctrl.Device(s.config.Iface)
 }
 
 func (s *LinkServer) collectFacts(dev *wgtypes.Device) (ret []*fact.Fact, err error) {
@@ -628,7 +627,7 @@ func (s *LinkServer) configurePeer(
 		// as we don't want to start routing traffic to it if it won't accept it
 		// and reciprocate
 		if state.IsAlive() {
-			added, err := apply.EnsureAllowedIPs(s.ctrl, s.deviceName, peer, facts)
+			added, err := apply.EnsureAllowedIPs(s.ctrl, s.config.Iface, peer, facts)
 			if err != nil {
 				log.Error("Failed to update peer AllowedIPs: %v", err)
 			} else if added > 0 {
@@ -648,8 +647,8 @@ func (s *LinkServer) configurePeer(
 	// router. for much the same reason, we don't want to remove AllowedIPs from
 	// routers.
 	// TODO: IsRouter doesn't belong in trust
-	if !s.isRouter && !trust.IsRouter(peer) {
-		changed, err := apply.OnlyAutoIP(s.ctrl, s.deviceName, peer)
+	if !s.config.IsRouter && !trust.IsRouter(peer) {
+		changed, err := apply.OnlyAutoIP(s.ctrl, s.config.Iface, peer)
 		if err != nil {
 			log.Error("Failed to restrict peer to IPv6-LL only: %v", err)
 		} else if changed {
@@ -669,7 +668,7 @@ func (s *LinkServer) configurePeer(
 
 	log.Info("Trying EP for %v: %v", peer.PublicKey, nextEndpoint)
 
-	err = s.ctrl.ConfigureDevice(s.deviceName, wgtypes.Config{
+	err = s.ctrl.ConfigureDevice(s.config.Iface, wgtypes.Config{
 		Peers: []wgtypes.PeerConfig{
 			wgtypes.PeerConfig{
 				PublicKey: peer.PublicKey,
