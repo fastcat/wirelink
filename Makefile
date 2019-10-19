@@ -3,7 +3,7 @@ export GO111MODULE=on
 
 # can be overridden
 PREFIX=/usr
-PKGVER=$(shell git describe)
+PKGVER=$(shell git describe | cut -d- -f1)
 PKGVERREL=$(shell git describe --long --dirty=+)
 PKGREL=$(PKGVERREL:$(PKGVER)-%=%)
 
