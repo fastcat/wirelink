@@ -66,7 +66,7 @@ func (l Level) String() string {
 type Evaluator interface {
 	// TrustLevel evaluates the trust level that should be applied to a fact given its source,
 	// returning nil if it doesn't have an opinion on the trust level
-	TrustLevel(fact *fact.Fact, source net.IP) *Level
+	TrustLevel(fact *fact.Fact, source net.UDPAddr) *Level
 	// IsKnown checks whether the subject of a fact is already known to the local system,
 	// or false if the peer is new.
 	// TODO: IsKnown doesn't really belong here

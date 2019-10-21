@@ -381,7 +381,7 @@ func (s *LinkServer) readPackets(endReader <-chan bool, packets chan<- *Received
 				log.Error("Unable to parse fact: %v", err)
 				continue
 			}
-			rcv := &ReceivedFact{fact: pp, source: addr.IP}
+			rcv := &ReceivedFact{fact: pp, source: *addr}
 			packets <- rcv
 		}
 	}
@@ -457,7 +457,7 @@ func (s *LinkServer) processChunks(
 		evaluator := trust.CreateComposite(trust.FirstOnly,
 			// TODO: we can cache the config trust to avoid some re-computation
 			config.CreateTrustEvaluator(s.config.Peers),
-			trust.CreateRouteBasedTrust(dev.Peers),
+			trust.CreateRouteBasedTrust(dev.Peers, s.config.Port),
 		)
 		// add all the new not-expired and _trusted_ facts
 		for _, rf := range chunk {

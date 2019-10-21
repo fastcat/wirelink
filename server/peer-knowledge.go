@@ -27,7 +27,7 @@ func newPKS() *peerKnowledgeSet {
 }
 
 func (pks *peerKnowledgeSet) upsertReceived(rf *ReceivedFact, pl peerLookup) bool {
-	peer, ok := pl.get(rf.source)
+	peer, ok := pl.get(rf.source.IP)
 	if !ok {
 		return false
 	}

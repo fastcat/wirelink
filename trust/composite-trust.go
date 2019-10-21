@@ -48,7 +48,7 @@ func (c *composite) IsKnown(subject fact.Subject) bool {
 	return false
 }
 
-func (c *composite) TrustLevel(fact *fact.Fact, source net.IP) (ret *Level) {
+func (c *composite) TrustLevel(fact *fact.Fact, source net.UDPAddr) (ret *Level) {
 	for _, e := range c.inner {
 		// IsKnown is orthogonal to TrustLevel, don't check it here
 		l := e.TrustLevel(fact, source)

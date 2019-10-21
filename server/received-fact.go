@@ -12,7 +12,7 @@ import (
 // to hold them in a batch before evaluating them for acceptance
 type ReceivedFact struct {
 	fact   *fact.Fact
-	source net.IP
+	source net.UDPAddr
 }
 
 func (rf *ReceivedFact) String() string {

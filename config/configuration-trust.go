@@ -44,9 +44,10 @@ func (c *configEvaluator) updatePeerMaps() {
 	}
 }
 
-func (c *configEvaluator) TrustLevel(f *fact.Fact, source net.IP) *trust.Level {
+func (c *configEvaluator) TrustLevel(f *fact.Fact, source net.UDPAddr) *trust.Level {
 	// we evaluate the trust level based on the _source_, not the _subject_
-	pk, ok := c.ipToPeer[util.IPToBytes(source)]
+	// source port evaluation is left to route-based-trust
+	pk, ok := c.ipToPeer[util.IPToBytes(source.IP)]
 	if !ok {
 		log.Info("No configured peer found for source: %v", source)
 		return nil
