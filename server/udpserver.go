@@ -718,6 +718,12 @@ func (s *LinkServer) configurePeer(
 			wgtypes.PeerConfig{
 				PublicKey: peer.PublicKey,
 				Endpoint:  nextEndpoint,
+				// make sure the auto ip is present in case we are a router and didn't do
+				// any ip updates above
+				AllowedIPs: []net.IPNet{net.IPNet{
+					IP:   autopeer.AutoAddress(peer.PublicKey),
+					Mask: net.CIDRMask(8*net.IPv6len, 8*net.IPv6len),
+				}},
 			},
 		},
 	})
