@@ -16,7 +16,7 @@ type PeerData struct {
 // Parse validates the info in the PeerData and returns the parsed tuple + error
 func (p *PeerData) Parse() (key wgtypes.Key, peer Peer, err error) {
 	if p.Trust != "" {
-		val, ok := trust.Names[p.Trust]
+		val, ok := trust.Values[p.Trust]
 		if !ok {
 			err = errors.Errorf("Invalid trust level '%s'", p.Trust)
 			return

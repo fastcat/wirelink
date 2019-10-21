@@ -123,7 +123,7 @@ func realMain() error {
 			return errors.Wrapf(err, "Cannot parse peer config from %+v", peerDatum)
 		}
 		peerConfigs[key] = &peerConf
-		log.Info("Configured peer '%s': %+v", key, peerConf)
+		log.Info("Configured peer '%s': %s", key, &peerConf)
 	}
 
 	// replace "auto" with the real value

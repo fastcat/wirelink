@@ -50,7 +50,6 @@
   * Close the netlink socket for local interface config when we don't need it any more
   * Verify `wgctrl` keeps the netlink socket open so that this isn't an issue
 * Improved trust models
-  * Peer trust level override (e.g. to set `AddPeer`)
 * Implement `AddPeer` trust level
 * Add and implement `DelPeer` level
   * Peers are removed from the wireguard device when at least one `DelPeer` trusted node is live,

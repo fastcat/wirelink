@@ -14,7 +14,7 @@ type Level int
 
 const (
 	// Untrusted means we should ignore the fact, as if we never received it
-	Untrusted = iota
+	Untrusted Level = iota
 	// Endpoint means we should trust it enough to try endpoints we may have received
 	Endpoint
 	// AllowedIPs means we should trust it enough to add AllowedIPs to our local
@@ -30,15 +30,34 @@ const (
 	SetTrust
 )
 
-// Names is a handy map to ease parsing strings to trust levels.
+// Values is a handy map to ease parsing strings to trust levels.
 // FIXME: this is mutable, golang doesn't allow const/immutable maps
-var Names map[string]Level = map[string]Level{
+var Values map[string]Level = map[string]Level{
 	"Untrusted":  Untrusted,
 	"Endpoint":   Endpoint,
 	"AllowedIPs": AllowedIPs,
 	"AddPeer":    AddPeer,
 	"DelPeer":    DelPeer,
 	"SetTrust":   SetTrust,
+}
+
+// Names is a handy map to ease stringifying trust levels.
+// FIXME: this is mutable, golang doesn't allow const/immutable maps
+var Names map[Level]string = map[Level]string{
+	Untrusted:  "Untrusted",
+	Endpoint:   "Endpoint",
+	AllowedIPs: "AllowedIPs",
+	AddPeer:    "AddPeer",
+	DelPeer:    "DelPeer",
+	SetTrust:   "SetTrust",
+}
+
+func (l Level) String() string {
+	s, ok := Names[l]
+	if ok {
+		return s
+	}
+	return string(l)
 }
 
 // Evaluator is an interface for implementations that can answer whether
