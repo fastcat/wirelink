@@ -84,7 +84,7 @@ func Create(ctrl *wgctrl.Client, config *config.Server) (*LinkServer, error) {
 		log.Info("Configured IPv6-LL address on local interface")
 	}
 
-	peerips, err := apply.EnsurePeerAutoIP(ctrl, device)
+	peerips, err := apply.EnsurePeersAutoIP(ctrl, device)
 	if err != nil {
 		return nil, err
 	}
@@ -641,9 +641,9 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 			})
 		}
 
-		for peer := range maybeRemovePeers {
-			log.Info("TODO: consider removing peer %s", s.peerName(peer))
-		}
+		// for peer := range maybeRemovePeers {
+		// 	log.Info("TODO: consider removing peer %s", s.peerName(peer))
+		// }
 
 		wg.Wait()
 
@@ -667,69 +667,64 @@ func (s *LinkServer) configurePeer(
 	s.stateAccess.Lock()
 	defer s.stateAccess.Unlock()
 
+	var pcfg *wgtypes.PeerConfig
+	logged := false
+
 	if state.IsHealthy() {
 		// don't setup the AllowedIPs until it's both healthy and alive,
 		// as we don't want to start routing traffic to it if it won't accept it
 		// and reciprocate
 		if state.IsAlive() {
-			added, err := apply.EnsureAllowedIPs(s.ctrl, s.config.Iface, peer, facts)
-			if err != nil {
-				log.Error("Failed to update peer AllowedIPs: %v", err)
-			} else if added > 0 {
-				log.Info("Added AIPs to peer %s: %d", peerName, added)
+			pcfg = apply.EnsureAllowedIPs(peer, facts, pcfg)
+			if pcfg != nil && len(pcfg.AllowedIPs) > 0 {
+				log.Info("Adding AIPs to peer %s: %d", peerName, len(pcfg.AllowedIPs))
+				logged = true
 			}
 		}
-		return
-	}
+	} else {
+		if allowDeconfigure {
+			// on a router, we are the network's memory of the AllowedIPs, so we must not
+			// clear them, but on leaf devices we should remove them from the peer when
+			// we don't have a direct connection so that the peer is reachable through a
+			// router. for much the same reason, we don't want to remove AllowedIPs from
+			// routers.
+			// TODO: IsRouter doesn't belong in trust
+			if !s.config.IsRouter && !trust.IsRouter(peer) {
+				pcfg = apply.OnlyAutoIP(peer, pcfg)
+				if pcfg != nil && pcfg.ReplaceAllowedIPs {
+					log.Info("Restricting peer to be IPv6-LL only: %s", peerName)
+					logged = true
+				}
+			}
+		}
 
-	if !allowDeconfigure {
-		return
-	}
+		pcfg = apply.EnsurePeerAutoIP(peer, pcfg)
 
-	// on a router, we are the network's memory of the AllowedIPs, so we must not
-	// clear them, but on leaf devices we should remove them from the peer when
-	// we don't have a direct connection so that the peer is reachable through a
-	// router. for much the same reason, we don't want to remove AllowedIPs from
-	// routers.
-	// TODO: IsRouter doesn't belong in trust
-	if !s.config.IsRouter && !trust.IsRouter(peer) {
-		changed, err := apply.OnlyAutoIP(s.ctrl, s.config.Iface, peer, peerName)
-		if err != nil {
-			log.Error("Failed to restrict peer %s to IPv6-LL only: %v", peerName, err)
-		} else if changed {
-			log.Info("Peer is now IPv6-LL only: %s", peerName)
+		if state.TimeForNextEndpoint() {
+			nextEndpoint := state.NextEndpoint(facts)
+			if nextEndpoint != nil {
+				log.Info("Trying EP for %s: %v", peerName, nextEndpoint)
+				logged = true
+				if pcfg == nil {
+					pcfg = &wgtypes.PeerConfig{PublicKey: peer.PublicKey}
+				}
+				pcfg.Endpoint = nextEndpoint
+			}
 		}
 	}
 
-	if !state.TimeForNextEndpoint() {
-		// not time to try another endpoint yet
+	if pcfg == nil {
 		return
 	}
-
-	nextEndpoint := state.NextEndpoint(facts)
-	if nextEndpoint == nil {
-		return
-	}
-
-	log.Info("Trying EP for %s: %v", peerName, nextEndpoint)
 
 	err = s.ctrl.ConfigureDevice(s.config.Iface, wgtypes.Config{
-		Peers: []wgtypes.PeerConfig{
-			wgtypes.PeerConfig{
-				PublicKey: peer.PublicKey,
-				Endpoint:  nextEndpoint,
-				// make sure the auto ip is present in case we are a router and didn't do
-				// any ip updates above
-				AllowedIPs: []net.IPNet{net.IPNet{
-					IP:   autopeer.AutoAddress(peer.PublicKey),
-					Mask: net.CIDRMask(8*net.IPv6len, 8*net.IPv6len),
-				}},
-			},
-		},
+		Peers: []wgtypes.PeerConfig{*pcfg},
 	})
 	if err != nil {
-		log.Error("Failed to configure EP for %s: %v: %v", peerName, nextEndpoint, err)
+		log.Error("Failed to configure peer %s: %+v: %v", peerName, *pcfg, err)
 		return
+	} else if !logged {
+		log.Info("WAT: applied unknown peer config change to %s: %+v", peerName, *pcfg)
 	}
 
 	return
