@@ -51,11 +51,6 @@
   * Close the netlink socket for local interface config when we don't need it any more
   * Verify `wgctrl` keeps the netlink socket open so that this isn't an issue
 * Improved trust models
-* Implement `AddPeer` trust level
-* Add and implement `DelPeer` level
-  * Peers are removed from the wireguard device when at least one `DelPeer` trusted node is live,
-    and no facts with `AddPeer` trust level are present for it
-  * Thus peers are removed by omission, not active deletion ... name could do with work
 * Validate source port for received fact packets
 * Sign facts with peer keys (protects against forgery from other processes on the same host)
   * This would obviate source port validation

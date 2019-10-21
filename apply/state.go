@@ -6,6 +6,7 @@ import (
 
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
+	"github.com/fastcat/wirelink/util"
 	"golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -16,6 +17,7 @@ type PeerConfigState struct {
 	lastHandshake time.Time
 	lastHealthy   bool
 	lastAlive     bool
+	aliveSince    time.Time
 	// the string key is really just the bytes value
 	endpointLastUsed map[string]time.Time
 }
@@ -36,6 +38,7 @@ func (pcs *PeerConfigState) Update(peer *wgtypes.Peer, name string, newAlive boo
 		if newHealthy {
 			if newAlive {
 				stateDesc = "healthy and alive"
+				pcs.aliveSince = time.Now()
 			} else {
 				stateDesc = "healthy but not alive"
 			}
@@ -62,6 +65,15 @@ func (pcs *PeerConfigState) IsHealthy() bool {
 // note that a peer can be alive but unhealthy!
 func (pcs *PeerConfigState) IsAlive() bool {
 	return pcs != nil && pcs.lastAlive
+}
+
+// AliveSince gives the time since which the peer has been healthy and alive,
+// or a _very_ far future value if it is not healthy and alive.
+func (pcs *PeerConfigState) AliveSince() time.Time {
+	if pcs != nil && pcs.lastHealthy && pcs.lastAlive {
+		return pcs.aliveSince
+	}
+	return util.TimeMax()
 }
 
 const endpointInterval = device.RekeyTimeout + device.KeepaliveTimeout

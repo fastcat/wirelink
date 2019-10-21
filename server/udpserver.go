@@ -592,7 +592,7 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 		// this assumes that the prior layer has filtered to not include facts for
 		// peers we shouldn't add
 		localPeers := make(map[wgtypes.Key]bool)
-		maybeRemovePeers := make(map[wgtypes.Key]bool)
+		removePeer := make(map[wgtypes.Key]bool)
 
 		wg := new(sync.WaitGroup)
 		psm := new(sync.Mutex)
@@ -600,7 +600,7 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 		updatePeer := func(peer *wgtypes.Peer) {
 			fg, ok := factsByPeer[peer.PublicKey]
 			if !ok {
-				maybeRemovePeers[peer.PublicKey] = true
+				removePeer[peer.PublicKey] = true
 				return
 			}
 			psm.Lock()
@@ -633,7 +633,7 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 				continue
 			}
 			// don't delete if if we're adding it
-			delete(maybeRemovePeers, peer)
+			delete(removePeer, peer)
 			// have to make a fake local peer for this, thankfully this is pretty trivial
 			log.Info("Adding new local peer %s", s.peerName(peer))
 			updatePeer(&wgtypes.Peer{
@@ -641,14 +641,70 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 			})
 		}
 
-		// for peer := range maybeRemovePeers {
-		// 	log.Info("TODO: consider removing peer %s", s.peerName(peer))
-		// }
+		wg.Add(1)
+		go s.deletePeers(wg, peerStates, dev, removePeer)
 
 		wg.Wait()
 
 		firstRefresh = false
 	}
+}
+
+func (s *LinkServer) deletePeers(
+	wg *sync.WaitGroup,
+	peerStates map[wgtypes.Key]*apply.PeerConfigState,
+	dev *wgtypes.Device,
+	removePeer map[wgtypes.Key]bool,
+) (err error) {
+	// only run peer deletion if we have a peer with DelPeer trust online
+	// and it has been online for longer than the fact TTL so that we are
+	// reasonably sure we have all the data from it ... and we are not a router
+	doDelPeers := false
+	if !s.config.IsRouter {
+		now := time.Now()
+		for pk, pc := range s.config.Peers {
+			if pc.Trust == nil || *pc.Trust < trust.DelPeer {
+				continue
+			}
+			pcs, ok := peerStates[pk]
+			if !ok {
+				continue
+			}
+			if now.Sub(pcs.AliveSince()) < FactTTL {
+				continue
+			}
+			doDelPeers = true
+			break
+		}
+	}
+
+	if doDelPeers {
+		var cfg wgtypes.Config
+		for _, peer := range dev.Peers {
+			if !removePeer[peer.PublicKey] {
+				continue
+			}
+			// never delete routers
+			if trust.IsRouter(&peer) {
+				continue
+			}
+			log.Info("Removing peer: %s", s.peerName(peer.PublicKey))
+			cfg.Peers = append(cfg.Peers, wgtypes.PeerConfig{
+				PublicKey: peer.PublicKey,
+				Remove:    true,
+			})
+		}
+		if len(cfg.Peers) != 0 {
+			s.stateAccess.Lock()
+			defer s.stateAccess.Unlock()
+			err = s.ctrl.ConfigureDevice(s.config.Iface, cfg)
+			if err != nil {
+				log.Error("Unable to delete peers: %v", err)
+			}
+		}
+	}
+
+	return
 }
 
 func (s *LinkServer) configurePeer(

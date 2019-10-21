@@ -43,6 +43,10 @@ sysinstall: wirelink
 	install -m 644 packaging/wirelink@.service /lib/systemd/system/
 	install -m 644 packaging/wl-quick@.service /lib/systemd/system/
 
+checkinstall-clean:
+	rm -vf ./packaging/checkinstall/*.deb
+	rm -rvf ./packaging/checkinstall/doc-pak/
+
 checkinstall-prep: wirelink
 	mkdir -p ./packaging/checkinstall/doc-pak/
 	install -m 644 $(DOCSFILES) ./packaging/checkinstall/doc-pak/
@@ -70,13 +74,11 @@ checkinstall: checkinstall-prep
 
 everything: fmt vet lint compile wirelink test
 
-clean:
+clean: checkinstall-clean
 	rm -vf ./wirelink
-	rm -vf ./packaging/checkinstall/*.deb
-	rm -rvf ./packaging/checkinstall/doc-pak/
 #TODO: any way to clean the go cache for just this package?
 
 .PHONY: all fmt compile vet lint lint-golint lint-gopls test run install everything clean
-.PHONY: checkinstall checkinstall-prep
+.PHONY: checkinstall checkinstall-prep checkinstall-clean
 # wirelink isn't actually phony, but we can't compute deps for it, so pretend
 .PHONY: wirelink
