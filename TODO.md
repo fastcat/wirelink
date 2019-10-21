@@ -31,6 +31,7 @@
 * CLI/ENV args to control which interfaces to report for local endpoints
 * Faster AIP config when receiving the first ping fact from a peer
   * Check received ping facts against `peerAlive`, if new force ending the current receive chunk?
+* Don't activate AIP config until we think the peer will reciprocate
 * Intelligent prioritizaiton of peer EPs to try
   * EPs that are on a local subnet, then EPs on the internet, then everything else?
   * Implement via LRU penalty?
