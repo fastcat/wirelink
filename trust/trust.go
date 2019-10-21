@@ -64,17 +64,23 @@ func (l Level) String() string {
 // a fact received from a remote source should be trusted and accepted into
 // the set of locally known facts
 type Evaluator interface {
-	// TrustLevel evaluates the trust level that should be applied to a fact given its source
-	TrustLevel(fact *fact.Fact, source net.IP) Level
-	// IsKnown checks whether the subject of a fact is already known to us
+	// TrustLevel evaluates the trust level that should be applied to a fact given its source,
+	// returning nil if it doesn't have an opinion on the trust level
+	TrustLevel(fact *fact.Fact, source net.IP) *Level
+	// IsKnown checks whether the subject of a fact is already known to the local system,
+	// or false if the peer is new.
+	// TODO: IsKnown doesn't really belong here
 	IsKnown(subject fact.Subject) bool
 }
 
 // ShouldAccept checks whether a fact Atribute should be accepted at a given trust level
-func ShouldAccept(attr fact.Attribute, known bool, level Level) bool {
-	if !known {
-		return level >= AddPeer
+func ShouldAccept(attr fact.Attribute, known bool, level *Level) bool {
+	if level == nil {
+		// no trust evaluator gave an opinion, treat as Untrusted
+		return false
 	}
+	// default threshold is effectively infinite, to be safe
+	threshold := SetTrust
 	switch attr {
 	case fact.AttributeUnknown:
 		// these are just "ping" packets, we should never store or relay them
@@ -83,12 +89,19 @@ func ShouldAccept(attr fact.Attribute, known bool, level Level) bool {
 	case fact.AttributeEndpointV4:
 		fallthrough
 	case fact.AttributeEndpointV6:
-		return level >= Endpoint
+		threshold = Endpoint
 
 	case fact.AttributeAllowedCidrV4:
 		fallthrough
 	case fact.AttributeAllowedCidrV6:
-		return level >= AllowedIPs
+		threshold = AllowedIPs
+	default:
+		// unknown attribute
+		return false
 	}
-	return false
+	// if the peer isn't known to us, then the threshold moves up
+	if !known && threshold < AddPeer {
+		threshold = AddPeer
+	}
+	return *level >= threshold
 }

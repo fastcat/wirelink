@@ -48,21 +48,19 @@ func (c *composite) IsKnown(subject fact.Subject) bool {
 	return false
 }
 
-func (c *composite) TrustLevel(fact *fact.Fact, source net.IP) (ret Level) {
-	first := false
+func (c *composite) TrustLevel(fact *fact.Fact, source net.IP) (ret *Level) {
 	for _, e := range c.inner {
-		if !e.IsKnown(fact.Subject) {
-			continue
-		}
+		// IsKnown is orthogonal to TrustLevel, don't check it here
 		l := e.TrustLevel(fact, source)
-		if c.mode == FirstOnly {
+		if l == nil {
+			continue
+		} else if c.mode == FirstOnly {
 			return l
-		} else if c.mode == LeastPermission && (first || l < ret) {
+		} else if c.mode == LeastPermission && (ret == nil || *l < *ret) {
 			ret = l
-		} else if c.mode == MostPermission && (first || l > ret) {
+		} else if c.mode == MostPermission && (ret == nil || *l > *ret) {
 			ret = l
 		}
-		first = false
 	}
 	return
 }

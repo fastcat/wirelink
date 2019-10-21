@@ -5,48 +5,56 @@ import (
 
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/fact"
+	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/trust"
+	"github.com/fastcat/wirelink/util"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 // CreateTrustEvaluator maps a peer config map into an evaluator that returns the
 // configured trust levels
 func CreateTrustEvaluator(peers Peers) trust.Evaluator {
-	return &configEvaluator{
-		Peers: peers,
-		// the map is lazy-built
-		peerIPs: make(map[wgtypes.Key]net.IP),
+	ret := &configEvaluator{
+		Peers:    peers,
+		peerIPs:  make(map[wgtypes.Key]net.IP),
+		ipToPeer: make(map[[net.IPv6len]byte]wgtypes.Key),
 	}
+	ret.updatePeerMaps()
+	return ret
 }
 
 type configEvaluator struct {
 	Peers
-	peerIPs map[wgtypes.Key]net.IP
+	peerIPs  map[wgtypes.Key]net.IP
+	ipToPeer map[[net.IPv6len]byte]wgtypes.Key
 }
 
 var _ trust.Evaluator = &configEvaluator{}
 
 func (c *configEvaluator) IsKnown(subject fact.Subject) bool {
-	if p, ok := subject.(*fact.PeerSubject); ok {
-		if pc, ok := c.Peers[p.Key]; ok && pc.Trust != nil {
-			return true
-		}
-	}
+	// peers are never known to the config evaluator, only trusted
 	return false
 }
 
-func (c *configEvaluator) TrustLevel(f *fact.Fact, source net.IP) trust.Level {
-	if p, ok := f.Subject.(*fact.PeerSubject); ok {
-		if pc, ok := c.Peers[p.Key]; ok && pc.Trust != nil {
-			pip, ok := c.peerIPs[p.Key]
-			if !ok {
-				pip = autopeer.AutoAddress(p.Key)
-				c.peerIPs[p.Key] = pip
-			}
-			if pip.Equal(source) {
-				return *pc.Trust
-			}
-		}
+func (c *configEvaluator) updatePeerMaps() {
+	for peer := range c.Peers {
+		pip := autopeer.AutoAddress(peer)
+		c.peerIPs[peer] = pip
+		c.ipToPeer[util.IPToBytes(pip)] = peer
 	}
-	return trust.Untrusted
+}
+
+func (c *configEvaluator) TrustLevel(f *fact.Fact, source net.IP) *trust.Level {
+	// we evaluate the trust level based on the _source_, not the _subject_
+	pk, ok := c.ipToPeer[util.IPToBytes(source)]
+	if !ok {
+		log.Info("No configured peer found for source: %v", source)
+		return nil
+	}
+	pc, ok := c.Peers[pk]
+	if !ok {
+		log.Error("WAT: no configuration for recognized source %v = %v", source, pk)
+		return nil
+	}
+	return pc.Trust
 }

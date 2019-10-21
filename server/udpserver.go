@@ -225,6 +225,10 @@ func (s *LinkServer) Port() int {
 	return s.addr.Port
 }
 
+func (s *LinkServer) peerName(peer wgtypes.Key) string {
+	return s.config.Peers.Name(peer)
+}
+
 // deviceState does a mutex-protected access to read the current state of the
 // wireguard device
 func (s *LinkServer) deviceState() (dev *wgtypes.Device, err error) {
@@ -584,13 +588,20 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 			}
 		}
 
+		// track which peers are known to the device, so we know which we should add
+		// this assumes that the prior layer has filtered to not include facts for
+		// peers we shouldn't add
+		localPeers := make(map[wgtypes.Key]bool)
+		maybeRemovePeers := make(map[wgtypes.Key]bool)
+
 		wg := new(sync.WaitGroup)
 		psm := new(sync.Mutex)
-		for i := range dev.Peers {
-			peer := &dev.Peers[i]
+
+		updatePeer := func(peer *wgtypes.Peer) {
 			fg, ok := factsByPeer[peer.PublicKey]
 			if !ok {
-				continue
+				maybeRemovePeers[peer.PublicKey] = true
+				return
 			}
 			psm.Lock()
 			ps := peerStates[peer.PublicKey]
@@ -598,13 +609,42 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				// TODO: inspect returned error?
+				// TODO: inspect returned error? it has already been logged at this point so not much to do with it
 				newState, _ := s.configurePeer(ps, peer, fg, !firstRefresh)
 				psm.Lock()
 				peerStates[peer.PublicKey] = newState
 				psm.Unlock()
 			}()
 		}
+
+		for i := range dev.Peers {
+			peer := &dev.Peers[i]
+			localPeers[peer.PublicKey] = true
+			updatePeer(peer)
+		}
+
+		// add peers for which we have trusted facts but which are not present in the local device
+		for peer := range factsByPeer {
+			if localPeers[peer] {
+				continue
+			}
+			if peer == dev.PublicKey {
+				// don't try to configure the local device as its own peer
+				continue
+			}
+			// don't delete if if we're adding it
+			delete(maybeRemovePeers, peer)
+			// have to make a fake local peer for this, thankfully this is pretty trivial
+			log.Info("Adding new local peer %s", s.peerName(peer))
+			updatePeer(&wgtypes.Peer{
+				PublicKey: peer,
+			})
+		}
+
+		for peer := range maybeRemovePeers {
+			log.Info("TODO: consider removing peer %s", s.peerName(peer))
+		}
+
 		wg.Wait()
 
 		firstRefresh = false
@@ -617,9 +657,10 @@ func (s *LinkServer) configurePeer(
 	facts []*fact.Fact,
 	allowDeconfigure bool,
 ) (state *apply.PeerConfigState, err error) {
+	peerName := s.peerName(peer.PublicKey)
 	// alive check uses 0 for the maxTTL, as we just care whether the alive fact
 	// is still valid now
-	state = inputState.Update(peer, s.config.Peers.Name(peer.PublicKey), s.peerKnowledge.peerAlive(peer, 0))
+	state = inputState.Update(peer, peerName, s.peerKnowledge.peerAlive(peer.PublicKey, 0))
 
 	// TODO: make the lock window here smaller
 	// only want to take the lock for the regions where we change config
@@ -635,7 +676,7 @@ func (s *LinkServer) configurePeer(
 			if err != nil {
 				log.Error("Failed to update peer AllowedIPs: %v", err)
 			} else if added > 0 {
-				log.Info("Added AIPs to peer %s: %d", s.config.Peers.Name(peer.PublicKey), added)
+				log.Info("Added AIPs to peer %s: %d", peerName, added)
 			}
 		}
 		return
@@ -652,12 +693,11 @@ func (s *LinkServer) configurePeer(
 	// routers.
 	// TODO: IsRouter doesn't belong in trust
 	if !s.config.IsRouter && !trust.IsRouter(peer) {
-		changed, err := apply.OnlyAutoIP(s.ctrl, s.config.Iface, peer, s.config.Peers.Name(peer.PublicKey))
+		changed, err := apply.OnlyAutoIP(s.ctrl, s.config.Iface, peer, peerName)
 		if err != nil {
-			log.Error("Failed to restrict peer %s to IPv6-LL only: %v",
-				s.config.Peers.Name(peer.PublicKey), err)
+			log.Error("Failed to restrict peer %s to IPv6-LL only: %v", peerName, err)
 		} else if changed {
-			log.Info("Peer is now IPv6-LL only: %s", s.config.Peers.Name(peer.PublicKey))
+			log.Info("Peer is now IPv6-LL only: %s", peerName)
 		}
 	}
 
@@ -671,7 +711,7 @@ func (s *LinkServer) configurePeer(
 		return
 	}
 
-	log.Info("Trying EP for %s: %v", s.config.Peers.Name(peer.PublicKey), nextEndpoint)
+	log.Info("Trying EP for %s: %v", peerName, nextEndpoint)
 
 	err = s.ctrl.ConfigureDevice(s.config.Iface, wgtypes.Config{
 		Peers: []wgtypes.PeerConfig{
@@ -682,8 +722,7 @@ func (s *LinkServer) configurePeer(
 		},
 	})
 	if err != nil {
-		log.Error("Failed to configure EP for %s: %v: %v",
-			s.config.Peers.Name(peer.PublicKey), nextEndpoint, err)
+		log.Error("Failed to configure EP for %s: %v: %v", peerName, nextEndpoint, err)
 		return
 	}
 

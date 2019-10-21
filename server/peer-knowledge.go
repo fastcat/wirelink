@@ -101,14 +101,14 @@ func (pks peerKnowledgeSet) peerNeeds(peer *wgtypes.Peer, f *fact.Fact, maxTTL t
 
 // peerAlive returns if we have received an alive fact from the peer which is going to be alive
 // for at least `maxTTL`. Commonly `maxTTL` will be set to zero.
-func (pks peerKnowledgeSet) peerAlive(peer *wgtypes.Peer, maxTTL time.Duration) bool {
+func (pks peerKnowledgeSet) peerAlive(peer wgtypes.Key, maxTTL time.Duration) bool {
 	k := peerKnowledgeKey{
 		Key: fact.KeyOf(&fact.Fact{
 			Attribute: fact.AttributeUnknown,
-			Subject:   &fact.PeerSubject{Key: peer.PublicKey},
+			Subject:   &fact.PeerSubject{Key: peer},
 			Value:     fact.EmptyValue{},
 		}),
-		peer: peer.PublicKey,
+		peer: peer,
 	}
 	pks.access.RLock()
 	defer pks.access.RUnlock()

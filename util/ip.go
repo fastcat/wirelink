@@ -27,3 +27,11 @@ func IsIPv6LLMatch(expected net.IP, actual *net.IPNet, local bool) bool {
 	ones, bits := actual.Mask.Size()
 	return ones == expectedOnes && bits == 8*net.IPv6len && bytes.Equal(expected, actual.IP)
 }
+
+// IPToBytes returns the given IP normalized to a 16 byte array,
+// suitable for use as a map key among other things
+func IPToBytes(ip net.IP) (ret [net.IPv6len]byte) {
+	ip = ip.To16()
+	copy(ret[:], ip)
+	return
+}
