@@ -17,8 +17,10 @@ All values are in network byte order if unspecified.
 
 ## Attributes
 
-The following attributes are defined as 1 byte ASCII values:
+The following attributes are defined, mostly as 1 byte ASCII values:
 
+* `0x0`: `Unknown`: Not really unknown, but rather an "I'm here" fact, a cross
+  between a keep-alive and a ping.
 * `e`: `EndpointV4`: Value is a 4 byte IPv4 address followed by a two byte UDP
   port
 * `E`: `EndpointV6`: Value is a 16 byte IPv6 address followed by a two byte UDP
@@ -69,6 +71,9 @@ The `Subject` of a `SignedGroup` is the (public) key that signed it. The value
 is the signature tag (16 bytes) followed by a sequence of concatenated facts.
 Note that this means that a corrupted fact will also prevent parsing following
 facts in the group.
+
+The TTL of a `SignedGroup` is ignored and should be zero. The meaningful TTLs
+come from the facts contained within it.
 
 Signing (authentication) is done with the XChaCha20-Poly1305 AEAD construction,
 the same as wireguard itself uses, where we derive the private key for the
