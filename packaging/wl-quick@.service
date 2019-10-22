@@ -12,5 +12,17 @@ Restart=on-failure
 # but not too often, as the underlying errors are unlikely to resolve that fast
 RestartSec=15
 
+# lock down service permissions
+PrivateTmp=true
+ReadOnlyPaths=/
+CapabilityBoundingSet=CAP_NET_ADMIN
+NoNewPrivileges=true
+SecureBits=~keep-caps
+SecureBits=no-setuid-fixup no-setuid-fixup-locked keep-caps-locked
+# for some reason specifying these on separate lines makes things work
+# where they don't when combined esp. with the prior line?
+SecureBits=noroot
+SecureBits=noroot-locked
+
 [Install]
 WantedBy=multi-user.target
