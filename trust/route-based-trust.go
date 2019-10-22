@@ -16,9 +16,8 @@ import (
 // shorter than the IP length) are allowed to provide AllowedIPs for other
 // peers, and nobody is allowed to provide new peers (peer public keys must be
 // added by the administrator)
-func CreateRouteBasedTrust(peers []wgtypes.Peer, sourcePort int) Evaluator {
+func CreateRouteBasedTrust(peers []wgtypes.Peer) Evaluator {
 	ret := routeBasedTrust{
-		sourcePort: sourcePort,
 		peersByIP:  make(map[[net.IPv6len]byte]*peerWithAddr),
 		peersByKey: make(map[wgtypes.Key]*peerWithAddr),
 	}
@@ -41,7 +40,6 @@ type peerWithAddr struct {
 }
 
 type routeBasedTrust struct {
-	sourcePort int
 	peersByIP  map[[net.IPv6len]byte]*peerWithAddr
 	peersByKey map[wgtypes.Key]*peerWithAddr
 }
@@ -50,13 +48,6 @@ type routeBasedTrust struct {
 var _ Evaluator = &routeBasedTrust{}
 
 func (rbt *routeBasedTrust) TrustLevel(f *fact.Fact, source net.UDPAddr) *Level {
-	// if we are validating source ports, then we apply that check _before_ anything
-	// that might return `nil`
-	if rbt.sourcePort > 0 && source.Port != rbt.sourcePort {
-		ret := Untrusted
-		return &ret
-	}
-
 	ps, ok := f.Subject.(*fact.PeerSubject)
 	// we only look at PeerSubject facts for this model
 	if !ok {

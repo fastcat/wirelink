@@ -457,7 +457,7 @@ func (s *LinkServer) processChunks(
 		evaluator := trust.CreateComposite(trust.FirstOnly,
 			// TODO: we can cache the config trust to avoid some re-computation
 			config.CreateTrustEvaluator(s.config.Peers),
-			trust.CreateRouteBasedTrust(dev.Peers, s.config.Port),
+			trust.CreateRouteBasedTrust(dev.Peers),
 		)
 		// add all the new not-expired and _trusted_ facts
 		for _, rf := range chunk {
