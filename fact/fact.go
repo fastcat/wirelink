@@ -12,6 +12,10 @@ const (
 	AttributeEndpointV6    Attribute = 'E'
 	AttributeAllowedCidrV4 Attribute = 'a'
 	AttributeAllowedCidrV6 Attribute = 'A'
+	// A signed group is a bit different from other facts
+	// in this case, the subject is actually the source,
+	// and the value
+	AttributeSignedGroup Attribute = 'S'
 )
 
 // Fact represents a single piece of information about a subject, with an

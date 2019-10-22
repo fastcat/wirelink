@@ -62,6 +62,15 @@ func Parse(p *OnWire) (f *Fact, err error) {
 		if err != nil {
 			return
 		}
+	case byte(AttributeSignedGroup):
+		subject, err = ParsePeerSubject(p.subject)
+		if err != nil {
+			return
+		}
+		value, err = ParseSignedGroupValue(p.value)
+		if err != nil {
+			return
+		}
 	default:
 		return nil, fmt.Errorf("Unrecognized attribute 0x%02x", p.attribute)
 	}
@@ -130,4 +139,19 @@ func ParseCidrV6(data []byte) (*IPNetValue, error) {
 			Mask: net.CIDRMask(int(data[net.IPv6len]), 8*net.IPv6len),
 		},
 	}, nil
+}
+
+// ParseSignedGroupValue parses a bytes value as a Nonce, Tag, and inner data array
+func ParseSignedGroupValue(data []byte) (*SignedGroupValue, error) {
+	// smallest possible inner fact is 4 bytes (assuming empty subject and value)
+	if len(data) < sgvOverhead+4 {
+		return nil, fmt.Errorf("SignedGroupValue should be at least %d+4 bytes long", sgvOverhead)
+	}
+	var ret SignedGroupValue
+	copy(ret.Nonce[:], data[0:len(ret.Nonce)])
+	copy(ret.Tag[:], data[len(ret.Nonce):len(ret.Nonce)+len(ret.Tag)])
+	// deserialize copied the packet buffer so we can just reference the rest of it as-is
+	ret.InnerBytes = data[len(ret.Nonce)+len(ret.Tag):]
+
+	return &ret, nil
 }

@@ -18,7 +18,9 @@ import (
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/peerfacts"
+	"github.com/fastcat/wirelink/signing"
 	"github.com/fastcat/wirelink/trust"
+	"github.com/pkg/errors"
 )
 
 // LinkServer represents the server component of wirelink
@@ -38,6 +40,7 @@ type LinkServer struct {
 	// peerKnowledgeSet tracks what is known by each peer to avoid sending them
 	// redundant information
 	peerKnowledge *peerKnowledgeSet
+	signer        *signing.Signer
 	// counter for asking it to print out its current info
 	printsRequested *int32
 	// folks listening for notification that we have closed
@@ -114,6 +117,7 @@ func Create(ctrl *wgctrl.Client, config *config.Server) (*LinkServer, error) {
 		wait:            new(sync.WaitGroup),
 		endReader:       make(chan bool),
 		peerKnowledge:   newPKS(),
+		signer:          signing.New(&device.PrivateKey),
 		printsRequested: new(int32),
 	}
 
@@ -381,10 +385,38 @@ func (s *LinkServer) readPackets(endReader <-chan bool, packets chan<- *Received
 				log.Error("Unable to parse fact: %v", err)
 				continue
 			}
-			rcv := &ReceivedFact{fact: pp, source: *addr}
-			packets <- rcv
+			if pp.Attribute == fact.AttributeSignedGroup {
+				err = s.processGroup(pp, packets)
+				if err != nil {
+					log.Error("Unable to process SignedGroup: %v", err)
+				}
+			} else {
+				rcv := &ReceivedFact{fact: pp, source: *addr}
+				packets <- rcv
+			}
 		}
 	}
+}
+
+func (s *LinkServer) processGroup(f *fact.Fact, packets chan<- *ReceivedFact) error {
+	ps, ok := f.Subject.(*fact.PeerSubject)
+	if !ok {
+		return fmt.Errorf("SignedGroup has non-PeerSubject: %T", f.Subject)
+	}
+	pv, ok := f.Value.(*fact.SignedGroupValue)
+	if !ok {
+		return fmt.Errorf("SignedGroup has non-SigendGroupValue: %T", f.Value)
+	}
+
+	valid, err := s.signer.VerifyFrom(pv.Nonce, pv.Tag, pv.InnerBytes, &ps.Key)
+	if err != nil {
+		return errors.Wrapf(err, "Failed to validate SignedGroup signature")
+	} else if !valid {
+		// should never get here, verification errors should always make an error
+		return fmt.Errorf("Unknown error validating SignedGroup")
+	}
+
+	return fmt.Errorf("Not implemented")
 }
 
 func (s *LinkServer) receivePackets(

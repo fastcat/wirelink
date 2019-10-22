@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"net"
 
+	"golang.org/x/crypto/chacha20poly1305"
+	"golang.org/x/crypto/poly1305"
+
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
 	"github.com/fastcat/wirelink/util"
@@ -98,4 +101,30 @@ func (v EmptyValue) Bytes() []byte {
 
 func (v EmptyValue) String() string {
 	return "<empty>"
+}
+
+// SignedGroupValue represents a signed chunk of other fact data.
+// Note that this structure does _not_ include parsing those inner bytes!
+type SignedGroupValue struct {
+	Nonce      [chacha20poly1305.NonceSizeX]byte
+	Tag        [poly1305.TagSize]byte
+	InnerBytes []byte
+}
+
+const sgvOverhead = chacha20poly1305.NonceSizeX + poly1305.TagSize
+
+var _ Value = &SignedGroupValue{}
+
+// Bytes gives the on-wire form of the value
+func (sgv *SignedGroupValue) Bytes() []byte {
+	ret := make([]byte, 0, len(sgv.Nonce)+len(sgv.Tag)+len(sgv.InnerBytes))
+	ret = append(ret, sgv.Nonce[:]...)
+	ret = append(ret, sgv.Tag[:]...)
+	ret = append(ret, sgv.InnerBytes...)
+	return ret
+}
+
+func (sgv *SignedGroupValue) String() string {
+	// could parse the inner bytes for this, but probably not worth it
+	return fmt.Sprintf("{SGV: %d bytes}", len(sgv.InnerBytes))
 }
