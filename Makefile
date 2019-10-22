@@ -30,6 +30,11 @@ lint-gopls:
 	find -type f -name \*.go -print0 | xargs -0 dirname -z | sort -uz | xargs -P0 -0 -n1 sh -c 'set -x ; gopls check "$$1"/*.go' --
 test: vet lint
 	go test ./...
+coverage.out: test
+	go test -coverprofile=coverage.out ./...
+cover: coverage.out
+coverage.html: coverage.out
+	go tool cover -html=coverage.out -o=coverage.html
 
 run:
 	go run -exec sudo .
@@ -78,7 +83,8 @@ clean: checkinstall-clean
 	rm -vf ./wirelink
 #TODO: any way to clean the go cache for just this package?
 
-.PHONY: all fmt compile vet lint lint-golint lint-gopls test run install everything clean
+.PHONY: all fmt compile run install everything clean
+.PHONY: vet lint lint-golint lint-gopls test cover htmlcover
 .PHONY: checkinstall checkinstall-prep checkinstall-clean
 # wirelink isn't actually phony, but we can't compute deps for it, so pretend
 .PHONY: wirelink

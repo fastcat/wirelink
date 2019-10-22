@@ -111,6 +111,8 @@ type SignedGroupValue struct {
 	InnerBytes []byte
 }
 
+var _ Value = &SignedGroupValue{}
+
 const sgvOverhead = chacha20poly1305.NonceSizeX + poly1305.TagSize
 
 // we only need to worry about IPv6 for this
@@ -123,8 +125,6 @@ const sgvFactOverhead = 4 + wgtypes.KeyLen
 // above which fragmentation or packet drops may happen. This is computed based
 // on the max safe UDP payload for IPv6, minus the fact & crypto overheads.
 const SignedGroupMaxSafeInnerLength = udpMaxPayload - sgvFactOverhead - sgvOverhead
-
-var _ Value = &SignedGroupValue{}
 
 // Bytes gives the on-wire form of the value
 func (sgv *SignedGroupValue) Bytes() []byte {
