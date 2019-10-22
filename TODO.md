@@ -50,6 +50,9 @@
 * Drop privileges after startup
   * Close the netlink socket for local interface config when we don't need it any more
   * Verify `wgctrl` keeps the netlink socket open so that this isn't an issue
+    * Looks like it does
+  * This is obstructed by Go's lack of support:
+    https://github.com/golang/go/issues/1435
 * Improved trust models
 * Sign facts with peer keys (protects against forgery from other processes on the same host)
   * This would obviate source port validation
