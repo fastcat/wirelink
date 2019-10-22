@@ -28,8 +28,19 @@ func (f *OnWire) Serialize() ([]byte, error) {
 
 // Deserialize tries to turn a packet from the wire into the intermediate structure
 func Deserialize(data []byte) (*OnWire, error) {
+	ret, remainder, err := deserializeSlice(data)
+	if err != nil {
+		return nil, err
+	}
+	if len(remainder) != 0 {
+		return nil, fmt.Errorf("Data is too long for header values")
+	}
+	return ret, nil
+}
+
+func deserializeSlice(data []byte) (*OnWire, []byte, error) {
 	if len(data) < 4 {
-		return nil, fmt.Errorf("data is impossibly short")
+		return nil, nil, fmt.Errorf("data is impossibly short")
 	}
 
 	attribute := data[0]
@@ -37,19 +48,19 @@ func Deserialize(data []byte) (*OnWire, error) {
 	subjectLen := data[2]
 	valueLen := data[3]
 
-	if len(data) != 4+int(subjectLen)+int(valueLen) {
-		return nil, fmt.Errorf("data is too short for header values")
+	if len(data) < 4+int(subjectLen)+int(valueLen) {
+		return nil, nil, fmt.Errorf("data is too short for header values")
 	}
 
 	subject := make([]byte, subjectLen)
 	copy(subject, data[4:4+subjectLen])
 	value := make([]byte, valueLen)
-	copy(value, data[4+subjectLen:])
+	copy(value, data[4+subjectLen:4+subjectLen+valueLen])
 
 	return &OnWire{
 		attribute: attribute,
 		ttl:       ttl,
 		subject:   subject,
 		value:     value,
-	}, nil
+	}, data[4+subjectLen+valueLen:], nil
 }

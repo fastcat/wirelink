@@ -6,6 +6,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/pkg/errors"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -154,4 +155,28 @@ func ParseSignedGroupValue(data []byte) (*SignedGroupValue, error) {
 	ret.InnerBytes = data[len(ret.Nonce)+len(ret.Tag):]
 
 	return &ret, nil
+}
+
+// ParseInner parses the inner bytes of a SignedGroupValue into facts.
+// Validating the signature must be done separately, and should be done before
+// calling this method.
+func (sgv *SignedGroupValue) ParseInner() (ret []*Fact, err error) {
+	o := 0
+	for b := sgv.InnerBytes; len(b) > 0; {
+		var w *OnWire
+		var rem []byte
+		w, rem, err = deserializeSlice(b)
+		if err != nil {
+			err = errors.Wrapf(err, "Unable to deserialize from SignedGroupValue at %d", o)
+			return
+		}
+		f, err := Parse(w)
+		if err != nil {
+			err = errors.Wrapf(err, "Unable to parse from SignedGroupValue at %d", o)
+		}
+		ret = append(ret, f)
+		o += len(b) - len(rem)
+		b = rem
+	}
+	return
 }

@@ -26,11 +26,11 @@ func TestParseSignedGroup_Trivial(t *testing.T) {
 	}
 	w, err := f.ToWire()
 	if err != nil {
-		t.Fatal("Unable to wire format empty fact")
+		t.Fatalf("Unable to wire format empty fact: %v", err)
 	}
 	p, err := w.Serialize()
 	if err != nil {
-		t.Fatal("Unable to serialize empty fact")
+		t.Fatalf("Unable to serialize empty fact: %v", err)
 	}
 
 	f = &Fact{
@@ -43,26 +43,26 @@ func TestParseSignedGroup_Trivial(t *testing.T) {
 	}
 	w, err = f.ToWire()
 	if err != nil {
-		t.Fatal("Unable to wire format signed group")
+		t.Fatalf("Unable to wire format signed group: %v", err)
 	}
 	if w.ttl != 0 {
 		t.Errorf("Wire TTL is %d, not 0", w.ttl)
 	}
 	p, err = w.Serialize()
 	if err != nil {
-		t.Fatal("Unable to serialize signed group")
+		t.Fatalf("Unable to serialize signed group: %v", err)
 	}
 
 	w, err = Deserialize(p)
 	if err != nil {
-		t.Fatal("Unable to deserialize signed group")
+		t.Fatalf("Unable to deserialize signed group: %v", err)
 	}
 	if w.ttl != 0 {
 		t.Errorf("Deserialized TTL is %d, not 0", w.ttl)
 	}
 	f, err = Parse(w)
 	if err != nil {
-		t.Fatal("Unable to parse signed group")
+		t.Fatalf("Unable to parse signed group: %v", err)
 	}
 
 	if f.Attribute != AttributeSignedGroup {
