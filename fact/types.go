@@ -113,6 +113,17 @@ type SignedGroupValue struct {
 
 const sgvOverhead = chacha20poly1305.NonceSizeX + poly1305.TagSize
 
+// we only need to worry about IPv6 for this
+const udpMaxPayload = 1212
+
+// fixed prefix + subject (key) length
+const sgvFactOverhead = 4 + wgtypes.KeyLen
+
+// SignedGroupMaxSafeInnerLength is the maximum safe length for `InnerBytes`
+// above which fragmentation or packet drops may happen. This is computed based
+// on the max safe UDP payload for IPv6, minus the fact & crypto overheads.
+const SignedGroupMaxSafeInnerLength = udpMaxPayload - sgvFactOverhead - sgvOverhead
+
 var _ Value = &SignedGroupValue{}
 
 // Bytes gives the on-wire form of the value
