@@ -656,6 +656,8 @@ func (s *LinkServer) deletePeers(
 	dev *wgtypes.Device,
 	removePeer map[wgtypes.Key]bool,
 ) (err error) {
+	defer wg.Done()
+
 	// only run peer deletion if we have a peer with DelPeer trust online
 	// and it has been online for longer than the fact TTL so that we are
 	// reasonably sure we have all the data from it ... and we are not a router
