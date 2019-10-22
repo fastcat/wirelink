@@ -14,7 +14,7 @@ const (
 	AttributeAllowedCidrV6 Attribute = 'A'
 	// A signed group is a bit different from other facts
 	// in this case, the subject is actually the source,
-	// and the value
+	// and the value is a signed aggregate of other facts.
 	AttributeSignedGroup Attribute = 'S'
 )
 
