@@ -52,7 +52,7 @@ func (ga *GroupAccumulator) MakeSignedGroups(
 	recipient *wgtypes.Key,
 ) ([]Fact, error) {
 	ret := make([]Fact, 0, len(ga.groups))
-	subject := PeerSubject{Key: *recipient}
+	subject := PeerSubject{Key: s.PublicKey}
 	for _, g := range ga.groups {
 		if len(g) == 0 {
 			continue

@@ -1,6 +1,9 @@
 package fact
 
-import "fmt"
+import (
+	"fmt"
+	"unicode/utf8"
+)
 
 // OnWire is the intermediate representation of fact packet on the wire
 type OnWire struct {
@@ -16,11 +19,18 @@ func (f *OnWire) Serialize() ([]byte, error) {
 		return nil, fmt.Errorf("subject length %d is out of range", len(f.subject))
 	}
 	// value can be empty for "ping" packets
-	if len(f.value) > 255 {
-		return nil, fmt.Errorf("value length %d is out of range", len(f.value))
+	// value of 255 is a special case that means there
+	if len(f.value) > utf8.MaxRune {
+		return nil, fmt.Errorf("value length %d is out of range (must be <= %d)", len(f.value), utf8.MaxRune)
 	}
-	ret := make([]byte, 0, 4+len(f.subject)+len(f.value))
-	ret = append(ret, f.attribute, f.ttl, byte(len(f.subject)), byte(len(f.value)))
+	// packet length is 1 byte for attribute, 1 byte for ttl, 1 byte for subject length,
+	// 1-4 bytes for value length, N bytes for subject, and N bytes for value
+	valueLenLen := utf8.RuneLen(rune(len(f.value)))
+	ret := make([]byte, 0, 4+len(f.subject)+valueLenLen+len(f.value))
+	ret = append(ret, f.attribute, f.ttl, byte(len(f.subject)))
+	p := len(ret)
+	ret = ret[0 : p+valueLenLen]
+	utf8.EncodeRune(ret[p:p+valueLenLen], rune(len(f.value)))
 	ret = append(ret, f.subject...)
 	ret = append(ret, f.value...)
 	return ret, nil
@@ -38,6 +48,8 @@ func Deserialize(data []byte) (*OnWire, error) {
 	return ret, nil
 }
 
+// deserializeSlice tries to read the first valid fact out of a buffer into the intermediate structure,
+// returning that and the remainder of the buffer, and any error
 func deserializeSlice(data []byte) (*OnWire, []byte, error) {
 	if len(data) < 4 {
 		return nil, nil, fmt.Errorf("data is impossibly short")
@@ -45,22 +57,28 @@ func deserializeSlice(data []byte) (*OnWire, []byte, error) {
 
 	attribute := data[0]
 	ttl := data[1]
-	subjectLen := data[2]
-	valueLen := data[3]
+	subjectLen := int(data[2])
+	if !utf8.FullRune(data[3:]) {
+		return nil, nil, fmt.Errorf("value length encoding is invalid")
+	}
+	r, valueLenLen := utf8.DecodeRune(data[3:])
+	valueLen := int(r)
+	// skip data past the header
+	data = data[3+valueLenLen:]
 
-	if len(data) < 4+int(subjectLen)+int(valueLen) {
-		return nil, nil, fmt.Errorf("data is too short for header values")
+	if len(data) < subjectLen+valueLen {
+		return nil, nil, fmt.Errorf("data is too short for header values: %d < %d+%d", len(data), subjectLen, valueLen)
 	}
 
 	subject := make([]byte, subjectLen)
-	copy(subject, data[4:4+subjectLen])
+	copy(subject, data[0:subjectLen])
 	value := make([]byte, valueLen)
-	copy(value, data[4+subjectLen:4+subjectLen+valueLen])
+	copy(value, data[subjectLen:subjectLen+valueLen])
 
 	return &OnWire{
 		attribute: attribute,
 		ttl:       ttl,
 		subject:   subject,
 		value:     value,
-	}, data[4+subjectLen+valueLen:], nil
+	}, data[subjectLen+valueLen:], nil
 }

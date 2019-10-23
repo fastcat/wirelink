@@ -7,7 +7,9 @@ Each UDP packet on the wire has the following payload:
 * Attribute (1 byte)
 * TTL (1 byte)
 * Subject length (1 byte)
-* Value length (1 byte)
+* Value length (1-4 bytes)
+  * This is encoded using the UTF-8 scheme, but it is encoding a _number_, not
+    a character
 * Subject (N bytes)
 * Value (N bytes)
 

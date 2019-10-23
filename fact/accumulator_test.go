@@ -7,29 +7,7 @@ import (
 	"github.com/fastcat/wirelink/signing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
-
-func mustEmptyPacket(t *testing.T) (*Fact, *OnWire, []byte) {
-	f := Fact{
-		Attribute: AttributeUnknown,
-		Subject:   &PeerSubject{},
-		Expires:   time.Time{},
-		Value:     EmptyValue{},
-	}
-	w, err := f.ToWire()
-	require.Nil(t, err)
-	p, err := w.Serialize()
-	require.Nil(t, err)
-	return &f, w, p
-}
-
-func mustKeyPair(t *testing.T) (privateKey, publicKey *wgtypes.Key) {
-	priv, err := wgtypes.GeneratePrivateKey()
-	require.Nil(t, err)
-	pub := priv.PublicKey()
-	return &priv, &pub
-}
 
 func TestAccumulatorLimits(t *testing.T) {
 	ef, _, ep := mustEmptyPacket(t)
@@ -55,7 +33,7 @@ func TestAccumulatorSigning(t *testing.T) {
 		require.Nil(t, err)
 	}
 
-	priv, _ := mustKeyPair(t)
+	priv, signer := mustKeyPair(t)
 	_, pub := mustKeyPair(t)
 
 	s := signing.New(priv)
@@ -66,8 +44,10 @@ func TestAccumulatorSigning(t *testing.T) {
 	require.Len(t, facts, 2, "Should have two SGVs")
 
 	for i, sf := range facts {
-		assert.Equal(t, sf.Attribute, AttributeSignedGroup, "Signing output should be SignedGroups")
+		assert.Equal(t, AttributeSignedGroup, sf.Attribute, "Signing output should be SignedGroups")
 		assert.IsType(t, &PeerSubject{}, sf.Subject)
+		// the subject must be the public key of the signer, _not the recipient_
+		assert.Equal(t, *signer, sf.Subject.(*PeerSubject).Key)
 		assert.False(t, sf.Expires.After(time.Now()), "Expiration should be <= now")
 		require.IsType(t, &SignedGroupValue{}, sf.Value, "SG Value should be an SGV")
 		sgv := sf.Value.(*SignedGroupValue)

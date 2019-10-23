@@ -9,12 +9,14 @@ import (
 // Signer represents a helper that does signing and verification
 type Signer struct {
 	privateKey wgtypes.Key
+	PublicKey  wgtypes.Key
 }
 
 // New creates a new Signer using the given private key
 func New(privateKey *wgtypes.Key) *Signer {
 	return &Signer{
 		privateKey: *privateKey,
+		PublicKey:  privateKey.PublicKey(),
 	}
 }
 

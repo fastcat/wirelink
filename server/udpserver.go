@@ -263,7 +263,9 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device) (ret []*fact.Fact, err er
 func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, facts []*fact.Fact, timeout time.Duration) (int, []error) {
 	var counter int32
 	var wg sync.WaitGroup
+
 	s.conn.SetWriteDeadline(time.Now().Add(timeout))
+
 	errs := make(chan error)
 	pingFact := &fact.Fact{
 		Subject:   &fact.PeerSubject{Key: self},
@@ -271,18 +273,28 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 		Value:     fact.EmptyValue{},
 		Expires:   time.Now().Add(FactTTL),
 	}
+
 	for i, p := range peers {
 		// don't try to send info to the peer if we don't have an endpoint for it
 		if p.Endpoint == nil {
 			continue
 		}
+		ga := fact.NewAccumulator(fact.SignedGroupMaxSafeInnerLength)
 		// we want alive facts to live for the normal FactTTL, but we want to send them every AlivePeriod
 		// so the "forgetting window" is the difference between those
 		// we don't need to add the extra ChunkPeriod+1 buffer in this case
 		if s.peerKnowledge.peerNeeds(&p, pingFact, FactTTL-AlivePeriod) {
-			wg.Add(1)
-			go s.sendFact(&peers[i], pingFact, &wg, &counter, errs)
+			err := ga.AddFact(pingFact)
+			if err != nil {
+				log.Error("Unable to add ping fact to group: %v", err)
+			} else {
+				// log.Info("Peer %s needs ping", s.peerName(p.PublicKey))
+				// assume we will successfully send and peer will accept the info
+				// if these assumptions are wrong, re-sending more often is unlikely to help
+				s.peerKnowledge.upsertSent(&p, pingFact)
+			}
 		}
+
 		for _, f := range facts {
 			// don't tell peers things about themselves
 			// they won't accept it unless we are a router,
@@ -296,11 +308,30 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 			if !s.peerKnowledge.peerNeeds(&p, f, ChunkPeriod+time.Second) {
 				continue
 			}
+			err := ga.AddFact(f)
+			if err != nil {
+				log.Error("Unable to add fact to group: %v", err)
+			} else {
+				// log.Info("Peer %s needs %v", s.peerName(p.PublicKey), f)
+				// assume we will successfully send and peer will accept the info
+				// if these assumptions are wrong, re-sending more often is unlikely to help
+				s.peerKnowledge.upsertSent(&p, f)
+			}
+		}
+
+		sgfs, err := ga.MakeSignedGroups(s.signer, &p.PublicKey)
+		if err != nil {
+			log.Error("Unable to sign groups: %v", err)
+			continue
+		}
+
+		for j := range sgfs {
 			wg.Add(1)
-			// can't use &p here because we get the loop var instead of the array element
-			go s.sendFact(&peers[i], f, &wg, &counter, errs)
+			// have to use &arr[idx] here because we don't want to bind the loop var
+			go s.sendFact(&peers[i], &sgfs[j], &wg, &counter, errs)
 		}
 	}
+
 	go func() { wg.Wait(); close(errs) }()
 	var errlist []error
 	for err := range errs {
@@ -347,19 +378,13 @@ func (s *LinkServer) sendFact(peer *wgtypes.Peer, f *fact.Fact, wg *sync.WaitGro
 
 	// else/fall-through: sent OK
 	atomic.AddInt32(counter, 1)
-
-	// assume peers know things we send them
-	// if they ignore us, sending it again is not going to help
-	s.peerKnowledge.upsertSent(peer, f)
 }
 
 func (s *LinkServer) readPackets(endReader <-chan bool, packets chan<- *ReceivedFact) {
 	defer s.wait.Done()
 	defer close(packets)
 
-	// longest possible fact packet is an ipv6 endpoint
-	// which is 1(attr) + 1(ttl) + 1(len)+wgtypes.KeyLen + 1(len)+net.IPv6len+2
-	var buffer [4 + wgtypes.KeyLen + net.IPv6len + 2]byte
+	var buffer [fact.UDPMaxSafePayload * 2]byte
 	for {
 		select {
 		case <-endReader:
@@ -377,7 +402,7 @@ func (s *LinkServer) readPackets(endReader <-chan bool, packets chan<- *Received
 			}
 			p, err := fact.Deserialize(buffer[:n])
 			if err != nil {
-				log.Error("Unable to deserialize fact: %v", err)
+				log.Error("Unable to deserialize fact: %v %v", err, buffer[:n])
 				continue
 			}
 			pp, err := fact.Parse(p)
@@ -386,7 +411,7 @@ func (s *LinkServer) readPackets(endReader <-chan bool, packets chan<- *Received
 				continue
 			}
 			if pp.Attribute == fact.AttributeSignedGroup {
-				err = s.processGroup(pp, packets)
+				err = s.processGroup(pp, addr, packets)
 				if err != nil {
 					log.Error("Unable to process SignedGroup: %v", err)
 				}
@@ -398,7 +423,7 @@ func (s *LinkServer) readPackets(endReader <-chan bool, packets chan<- *Received
 	}
 }
 
-func (s *LinkServer) processGroup(f *fact.Fact, packets chan<- *ReceivedFact) error {
+func (s *LinkServer) processGroup(f *fact.Fact, source *net.UDPAddr, packets chan<- *ReceivedFact) error {
 	ps, ok := f.Subject.(*fact.PeerSubject)
 	if !ok {
 		return fmt.Errorf("SignedGroup has non-PeerSubject: %T", f.Subject)
@@ -410,13 +435,20 @@ func (s *LinkServer) processGroup(f *fact.Fact, packets chan<- *ReceivedFact) er
 
 	valid, err := s.signer.VerifyFrom(pv.Nonce, pv.Tag, pv.InnerBytes, &ps.Key)
 	if err != nil {
-		return errors.Wrapf(err, "Failed to validate SignedGroup signature")
+		return errors.Wrapf(err, "Failed to validate SignedGroup signature from %s", s.peerName(ps.Key))
 	} else if !valid {
 		// should never get here, verification errors should always make an error
 		return fmt.Errorf("Unknown error validating SignedGroup")
 	}
 
-	return fmt.Errorf("Not implemented")
+	inner, err := pv.ParseInner()
+	if err != nil {
+		return errors.Wrapf(err, "Unable to parse SignedGroup inner")
+	}
+	for _, innerFact := range inner {
+		packets <- &ReceivedFact{fact: innerFact, source: *source}
+	}
+	return nil
 }
 
 func (s *LinkServer) receivePackets(
