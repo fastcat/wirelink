@@ -53,8 +53,6 @@
     https://github.com/golang/go/issues/1435
   * Worked around for now by having systemd units drop privs
 * Improved trust models
-* Sign facts with peer keys (protects against forgery from other processes on the same host)
-  * This would obviate source port validation
 
 ## Fancy
 

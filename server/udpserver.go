@@ -416,8 +416,9 @@ func (s *LinkServer) readPackets(endReader <-chan bool, packets chan<- *Received
 					log.Error("Unable to process SignedGroup: %v", err)
 				}
 			} else {
-				rcv := &ReceivedFact{fact: pp, source: *addr}
-				packets <- rcv
+				log.Error("Ignoring unsigned fact from %v", addr)
+				// rcv := &ReceivedFact{fact: pp, source: *addr}
+				// packets <- rcv
 			}
 		}
 	}

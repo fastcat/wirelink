@@ -33,6 +33,10 @@ The following attributes are defined, mostly as 1 byte ASCII values:
   CIDR prefix length
 * `S`: `SignedGroup`: Value is a signed group of facts (see below)
 
+In practice, the only attribute that appears directly on the wire is the
+`SignedGroup`. All other attributes are always wrapped in one of those to both
+aggregate data into fewer packets and to provide security.
+
 ## Subjects
 
 Currently all attributes use a single kind of subject, namely a wireguard

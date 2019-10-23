@@ -170,9 +170,16 @@ func (sgv *SignedGroupValue) ParseInner() (ret []*Fact, err error) {
 			err = errors.Wrapf(err, "Unable to deserialize from SignedGroupValue at %d", o)
 			return
 		}
-		f, err := Parse(w)
+		var f *Fact
+		f, err = Parse(w)
 		if err != nil {
 			err = errors.Wrapf(err, "Unable to parse from SignedGroupValue at %d", o)
+			return
+		}
+		// Don't allow nested signed groups for now
+		if f.Attribute == AttributeSignedGroup {
+			err = fmt.Errorf("SignedGroups must not be nested")
+			return
 		}
 		ret = append(ret, f)
 		o += len(b) - len(rem)
