@@ -612,6 +612,7 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 	defer s.wait.Done()
 
 	peerStates := make(map[wgtypes.Key]*apply.PeerConfigState)
+	psm := new(sync.Mutex)
 
 	// the first chunk we get is usually pretty incomplete
 	// avoid deconfiguring peers until we get a second chunk
@@ -647,11 +648,13 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 		}
 
 		// trim `peerStates` to just the current peers
+		psm.Lock()
 		for k := range peerStates {
 			if _, ok := factsByPeer[k]; !ok {
 				delete(peerStates, k)
 			}
 		}
+		psm.Unlock()
 
 		// track which peers are known to the device, so we know which we should add
 		// this assumes that the prior layer has filtered to not include facts for
@@ -660,7 +663,6 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 		removePeer := make(map[wgtypes.Key]bool)
 
 		wg := new(sync.WaitGroup)
-		psm := new(sync.Mutex)
 
 		updatePeer := func(peer *wgtypes.Peer) {
 			fg, ok := factsByPeer[peer.PublicKey]
@@ -707,7 +709,7 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 		}
 
 		wg.Add(1)
-		go s.deletePeers(wg, peerStates, dev, removePeer)
+		go s.deletePeers(wg, peerStates, psm, dev, removePeer)
 
 		wg.Wait()
 
@@ -718,6 +720,7 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 func (s *LinkServer) deletePeers(
 	wg *sync.WaitGroup,
 	peerStates map[wgtypes.Key]*apply.PeerConfigState,
+	peerStatesMutex *sync.Mutex,
 	dev *wgtypes.Device,
 	removePeer map[wgtypes.Key]bool,
 ) (err error) {
@@ -733,7 +736,9 @@ func (s *LinkServer) deletePeers(
 			if pc.Trust == nil || *pc.Trust < trust.DelPeer {
 				continue
 			}
+			peerStatesMutex.Lock()
 			pcs, ok := peerStates[pk]
+			peerStatesMutex.Unlock()
 			if !ok {
 				continue
 			}
