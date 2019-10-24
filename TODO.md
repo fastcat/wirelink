@@ -66,8 +66,6 @@
   * Need to be careful not to leave a peer in a dead setup (instead of resetting AllowedIPs)
 * Tell routers who we want to talk to (a peer-valued fact)
   * Only tell leaves info about peers they want
-* Multi-fact packets
-  * How to find out path MTU to avoid fragmentation?
 
 ### Config
 
