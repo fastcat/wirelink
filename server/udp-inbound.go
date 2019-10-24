@@ -5,6 +5,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/config"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
@@ -67,6 +68,12 @@ func (s *LinkServer) processGroup(f *fact.Fact, source *net.UDPAddr, packets cha
 	if !ok {
 		return fmt.Errorf("SignedGroup has non-SigendGroupValue: %T", f.Value)
 	}
+
+	if !autopeer.AutoAddress(ps.Key).Equal(source.IP) {
+		return fmt.Errorf("SignedGroup source %v does not match key %v", source.IP, ps.Key)
+	}
+	// TODO: check the key is locally known/trusted
+	// for now we have a weak indirect version of that based on the trust model checking the source IP
 
 	valid, err := s.signer.VerifyFrom(pv.Nonce, pv.Tag, pv.InnerBytes, &ps.Key)
 	if err != nil {
