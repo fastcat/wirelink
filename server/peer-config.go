@@ -70,7 +70,7 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 			go func() {
 				defer wg.Done()
 				// TODO: inspect returned error? it has already been logged at this point so not much to do with it
-				newState, _ := s.configurePeer(ps, peer, fg, !firstRefresh)
+				newState, _ := s.configurePeer(ps, &dev.PublicKey, peer, fg, !firstRefresh)
 				psm.Lock()
 				peerStates[peer.PublicKey] = newState
 				psm.Unlock()
@@ -174,6 +174,7 @@ func (s *LinkServer) deletePeers(
 
 func (s *LinkServer) configurePeer(
 	inputState *apply.PeerConfigState,
+	self *wgtypes.Key,
 	peer *wgtypes.Peer,
 	facts []*fact.Fact,
 	allowDeconfigure bool,
@@ -234,6 +235,9 @@ func (s *LinkServer) configurePeer(
 					pcfg = &wgtypes.PeerConfig{PublicKey: peer.PublicKey}
 				}
 				pcfg.Endpoint = nextEndpoint
+				// make sure we try to send to the peer on the new endpoint, so that
+				// it gets tested and we can look for the health change on the next pass
+				s.peerKnowledge.forcePing(s.signer.PublicKey, peer.PublicKey)
 			}
 		}
 	}
