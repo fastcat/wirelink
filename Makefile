@@ -3,13 +3,18 @@ export GO111MODULE=on
 
 # can be overridden
 PREFIX=/usr
-PKGVER=$(shell git describe | cut -d- -f1)
-PKGVERREL=$(shell git describe --long --dirty=+)
+PKGVERREL=$(shell git describe --long --dirty=+ | sed -e s/^v//)
+PKGVER=$(firstword $(subst -, ,$(PKGVERREL)))
 PKGREL=$(PKGVERREL:$(PKGVER)-%=%)
 
 DOCSFILES:=LICENSE README.md TODO.md
 
 all: everything
+
+info:
+	@echo PKGVERREL=$(PKGVERREL)
+	@echo PKGVER=$(PKGVER)
+	@echo PKGREL=$(PKGREL)
 
 fmt:
 	go fmt ./...
@@ -83,7 +88,7 @@ clean: checkinstall-clean
 	rm -vf ./wirelink
 #TODO: any way to clean the go cache for just this package?
 
-.PHONY: all fmt compile run install everything clean
+.PHONY: all info fmt compile run install everything clean
 .PHONY: vet lint lint-golint lint-gopls test cover htmlcover
 .PHONY: checkinstall checkinstall-prep checkinstall-clean
 # wirelink isn't actually phony, but we can't compute deps for it, so pretend
