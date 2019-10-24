@@ -23,12 +23,7 @@ func isHealthy(state *PeerConfigState, peer *wgtypes.Peer) bool {
 		return false
 	}
 	// if the peer handshake is still valid, the peer is healthy
-	const HandshakeValidity = device.RekeyAfterTime +
-		device.RekeyTimeout +
-		device.KeepaliveTimeout +
-		device.RekeyTimeoutJitterMaxMs*time.Millisecond +
-		HealthHysteresisBandaid
-	if peer.LastHandshakeTime.Add(HandshakeValidity).After(time.Now()) {
+	if peer.LastHandshakeTime.Add(handshakeValidity).After(time.Now()) {
 		return true
 	}
 	// if the peer handshake has moved since we last saw it, probably healthy
@@ -36,4 +31,16 @@ func isHealthy(state *PeerConfigState, peer *wgtypes.Peer) bool {
 		return true
 	}
 	return false
+}
+
+const handshakeValidity = device.RekeyAfterTime +
+	device.RekeyTimeout +
+	device.KeepaliveTimeout +
+	device.RekeyTimeoutJitterMaxMs*time.Millisecond +
+	HealthHysteresisBandaid
+
+// IsHandshakeHealthy returns whether the handshake looks recent enough that the
+// peer is likely to be in communication.
+func IsHandshakeHealthy(lastHandshake time.Time) bool {
+	return lastHandshake.Add(handshakeValidity).After(time.Now())
 }

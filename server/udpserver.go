@@ -258,6 +258,31 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device) (ret []*fact.Fact, err er
 	return
 }
 
+func shouldSendTo(p *wgtypes.Peer, factsByPeer map[wgtypes.Key][]*fact.Fact) bool {
+	// don't try to send info to the peer if we don't have an endpoint for it
+	if p.Endpoint == nil {
+		return false
+	}
+	// also skip sending if the peer is unhealthy and we don't have any endpoints to try
+	if !apply.IsHandshakeHealthy(p.LastHandshakeTime) {
+		hasEp := false
+	FBP:
+		for _, f := range factsByPeer[p.PublicKey] {
+			switch f.Attribute {
+			case fact.AttributeEndpointV4:
+				fallthrough
+			case fact.AttributeEndpointV6:
+				hasEp = true
+				break FBP
+			}
+		}
+		if !hasEp {
+			return false
+		}
+	}
+	return true
+}
+
 // broadcastFacts tries to send every fact to every peer
 // it returns the number of sends performed
 func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, facts []*fact.Fact, timeout time.Duration) (int, []error) {
@@ -274,11 +299,13 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 		Expires:   time.Now().Add(FactTTL),
 	}
 
+	factsByPeer := groupFactsByPeer(facts)
+
 	for i, p := range peers {
-		// don't try to send info to the peer if we don't have an endpoint for it
-		if p.Endpoint == nil {
+		if !shouldSendTo(&p, factsByPeer) {
 			continue
 		}
+
 		ga := fact.NewAccumulator(fact.SignedGroupMaxSafeInnerLength)
 		// we want alive facts to live for the normal FactTTL, but we want to send them every AlivePeriod
 		// so the "forgetting window" is the difference between those
@@ -608,6 +635,20 @@ func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) {
 	}
 }
 
+func groupFactsByPeer(facts []*fact.Fact) map[wgtypes.Key][]*fact.Fact {
+	factsByPeer := make(map[wgtypes.Key][]*fact.Fact)
+	for _, f := range facts {
+		ps, ok := f.Subject.(*fact.PeerSubject)
+		if !ok {
+			// WAT
+			log.Error("WAT: fact subject is a %T: %v", f.Subject, f)
+			continue
+		}
+		factsByPeer[ps.Key] = append(factsByPeer[ps.Key], f)
+	}
+	return factsByPeer
+}
+
 func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 	defer s.wait.Done()
 
@@ -635,17 +676,7 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 		// but not the one from the channel
 		allFacts = fact.MergeList(append(allFacts, newFacts...))
 
-		// group facts by peer
-		factsByPeer := make(map[wgtypes.Key][]*fact.Fact)
-		for _, f := range allFacts {
-			ps, ok := f.Subject.(*fact.PeerSubject)
-			if !ok {
-				// WAT
-				log.Error("WAT: fact subject is a %T: %v", f.Subject, f)
-				continue
-			}
-			factsByPeer[ps.Key] = append(factsByPeer[ps.Key], f)
-		}
+		factsByPeer := groupFactsByPeer(allFacts)
 
 		// trim `peerStates` to just the current peers
 		psm.Lock()
