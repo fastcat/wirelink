@@ -27,6 +27,8 @@ func (s *LinkServer) readPackets(endReader <-chan bool, packets chan<- *Received
 			n, addr, err := s.conn.ReadFromUDP(buffer[:])
 			if err != nil {
 				if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
+					// send a nil to wake up the processor in case it has other work to do
+					packets <- nil
 					continue
 				}
 				log.Error("Failed to read from socket, giving up: %v", err)
@@ -116,8 +118,15 @@ func (s *LinkServer) receivePackets(
 				done = true
 				break
 			}
-			buffer = append(buffer, p)
-			if len(buffer) >= maxChunk {
+			if p != nil {
+				buffer = append(buffer, p)
+				if len(buffer) >= maxChunk {
+					sendBuffer = true
+				}
+			}
+			// push the buffer through if state report is requested so that it happens quickly
+			// don't need to use the atomic load here, as the worst case is a delay in printing
+			if *s.printsRequested != 0 {
 				sendBuffer = true
 			}
 		case <-ticker.C:
@@ -185,7 +194,5 @@ func (s *LinkServer) processChunks(
 		currentFacts = uniqueFacts
 
 		factsRefreshed <- uniqueFacts
-
-		s.printFactsIfRequested(dev, uniqueFacts)
 	}
 }

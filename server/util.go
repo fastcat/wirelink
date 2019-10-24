@@ -1,8 +1,10 @@
 package server
 
 import (
+	"fmt"
 	"sync/atomic"
 
+	"github.com/fastcat/wirelink/apply"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -12,7 +14,12 @@ func (s *LinkServer) peerName(peer wgtypes.Key) string {
 	return s.config.Peers.Name(peer)
 }
 
-func (s *LinkServer) printFactsIfRequested(dev *wgtypes.Device, facts []*fact.Fact) {
+func (s *LinkServer) printFactsIfRequested(
+	dev *wgtypes.Device,
+	facts []*fact.Fact,
+	// caller is assumed to manage any lock needed for accessing this map
+	peerStates map[wgtypes.Key]*apply.PeerConfigState,
+) {
 	printsRequested := atomic.LoadInt32(s.printsRequested)
 	if printsRequested == 0 {
 		return
@@ -28,9 +35,19 @@ func (s *LinkServer) printFactsIfRequested(dev *wgtypes.Device, facts []*fact.Fa
 	// safe to mutate our private localFacts, but not the shared facts we received
 	facts = fact.SortedCopy(fact.MergeList(append(localFacts, facts...)))
 	str := "Current facts"
+	peerNamer := func(fs fact.Subject) string {
+		if ps, ok := fs.(*fact.PeerSubject); ok {
+			return s.peerName(ps.Key)
+		}
+		return fs.String()
+	}
 	for _, fact := range facts {
 		str += "\n"
-		str += fact.String()
+		str += fact.FancyString(peerNamer)
+	}
+	str += "\nCurrent peers"
+	for k, pcs := range peerStates {
+		str += fmt.Sprintf("\nPeer %s is %s", s.peerName(k), pcs.Describe())
 	}
 	log.Info("%s", str)
 }

@@ -17,9 +17,9 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 	peerStates := make(map[wgtypes.Key]*apply.PeerConfigState)
 	psm := new(sync.Mutex)
 
-	// the first chunk we get is usually pretty incomplete
-	// avoid deconfiguring peers until we get a second chunk
-	firstRefresh := false
+	// avoid deconfiguring peers until we've been running long enough
+	// for everyone we're connected to to tell us everything
+	startTime := time.Now()
 
 	for newFacts := range factsRefreshed {
 		dev, err := s.deviceState()
@@ -70,7 +70,7 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 			go func() {
 				defer wg.Done()
 				// TODO: inspect returned error? it has already been logged at this point so not much to do with it
-				newState, _ := s.configurePeer(ps, &dev.PublicKey, peer, fg, !firstRefresh)
+				newState, _ := s.configurePeer(ps, &dev.PublicKey, peer, fg, time.Now().Sub(startTime) > FactTTL)
 				psm.Lock()
 				peerStates[peer.PublicKey] = newState
 				psm.Unlock()
@@ -106,7 +106,9 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 
 		wg.Wait()
 
-		firstRefresh = false
+		psm.Lock()
+		s.printFactsIfRequested(dev, newFacts, peerStates)
+		psm.Unlock()
 	}
 }
 

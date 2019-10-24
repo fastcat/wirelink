@@ -1,6 +1,7 @@
 package apply
 
 import (
+	"fmt"
 	"net"
 	"time"
 
@@ -33,27 +34,42 @@ func (pcs *PeerConfigState) Update(peer *wgtypes.Peer, name string, newAlive boo
 	}
 	pcs.lastHandshake = peer.LastHandshakeTime
 	newHealthy := isHealthy(pcs, peer)
+	changed := false
 	if newHealthy != pcs.lastHealthy || newAlive != pcs.lastAlive {
-		var stateDesc string
-		if newHealthy {
-			if newAlive {
-				stateDesc = "healthy and alive"
-				pcs.aliveSince = time.Now()
-			} else {
-				stateDesc = "healthy but not alive"
-			}
-		} else if newAlive {
-			stateDesc = "unhealthy but alive?"
-		} else {
-			// not alive is implicit here
-			stateDesc = "unhealthy"
+		changed = true
+		if newHealthy && newAlive {
+			pcs.aliveSince = time.Now()
 		}
-		hsAge := time.Now().Sub(pcs.lastHandshake)
-		log.Info("Peer %s is now %s (%v)", name, stateDesc, hsAge.Truncate(time.Millisecond))
 	}
 	pcs.lastHealthy = newHealthy
 	pcs.lastAlive = newAlive
+	if changed {
+		log.Info("Peer %s is now %s", name, pcs.Describe())
+	}
 	return pcs
+}
+
+// Describe gives a textual summary of the state.
+// Note that this is not done as String() because it doesn't represent the whole object.
+func (pcs *PeerConfigState) Describe() string {
+	if pcs == nil {
+		return "???"
+	}
+	var stateDesc string
+	if pcs.lastHealthy {
+		if pcs.lastAlive {
+			stateDesc = "healthy and alive"
+		} else {
+			stateDesc = "healthy but not alive"
+		}
+	} else if pcs.lastAlive {
+		stateDesc = "unhealthy but alive?"
+	} else {
+		// not alive is implicit here
+		stateDesc = "unhealthy"
+	}
+	hsAge := time.Now().Sub(pcs.lastHandshake)
+	return fmt.Sprintf("%s (%v)", stateDesc, hsAge.Truncate(time.Millisecond))
 }
 
 // IsHealthy returns if the peer looked healthy on the last call to `Update`

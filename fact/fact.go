@@ -28,13 +28,19 @@ type Fact struct {
 }
 
 func (f *Fact) String() string {
+	return f.FancyString(func(s Subject) string { return s.String() })
+}
+
+// FancyString formats the fact as a string using a custom helper to format
+// the subject, most commonly to replace peer keys with names
+func (f *Fact) FancyString(subjectFormatter func(s Subject) string) string {
 	if f == nil {
 		return fmt.Sprintf("%v", nil)
 	}
 	return fmt.Sprintf(
 		"{a:%c s:%s v:%s ttl:%.3f}",
 		f.Attribute,
-		f.Subject,
+		subjectFormatter(f.Subject),
 		f.Value,
 		f.Expires.Sub(time.Now()).Seconds(),
 	)
