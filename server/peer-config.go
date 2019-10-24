@@ -220,7 +220,8 @@ func (s *LinkServer) configurePeer(
 			}
 		}
 
-		pcfg, addedAIP := apply.EnsurePeerAutoIP(peer, pcfg)
+		var addedAIP bool
+		pcfg, addedAIP = apply.EnsurePeerAutoIP(peer, pcfg)
 		if addedAIP {
 			log.Info("Adding IPv6-LL to %s", peerName)
 			logged = true
