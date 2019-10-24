@@ -15,7 +15,7 @@ import (
 func EnsurePeersAutoIP(ctrl *wgctrl.Client, dev *wgtypes.Device) (int, error) {
 	var cfg wgtypes.Config
 	for _, peer := range dev.Peers {
-		pcfg := EnsurePeerAutoIP(&peer, nil)
+		pcfg, _ := EnsurePeerAutoIP(&peer, nil)
 		if pcfg != nil {
 			cfg.Peers = append(cfg.Peers, *pcfg)
 		}
@@ -48,14 +48,14 @@ func hasAutoIP(autoaddr net.IP, aips []net.IPNet) bool {
 
 // EnsurePeerAutoIP ensures that the config (if any) for the given peer key includes
 // its automatic IPv6-LL address.
-func EnsurePeerAutoIP(peer *wgtypes.Peer, cfg *wgtypes.PeerConfig) *wgtypes.PeerConfig {
+func EnsurePeerAutoIP(peer *wgtypes.Peer, cfg *wgtypes.PeerConfig) (*wgtypes.PeerConfig, bool) {
 	autoaddr := autopeer.AutoAddress(peer.PublicKey)
 	skip := hasAutoIP(autoaddr, peer.AllowedIPs)
 	if cfg != nil && !skip {
 		skip = hasAutoIP(autoaddr, cfg.AllowedIPs)
 	}
 	if skip {
-		return cfg
+		return cfg, false
 	}
 
 	if cfg == nil {
@@ -68,7 +68,7 @@ func EnsurePeerAutoIP(peer *wgtypes.Peer, cfg *wgtypes.PeerConfig) *wgtypes.Peer
 		IP:   autoaddr,
 		Mask: net.CIDRMask(8*net.IPv6len, 8*net.IPv6len),
 	})
-	return cfg
+	return cfg, true
 }
 
 // OnlyAutoIP configures a peer to have _only_ its IPv6-LL IP in its AllowedIPs
