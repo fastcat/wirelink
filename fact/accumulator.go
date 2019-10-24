@@ -45,6 +45,26 @@ func (ga *GroupAccumulator) AddFact(f *Fact) error {
 	return nil
 }
 
+// AddFactIfRoom conditionally adds the fact if and only if it won't result in
+// creating a new group
+func (ga *GroupAccumulator) AddFactIfRoom(f *Fact) (added bool, err error) {
+	p, err := f.ToWire()
+	if err != nil {
+		return false, errors.Wrapf(err, "Unable to convert fact to wire")
+	}
+	b, err := p.Serialize()
+	if err != nil {
+		return false, errors.Wrapf(err, "Unable to convert wire form to packet bytes")
+	}
+	lgi := len(ga.groups) - 1
+	lg := ga.groups[lgi]
+	if len(lg)+len(b) > ga.maxGroupLen || len(lg) == 0 {
+		return false, nil
+	}
+	ga.groups[lgi] = append(lg, b...)
+	return true, nil
+}
+
 // MakeSignedGroups converts all the accumulated facts into SignedGroups of no
 // more than the specified max inner size.
 func (ga *GroupAccumulator) MakeSignedGroups(

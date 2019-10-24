@@ -101,20 +101,6 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 		}
 
 		ga := fact.NewAccumulator(fact.SignedGroupMaxSafeInnerLength)
-		// we want alive facts to live for the normal FactTTL, but we want to send them every AlivePeriod
-		// so the "forgetting window" is the difference between those
-		// we don't need to add the extra ChunkPeriod+1 buffer in this case
-		if s.peerKnowledge.peerNeeds(&p, pingFact, FactTTL-AlivePeriod) {
-			err := ga.AddFact(pingFact)
-			if err != nil {
-				log.Error("Unable to add ping fact to group: %v", err)
-			} else {
-				// log.Info("Peer %s needs ping", s.peerName(p.PublicKey))
-				// assume we will successfully send and peer will accept the info
-				// if these assumptions are wrong, re-sending more often is unlikely to help
-				s.peerKnowledge.upsertSent(&p, pingFact)
-			}
-		}
 
 		for _, f := range facts {
 			// don't tell peers things about themselves
@@ -133,11 +119,37 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 			if err != nil {
 				log.Error("Unable to add fact to group: %v", err)
 			} else {
-				// log.Info("Peer %s needs %v", s.peerName(p.PublicKey), f)
+				log.Debug("Peer %s needs %v", s.peerName(p.PublicKey), f)
 				// assume we will successfully send and peer will accept the info
 				// if these assumptions are wrong, re-sending more often is unlikely to help
 				s.peerKnowledge.upsertSent(&p, f)
 			}
+		}
+
+		addedPing := false
+		var addPingErr error
+		// we want alive facts to live for the normal FactTTL, but we want to send them every AlivePeriod
+		// so the "forgetting window" is the difference between those
+		// we don't need to add the extra ChunkPeriod+1 buffer in this case
+		if s.peerKnowledge.peerNeeds(&p, pingFact, FactTTL-AlivePeriod) {
+			log.Debug("Peer %s needs ping", s.peerName(p.PublicKey))
+			addPingErr = ga.AddFact(pingFact)
+			addedPing = true
+		} else {
+			// if we're going to send stuff to the peer anyways, opportunistically
+			// include the ping data if it won't result in sending an extra packet
+			// so that we don't send another packet again quite so soon
+			addedPing, addPingErr = ga.AddFactIfRoom(pingFact)
+			if addedPing {
+				log.Debug("Opportunistically sending ping to %s", s.peerName(p.PublicKey))
+			}
+		}
+		if addPingErr != nil {
+			log.Error("Unable to add ping fact to group: %v", addPingErr)
+		} else if addedPing {
+			// assume we will successfully send and peer will accept the info
+			// if these assumptions are wrong, re-sending more often is unlikely to help
+			s.peerKnowledge.upsertSent(&p, pingFact)
 		}
 
 		sgfs, err := ga.MakeSignedGroups(s.signer, &p.PublicKey)

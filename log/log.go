@@ -34,6 +34,11 @@ func SetDebug(enabled bool) {
 	debugEnabled = enabled
 }
 
+// IsDebug returns whether debug logging is enabled
+func IsDebug() bool {
+	return debugEnabled
+}
+
 // Debug writes a formatted string with an appended newline to Stdout, if enabled.
 // errors are ignored.
 func Debug(format string, a ...interface{}) {
