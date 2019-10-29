@@ -69,7 +69,6 @@
 
 ### Config
 
-* Allow configuring trust in peers
 * Allow configuring various parameters
   * `MaxChunk`
   * `ChunkPeriod`
@@ -79,3 +78,6 @@
     * This one is a bit tricky as it needs to be consistent across the network for now
     * With signed facts, could have a fact for the fact port,
       though deciding among multiple values could get weird
+* Allow configuring static facts
+  * Endpoints are particularly useful here
+  * Do DNS lookups to track split horizon moves
