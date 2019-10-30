@@ -6,12 +6,20 @@ import (
 	"time"
 
 	"github.com/fastcat/wirelink/fact"
+	"github.com/fastcat/wirelink/log"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 // DeviceFacts returns facts about the local wireguard device
-func DeviceFacts(dev *wgtypes.Device, ttl time.Duration) (ret []*fact.Fact, err error) {
+func DeviceFacts(
+	dev *wgtypes.Device,
+	ttl time.Duration,
+	ifaceFilter func(name string) bool,
+) (
+	ret []*fact.Fact,
+	err error,
+) {
 	if ttl.Seconds() < 0 || ttl.Seconds() > 255 {
 		return nil, fmt.Errorf("ttl out of range")
 	}
@@ -39,6 +47,10 @@ func DeviceFacts(dev *wgtypes.Device, ttl time.Duration) (ret []*fact.Fact, err 
 		}
 		// ignore the wireguard interface that we are monitoring
 		if iface.Name == dev.Name {
+			continue
+		}
+		if !ifaceFilter(iface.Name) {
+			log.Debug("Excluding local iface '%s'\n", iface.Name)
 			continue
 		}
 		addrs, err := iface.Addrs()

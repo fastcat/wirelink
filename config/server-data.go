@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/fastcat/wirelink/log"
@@ -19,6 +20,9 @@ type ServerData struct {
 	Port   int
 	Router string
 	Peers  []PeerData
+
+	ReportIfaces []string
+	HideIfaces   []string
 
 	Dump bool
 }
@@ -77,6 +81,20 @@ func (s *ServerData) Parse(vcfg *viper.Viper, wgc *wgctrl.Client) (ret *Server, 
 			return nil, errors.Wrapf(err, "Invalid value for 'router'")
 		}
 	}
+
+	// validate all the globs
+	for _, glob := range s.ReportIfaces {
+		if _, err = filepath.Match(glob, ""); err != nil {
+			return nil, errors.Wrapf(err, "Bad glob in ReportIfaces config: '%s'", glob)
+		}
+	}
+	for _, glob := range s.HideIfaces {
+		if _, err = filepath.Match(glob, ""); err != nil {
+			return nil, errors.Wrapf(err, "Bad glob in HideIfaces config: '%s'", glob)
+		}
+	}
+	ret.ReportIfaces = s.ReportIfaces
+	ret.HideIfaces = s.HideIfaces
 
 	ret.Peers = make(Peers)
 	for _, peerDatum := range s.Peers {

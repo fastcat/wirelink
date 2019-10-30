@@ -5,5 +5,9 @@ type Server struct {
 	Iface    string
 	Port     int
 	IsRouter bool
-	Peers    Peers
+
+	ReportIfaces []string
+	HideIfaces   []string
+
+	Peers Peers
 }
