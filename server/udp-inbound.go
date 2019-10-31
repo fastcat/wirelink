@@ -167,6 +167,15 @@ func (s *LinkServer) processChunks(
 			continue
 		}
 
+		localFacts, err := s.collectFacts(dev)
+		if err != nil {
+			log.Error("Unable to collect local facts: %v", err)
+		}
+		// might still have gotten something before the error tho
+		if len(localFacts) != 0 {
+			newFactsChunk = append(newFactsChunk, localFacts...)
+		}
+
 		pl := createPeerLookup(dev.Peers)
 
 		evaluator := trust.CreateComposite(trust.FirstOnly,

@@ -25,12 +25,7 @@ func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) {
 		if err != nil {
 			return 0, []error{err}
 		}
-		facts, err := s.collectFacts(dev)
-		if err != nil {
-			return 0, []error{err}
-		}
-		facts = fact.MergeList(append(facts, newFacts...))
-		count, errs := s.broadcastFacts(dev.PublicKey, dev.Peers, facts, ChunkPeriod-time.Second)
+		count, errs := s.broadcastFacts(dev.PublicKey, dev.Peers, newFacts, ChunkPeriod-time.Second)
 		if errs != nil {
 			// don't print more than a handful of errors
 			if len(errs) > 5 {

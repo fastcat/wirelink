@@ -26,16 +26,7 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 			s.onError(err)
 		}
 
-		allFacts, err := s.collectFacts(dev)
-		if err != nil {
-			log.Error("Unable to collect local facts, skipping peer config: %v", err)
-			continue
-		}
-		// it's safe for us to mutate the facts list from the local device,
-		// but not the one from the channel
-		allFacts = fact.MergeList(append(allFacts, newFacts...))
-
-		factsByPeer := groupFactsByPeer(allFacts)
+		factsByPeer := groupFactsByPeer(newFacts)
 
 		// trim `peerStates` to just the current peers
 		s.peerConfig.Trim(func(k wgtypes.Key) bool { _, ok := factsByPeer[k]; return ok })
