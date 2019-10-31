@@ -44,6 +44,8 @@ func (s *LinkServer) shouldReportIface(name string) bool {
 }
 
 func (s *LinkServer) collectFacts(dev *wgtypes.Device) (ret []*fact.Fact, err error) {
+	log.Debug("Collecting facts...")
+
 	// facts about the local node
 	ret, err = peerfacts.DeviceFacts(dev, FactTTL, s.shouldReportIface)
 	if err != nil {
@@ -65,6 +67,11 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device) (ret []*fact.Fact, err er
 	// static facts from the config
 	// these may duplicate other known facts, higher layers will dedupe
 	for pk, pc := range s.config.Peers {
+		// only do static lookups for dead peers
+		if pcs, ok := s.peerConfig.Get(pk); ok && (pcs.IsAlive() || pcs.IsHealthy()) {
+			log.Debug("Skipping static lookup for OK peer %s", s.peerName(pk))
+			continue
+		}
 		for _, ep := range pc.Endpoints {
 			var h, p string
 			h, p, err = net.SplitHostPort(ep)

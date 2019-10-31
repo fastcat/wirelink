@@ -107,6 +107,9 @@ func (s *LinkServer) receivePackets(
 	var buffer []*ReceivedFact
 	ticker := time.NewTicker(chunkPeriod)
 
+	// send an empty chunk once at startup to prime things
+	newFacts <- nil
+
 	for done := false; !done; {
 		sendBuffer := false
 		select {
