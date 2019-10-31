@@ -43,6 +43,14 @@
   * For now, handled with `HealthHysteresisBandiad`
   * For super-idle peers, is this related to the interaction between persistent keepalive
     and the peer alive fact interval?
+* Only do lookups for static facts when we need them
+  * E.g. only lookup endpoints for peers if we aren't connected to them
+  * Or even better, if we have run through all the dynamically known endpoints
+    without success, then do one lookup and add all those to the local state
+  * Even even better, only do lookups if we have no connections to any peers,
+    or maybe just any routers. If we have a peer connection, we _should_ be able
+    to get info from that peer, unless we've become an isolated island. If we
+    have connections to a router, we _definitely_ should have network visibility.
 
 ## Security
 
