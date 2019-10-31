@@ -50,6 +50,9 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 			go func() {
 				defer wg.Done()
 				// TODO: inspect returned error? it has already been logged at this point so not much to do with it
+				// we don't allow peers to be deconfigured until we've been running for longer than the fact ttl
+				// so that we don't remove config until we have a reasonable shot at having received everything
+				// from the network
 				newState, _ := s.configurePeer(ps, &dev.PublicKey, peer, fg, time.Now().Sub(startTime) > FactTTL)
 				s.peerConfig.Set(peer.PublicKey, newState)
 			}()
@@ -109,7 +112,7 @@ func (s *LinkServer) deletePeers(
 			if !ok {
 				continue
 			}
-			if now.Sub(pcs.AliveSince()) < FactTTL {
+			if !pcs.IsHealthy() || now.Sub(pcs.AliveSince()) < FactTTL {
 				continue
 			}
 			doDelPeers = true
