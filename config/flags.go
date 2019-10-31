@@ -77,7 +77,7 @@ func Parse(flags *pflag.FlagSet, vcfg *viper.Viper) (ret *ServerData, err error)
 	// load peer configuations
 	ret = new(ServerData)
 	// TODO: can't use UnmarshalExact here because we have lots of keys we don't care about for now
-	if err = vcfg.Unmarshal(ret); err != nil {
+	if err = vcfg.UnmarshalExact(ret); err != nil {
 		// TODO: this doesn't print the program name header
 		flags.PrintDefaults()
 		return nil, errors.Wrapf(err, "Unable to parse config")

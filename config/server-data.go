@@ -25,6 +25,10 @@ type ServerData struct {
 	HideIfaces   []string
 
 	Dump bool
+
+	// this prop is here for compat, but is ignored because it's how we find the
+	// config file, so the config file can't use it to point at a different config
+	configPath string `mapstructure:"config-path"`
 }
 
 // Parse converts the raw configuration data into a ready to use server config.

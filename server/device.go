@@ -1,11 +1,14 @@
 package server
 
 import (
+	"net"
 	"path/filepath"
+	"time"
 
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/peerfacts"
+	"github.com/fastcat/wirelink/util"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -41,18 +44,70 @@ func (s *LinkServer) shouldReportIface(name string) bool {
 }
 
 func (s *LinkServer) collectFacts(dev *wgtypes.Device) (ret []*fact.Fact, err error) {
-	pf, err := peerfacts.DeviceFacts(dev, FactTTL, s.shouldReportIface)
+	// facts about the local node
+	ret, err = peerfacts.DeviceFacts(dev, FactTTL, s.shouldReportIface)
 	if err != nil {
 		return
 	}
-	ret = make([]*fact.Fact, len(pf))
-	copy(ret, pf)
+
+	// facts the local node knows about peers configured in the wireguard device
 	for _, peer := range dev.Peers {
+		var pf []*fact.Fact
 		pf, err = peerfacts.LocalFacts(&peer, FactTTL)
 		if err != nil {
 			return
 		}
 		ret = append(ret, pf...)
 	}
+
+	expires := time.Now().Add(FactTTL)
+
+	// static facts from the config
+	// these may duplicate other known facts, higher layers will dedupe
+	for pk, pc := range s.config.Peers {
+		for _, ep := range pc.Endpoints {
+			var h, p string
+			h, p, err = net.SplitHostPort(ep)
+			if err != nil {
+				log.Error("Bad endpoint should have been caught at startup: %s", err)
+				continue
+			}
+			var ips []net.IP
+			ips, err = net.LookupIP(h)
+			if err != nil {
+				// DNS lookup errors are generally transient and not worth logging
+				continue
+			}
+			if len(ips) == 0 {
+				continue
+			}
+			var port int
+			port, err = net.LookupPort("udp", p)
+			if err != nil {
+				continue
+			}
+
+			for _, ip := range ips {
+				nip := util.NormalizeIP(ip)
+				var attr fact.Attribute
+				if len(nip) == net.IPv4len {
+					attr = fact.AttributeEndpointV4
+				} else if len(nip) == net.IPv6len {
+					attr = fact.AttributeEndpointV6
+				} else {
+					continue
+				}
+				sfact := &fact.Fact{
+					Attribute: attr,
+					Subject:   &fact.PeerSubject{Key: pk},
+					Expires:   expires,
+					Value:     &fact.IPPortValue{IP: ip, Port: port},
+				}
+				log.Debug("Tracking static fact: %v", sfact)
+				ret = append(ret, sfact)
+			}
+		}
+	}
+
 	return
 }
