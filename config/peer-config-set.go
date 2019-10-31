@@ -25,3 +25,11 @@ func (p Peers) Trust(peer wgtypes.Key, def trust.Level) trust.Level {
 	// else fall through
 	return def
 }
+
+// IsFactExchanger returns true if the peer is configred as a FactExchanger
+func (p Peers) IsFactExchanger(peer wgtypes.Key) bool {
+	if config, ok := p[peer]; ok && config.FactExchanger {
+		return true
+	}
+	return false
+}

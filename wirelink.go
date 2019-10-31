@@ -55,7 +55,17 @@ func realMain() error {
 	if serverConfig.IsRouter {
 		nodeTypeDesc = "router"
 	}
-	log.Info("Server running on {%s} [%v]:%v (%s)", serverConfig.Iface, server.Address(), server.Port(), nodeTypeDesc)
+	nodeModeDesc := "quiet"
+	if serverConfig.Chatty {
+		nodeModeDesc = "chatty"
+	}
+	log.Info("Server running on {%s} [%v]:%v (%s, %s)",
+		serverConfig.Iface,
+		server.Address(),
+		server.Port(),
+		nodeTypeDesc,
+		nodeModeDesc,
+	)
 
 	sigs := make(chan os.Signal, 5)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)

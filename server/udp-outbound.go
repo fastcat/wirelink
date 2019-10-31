@@ -13,6 +13,7 @@ import (
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
+	"github.com/fastcat/wirelink/trust"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -47,29 +48,51 @@ func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) {
 	}
 }
 
-func shouldSendTo(p *wgtypes.Peer, factsByPeer map[wgtypes.Key][]*fact.Fact) bool {
-	// don't try to send info to the peer if we don't have an endpoint for it
+func (s *LinkServer) shouldSendTo(p *wgtypes.Peer, factsByPeer map[wgtypes.Key][]*fact.Fact) bool {
+	// don't try to send info to the peer if the wireguard interface doesn't have
+	// an endpoint for it: this will just get rejected by the kernel
 	if p.Endpoint == nil {
+		log.Debug("Don't send to %s: no wg endpoint", s.peerName(p.PublicKey))
 		return false
 	}
-	// also skip sending if the peer is unhealthy and we don't have any endpoints to try
-	if !apply.IsHandshakeHealthy(p.LastHandshakeTime) {
-		hasEp := false
-	FBP:
-		for _, f := range factsByPeer[p.PublicKey] {
-			switch f.Attribute {
-			case fact.AttributeEndpointV4:
-				fallthrough
-			case fact.AttributeEndpointV6:
-				hasEp = true
-				break FBP
-			}
-		}
-		if !hasEp {
-			return false
+
+	// if the peer is a router or otherwise has elevated trust, always try to send
+	// this is partly to address problems where we wake from sleep and everything is stale
+	// and we don't talk to anyone to refresh anything
+	if s.config.Peers.Trust(p.PublicKey, trust.Untrusted) >= trust.AllowedIPs {
+		return true
+	}
+
+	// similarly always send if the peer is designated as an exchange point
+	if s.config.Peers.IsFactExchanger(p.PublicKey) {
+		return true
+	}
+
+	// if we are not operating in chatty mode and we are not special, stop here
+	if !s.config.Chatty && !s.config.IsRouter {
+		log.Debug("Don't send to %s: not special, not chatty, not router", s.peerName(p.PublicKey))
+		return false
+	}
+
+	// if the handshake is healty, send to the peer
+	if apply.IsHandshakeHealthy(p.LastHandshakeTime) {
+		return true
+	}
+
+	// if we know some endpoint to try, try to send, hopefully it will get through soon
+	for _, f := range factsByPeer[p.PublicKey] {
+		switch f.Attribute {
+		case fact.AttributeEndpointV4:
+			fallthrough
+		case fact.AttributeEndpointV6:
+			return true
 		}
 	}
-	return true
+
+	// peer is unhealthy and not likely to become so without help from someone else,
+	// don't waste time trying to send to it
+	log.Debug("Don't send to %s: unhealty and no endpoints", s.peerName(p.PublicKey))
+	return false
 }
 
 // broadcastFacts tries to send every fact to every peer
@@ -91,7 +114,7 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 	factsByPeer := groupFactsByPeer(facts)
 
 	for i, p := range peers {
-		if !shouldSendTo(&p, factsByPeer) {
+		if !s.shouldSendTo(&p, factsByPeer) {
 			continue
 		}
 

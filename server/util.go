@@ -24,14 +24,8 @@ func (s *LinkServer) printFactsIfRequested(
 	}
 	defer atomic.CompareAndSwapInt32(s.printsRequested, printsRequested, 0)
 
-	localFacts, err := s.collectFacts(dev)
-	if err != nil {
-		log.Error("Unable to load facts: %v", err)
-		// note that we do NOT kill the server in this case
-		return
-	}
-	// safe to mutate our private localFacts, but not the shared facts we received
-	facts = fact.SortedCopy(fact.MergeList(append(localFacts, facts...)))
+	// not safe safe to mutate the shared facts we received
+	facts = fact.SortedCopy(facts)
 	str := "Current facts"
 	peerNamer := func(fs fact.Subject) string {
 		if ps, ok := fs.(*fact.PeerSubject); ok {

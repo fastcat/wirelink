@@ -64,6 +64,7 @@ func DeviceFacts(
 				// ignore localhost for sure, and link local addresses at least for now
 				continue
 			}
+			log.Debug("Reporting local interface: %s: %v", iface.Name, ipn.IP)
 			if ip4 := ipn.IP.To4(); ip4 != nil {
 				addAttr(fact.AttributeEndpointV4, &fact.IPPortValue{IP: ip4, Port: dev.ListenPort})
 			} else {

@@ -10,14 +10,19 @@ import (
 
 // PeerData represents the raw data to configure a peer read from the config file
 type PeerData struct {
-	PublicKey string
-	Name      string
-	Trust     string
-	Endpoints []string
+	PublicKey     string
+	Name          string
+	Trust         string
+	FactExchanger bool
+	Endpoints     []string
 }
 
 // Parse validates the info in the PeerData and returns the parsed tuple + error
 func (p *PeerData) Parse() (key wgtypes.Key, peer Peer, err error) {
+	if key, err = wgtypes.ParseKey(p.PublicKey); err != nil {
+		return
+	}
+	peer.Name = p.Name
 	if p.Trust != "" {
 		val, ok := trust.Values[p.Trust]
 		if !ok {
@@ -26,10 +31,7 @@ func (p *PeerData) Parse() (key wgtypes.Key, peer Peer, err error) {
 		}
 		peer.Trust = &val
 	}
-	peer.Name = p.Name
-	if key, err = wgtypes.ParseKey(p.PublicKey); err != nil {
-		return
-	}
+	peer.FactExchanger = p.FactExchanger
 	// we don't do the DNS resolution here because we want it to refresh
 	// periodically, esp. if we move across a split horizon boundary
 	// we do want to validate the host/port split however

@@ -22,6 +22,9 @@ const IfaceFlag = "iface"
 // ConfigPathFlag is the name of the setting for the config file base path
 const ConfigPathFlag = "config-path"
 
+// ChattyFlag is the name of the setting to enable chatty mode
+const ChattyFlag = "chatty"
+
 // RouterAuto is the magic string for the Router config entry to request auto-detection
 const RouterAuto = "auto"
 

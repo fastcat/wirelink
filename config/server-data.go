@@ -19,7 +19,9 @@ type ServerData struct {
 	Iface  string
 	Port   int
 	Router string
-	Peers  []PeerData
+	Chatty bool
+
+	Peers []PeerData
 
 	ReportIfaces []string
 	HideIfaces   []string
@@ -36,6 +38,7 @@ func (s *ServerData) Parse(vcfg *viper.Viper, wgc *wgctrl.Client) (ret *Server, 
 	ret = new(Server)
 	ret.Iface = s.Iface
 	ret.Port = s.Port
+	ret.Chatty = s.Chatty
 
 	// TODO: replace strings bool with real bool for router mode
 	if s.Dump {

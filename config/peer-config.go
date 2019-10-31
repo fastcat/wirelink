@@ -8,9 +8,10 @@ import (
 
 // Peer represents the parsed info about a peer read from the config file
 type Peer struct {
-	Name      string
-	Trust     *trust.Level
-	Endpoints []string
+	Name          string
+	Trust         *trust.Level
+	FactExchanger bool
+	Endpoints     []string
 }
 
 func (p *Peer) String() string {
