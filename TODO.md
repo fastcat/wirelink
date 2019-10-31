@@ -51,6 +51,10 @@
     or maybe just any routers. If we have a peer connection, we _should_ be able
     to get info from that peer, unless we've become an isolated island. If we
     have connections to a router, we _definitely_ should have network visibility.
+* Fix problems with peer deletion due to not having detected trust source went offline
+  * The problem is that the last facts can expire before we realize the trust source is gone
+  * Probably need hysteresis on the delete decision: don't delete the peer until we've thought it was
+    deletable for a full fact TTL
 
 ## Security
 
@@ -68,9 +72,6 @@
 
 ### Reduced Chatter
 
-* Send to non-routers less
-  * Option to disable all p2p chatter except liveness, only send facts to router?
-  * Need to be careful not to leave a peer in a dead setup (instead of resetting AllowedIPs)
 * Tell routers who we want to talk to (a peer-valued fact)
   * Only tell leaves info about peers they want
 
