@@ -17,8 +17,6 @@ func (s *LinkServer) peerName(peer wgtypes.Key) string {
 func (s *LinkServer) printFactsIfRequested(
 	dev *wgtypes.Device,
 	facts []*fact.Fact,
-	// caller is assumed to manage any lock needed for accessing this map
-	peerStates map[wgtypes.Key]*apply.PeerConfigState,
 ) {
 	printsRequested := atomic.LoadInt32(s.printsRequested)
 	if printsRequested == 0 {
@@ -46,9 +44,9 @@ func (s *LinkServer) printFactsIfRequested(
 		str += fact.FancyString(peerNamer)
 	}
 	str += "\nCurrent peers"
-	for k, pcs := range peerStates {
+	s.peerConfig.ForEach(func(k wgtypes.Key, pcs *apply.PeerConfigState) {
 		str += fmt.Sprintf("\nPeer %s is %s", s.peerName(k), pcs.Describe())
-	}
+	})
 	log.Info("%s", str)
 }
 

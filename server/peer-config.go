@@ -14,9 +14,6 @@ import (
 func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 	defer s.wait.Done()
 
-	peerStates := make(map[wgtypes.Key]*apply.PeerConfigState)
-	psm := new(sync.Mutex)
-
 	// avoid deconfiguring peers until we've been running long enough
 	// for everyone we're connected to to tell us everything
 	startTime := time.Now()
@@ -41,13 +38,7 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 		factsByPeer := groupFactsByPeer(allFacts)
 
 		// trim `peerStates` to just the current peers
-		psm.Lock()
-		for k := range peerStates {
-			if _, ok := factsByPeer[k]; !ok {
-				delete(peerStates, k)
-			}
-		}
-		psm.Unlock()
+		s.peerConfig.Trim(func(k wgtypes.Key) bool { _, ok := factsByPeer[k]; return ok })
 
 		// track which peers are known to the device, so we know which we should add
 		// this assumes that the prior layer has filtered to not include facts for
@@ -63,17 +54,13 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 				removePeer[peer.PublicKey] = true
 				return
 			}
-			psm.Lock()
-			ps := peerStates[peer.PublicKey]
-			psm.Unlock()
+			ps, _ := s.peerConfig.Get(peer.PublicKey)
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
 				// TODO: inspect returned error? it has already been logged at this point so not much to do with it
 				newState, _ := s.configurePeer(ps, &dev.PublicKey, peer, fg, time.Now().Sub(startTime) > FactTTL)
-				psm.Lock()
-				peerStates[peer.PublicKey] = newState
-				psm.Unlock()
+				s.peerConfig.Set(peer.PublicKey, newState)
 			}()
 		}
 
@@ -102,20 +89,16 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 		}
 
 		wg.Add(1)
-		go s.deletePeers(wg, peerStates, psm, dev, removePeer)
+		go s.deletePeers(wg, dev, removePeer)
 
 		wg.Wait()
 
-		psm.Lock()
-		s.printFactsIfRequested(dev, newFacts, peerStates)
-		psm.Unlock()
+		s.printFactsIfRequested(dev, newFacts)
 	}
 }
 
 func (s *LinkServer) deletePeers(
 	wg *sync.WaitGroup,
-	peerStates map[wgtypes.Key]*apply.PeerConfigState,
-	peerStatesMutex *sync.Mutex,
 	dev *wgtypes.Device,
 	removePeer map[wgtypes.Key]bool,
 ) (err error) {
@@ -131,9 +114,7 @@ func (s *LinkServer) deletePeers(
 			if pc.Trust == nil || *pc.Trust < trust.DelPeer {
 				continue
 			}
-			peerStatesMutex.Lock()
-			pcs, ok := peerStates[pk]
-			peerStatesMutex.Unlock()
+			pcs, ok := s.peerConfig.Get(pk)
 			if !ok {
 				continue
 			}

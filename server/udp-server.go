@@ -33,6 +33,7 @@ type LinkServer struct {
 	// peerKnowledgeSet tracks what is known by each peer to avoid sending them
 	// redundant information
 	peerKnowledge *peerKnowledgeSet
+	peerConfig    *peerConfigSet
 	signer        *signing.Signer
 	// counter for asking it to print out its current info
 	printsRequested *int32
@@ -110,6 +111,7 @@ func Create(ctrl *wgctrl.Client, config *config.Server) (*LinkServer, error) {
 		wait:            new(sync.WaitGroup),
 		endReader:       make(chan bool),
 		peerKnowledge:   newPKS(),
+		peerConfig:      newPeerConfigSet(),
 		signer:          signing.New(&device.PrivateKey),
 		printsRequested: new(int32),
 	}
