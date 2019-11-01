@@ -23,16 +23,18 @@ func Parse(p *OnWire) (f *Fact, err error) {
 	var value Value
 
 	switch p.attribute {
+	// AttributeUnknown used to be used for ping packets, this has been removed
 	case byte(AttributeUnknown):
-		// Legacy ping packet
-		subject, err = ParsePeerSubject(p.subject)
-		if err != nil {
-			return
-		}
-		if len(p.value) != 0 {
-			return nil, fmt.Errorf("No-attribute packets must have empty value, not %d", len(p.value))
-		}
-		value = EmptyValue{}
+		return nil, fmt.Errorf("Legacy AttributeUnknown ping packet not supported")
+	// 	// Legacy ping packet
+	// 	subject, err = ParsePeerSubject(p.subject)
+	// 	if err != nil {
+	// 		return
+	// 	}
+	// 	if len(p.value) != 0 {
+	// 		return nil, fmt.Errorf("No-attribute packets must have empty value, not %d", len(p.value))
+	// 	}
+	// 	value = EmptyValue{}
 
 	case byte(AttributeAlive):
 		// Modern ping packet with boot id embedded in value

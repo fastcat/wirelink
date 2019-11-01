@@ -120,8 +120,8 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 	errs := make(chan error)
 	pingFact := &fact.Fact{
 		Subject:   &fact.PeerSubject{Key: self},
-		Attribute: fact.AttributeUnknown,
-		Value:     fact.EmptyValue{},
+		Attribute: fact.AttributeAlive,
+		Value:     &fact.UUIDValue{UUID: s.bootID},
 		Expires:   time.Now().Add(FactTTL),
 	}
 

@@ -165,7 +165,8 @@ func (s *LinkServer) configurePeer(
 	peerName := s.peerName(peer.PublicKey)
 	// alive check uses 0 for the maxTTL, as we just care whether the alive fact
 	// is still valid now
-	state = inputState.Update(peer, peerName, s.peerKnowledge.peerAlive(peer.PublicKey, 0))
+	newAlive, bootID := s.peerKnowledge.peerAlive(peer.PublicKey, 0)
+	state = inputState.Update(peer, peerName, newAlive, bootID)
 
 	// TODO: make the lock window here smaller
 	// only want to take the lock for the regions where we change config

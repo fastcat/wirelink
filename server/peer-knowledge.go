@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/fastcat/wirelink/fact"
+	"github.com/fastcat/wirelink/log"
+	"github.com/google/uuid"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -15,14 +17,16 @@ type peerKnowledgeKey struct {
 
 type peerKnowledgeSet struct {
 	// data maps a PKK (fact key + source peer) to its expiration time for that peer
-	data   map[peerKnowledgeKey]time.Time
-	access *sync.RWMutex
+	data    map[peerKnowledgeKey]time.Time
+	bootIDs map[wgtypes.Key]uuid.UUID
+	access  *sync.RWMutex
 }
 
 func newPKS() *peerKnowledgeSet {
 	return &peerKnowledgeSet{
-		data:   make(map[peerKnowledgeKey]time.Time),
-		access: new(sync.RWMutex),
+		data:    make(map[peerKnowledgeKey]time.Time),
+		bootIDs: make(map[wgtypes.Key]uuid.UUID),
+		access:  new(sync.RWMutex),
 	}
 }
 
@@ -35,8 +39,32 @@ func (pks *peerKnowledgeSet) upsertReceived(rf *ReceivedFact, pl peerLookup) boo
 		Key:  fact.KeyOf(rf.fact),
 		peer: peer,
 	}
+
 	pks.access.Lock()
 	defer pks.access.Unlock()
+
+	// alive facts need special handling to understand that the peer has "forgotten" everything
+	// if its boot id changes
+	if rf.fact.Attribute == fact.AttributeAlive {
+		oldid, oldidok := pks.bootIDs[k.peer]
+		uv, uvok := rf.fact.Value.(*fact.UUIDValue)
+		// we prune on the first receive in addition to any changes,
+		// since it likely didn't hear things we sent before
+		// note that this is intentionally different from how the alive logging elsewhere works
+		if !oldidok || !uvok || oldid != uv.UUID {
+			// TODO: use peername here
+			log.Debug("Detected bootID change from %v, pruning knowledge", k.peer)
+			// boot id changed, prune everything we think this peer knows
+			for dk := range pks.data {
+				if dk.peer == k.peer {
+					delete(pks.data, dk)
+				}
+			}
+		}
+		if uvok {
+			pks.bootIDs[k.peer] = uv.UUID
+		}
+	}
 	t, ok := pks.data[k]
 	if !ok || rf.fact.Expires.After(t) {
 		pks.data[k] = rf.fact.Expires
@@ -81,8 +109,8 @@ func (pks *peerKnowledgeSet) peerKnows(peer *wgtypes.Peer, f *fact.Fact, hystere
 		peer: peer.PublicKey,
 	}
 	pks.access.RLock()
-	defer pks.access.RUnlock()
 	e, ok := pks.data[k]
+	pks.access.RUnlock()
 	return ok && e.Add(hysteresis).After(f.Expires)
 }
 
@@ -94,27 +122,33 @@ func (pks *peerKnowledgeSet) peerNeeds(peer *wgtypes.Peer, f *fact.Fact, maxTTL 
 		peer: peer.PublicKey,
 	}
 	pks.access.RLock()
-	defer pks.access.RUnlock()
 	e, ok := pks.data[k]
+	pks.access.RUnlock()
 	return !ok || time.Now().Add(maxTTL).After(e) && e.Before(f.Expires)
 }
 
 // peerAlive returns if we have received an alive fact from the peer which is going to be alive
 // for at least `maxTTL`. Commonly `maxTTL` will be set to zero.
-func (pks *peerKnowledgeSet) peerAlive(peer wgtypes.Key, maxTTL time.Duration) bool {
+func (pks *peerKnowledgeSet) peerAlive(peer wgtypes.Key, maxTTL time.Duration) (bool, *uuid.UUID) {
 	k := peerKnowledgeKey{
 		Key: fact.KeyOf(&fact.Fact{
-			Attribute: fact.AttributeUnknown,
+			Attribute: fact.AttributeAlive,
 			Subject:   &fact.PeerSubject{Key: peer},
-			Value:     fact.EmptyValue{},
+			// value doesn't actually matter for alive packet keying
+			Value: fact.EmptyValue{},
 		}),
 		peer: peer,
 	}
 	pks.access.RLock()
-	defer pks.access.RUnlock()
-	e, ok := pks.data[k]
+	e, eok := pks.data[k]
+	id, idok := pks.bootIDs[peer]
+	pks.access.RUnlock()
+	idret := &id
+	if !idok {
+		idret = nil
+	}
 	// a peer is alive if it has sent us a null fact that is not going to expire within maxTTL
-	return ok && time.Now().Add(maxTTL).Before(e)
+	return eok && time.Now().Add(maxTTL).Before(e), idret
 }
 
 // forcePing forgets that we have sent a ping to the peer, forcing it to be re-sent
@@ -122,13 +156,24 @@ func (pks *peerKnowledgeSet) peerAlive(peer wgtypes.Key, maxTTL time.Duration) b
 func (pks *peerKnowledgeSet) forcePing(self, peer wgtypes.Key) {
 	k := peerKnowledgeKey{
 		Key: fact.KeyOf(&fact.Fact{
-			Attribute: fact.AttributeUnknown,
+			Attribute: fact.AttributeAlive,
 			Subject:   &fact.PeerSubject{Key: self},
-			Value:     fact.EmptyValue{},
+			// value doesn't actually matter for alive packet keying
+			Value: fact.EmptyValue{},
 		}),
 		peer: peer,
 	}
 	pks.access.Lock()
-	defer pks.access.Unlock()
 	delete(pks.data, k)
+	pks.access.Unlock()
+}
+
+func (pks *peerKnowledgeSet) peerBootID(peer wgtypes.Key) *uuid.UUID {
+	pks.access.RLock()
+	id, ok := pks.bootIDs[peer]
+	pks.access.RUnlock()
+	if ok {
+		return &id
+	}
+	return nil
 }

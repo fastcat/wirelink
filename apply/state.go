@@ -8,6 +8,7 @@ import (
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/util"
+	"github.com/google/uuid"
 	"golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -18,6 +19,7 @@ type PeerConfigState struct {
 	lastHandshake time.Time
 	lastHealthy   bool
 	lastAlive     bool
+	lastBootID    *uuid.UUID
 	aliveSince    time.Time
 	// the string key is really just the bytes value
 	endpointLastUsed map[string]time.Time
@@ -26,7 +28,12 @@ type PeerConfigState struct {
 // Update refreshes the PeerConfigState with new data from the wireguard device.
 // NOTE: It is safe to call this on a `nil` pointer, it will return a new state
 // TODO: give this access to the `peerKnowledgeSet` instead of passing in the alive state
-func (pcs *PeerConfigState) Update(peer *wgtypes.Peer, name string, newAlive bool) *PeerConfigState {
+func (pcs *PeerConfigState) Update(
+	peer *wgtypes.Peer,
+	name string,
+	newAlive bool,
+	bootID *uuid.UUID,
+) *PeerConfigState {
 	if pcs == nil {
 		pcs = &PeerConfigState{
 			endpointLastUsed: make(map[string]time.Time),
@@ -34,16 +41,22 @@ func (pcs *PeerConfigState) Update(peer *wgtypes.Peer, name string, newAlive boo
 	}
 	pcs.lastHandshake = peer.LastHandshakeTime
 	newHealthy := isHealthy(pcs, peer)
-	changed := false
-	if newHealthy != pcs.lastHealthy || newAlive != pcs.lastAlive {
-		changed = true
-		if newHealthy && newAlive {
-			pcs.aliveSince = time.Now()
-		}
+	bootChanged := bootID != nil && pcs.lastBootID != nil && *bootID != *pcs.lastBootID
+	firstBoot := bootID != nil && pcs.lastBootID == nil
+	changed := newHealthy != pcs.lastHealthy || newAlive != pcs.lastAlive || bootChanged
+	if changed && newHealthy && newAlive {
+		pcs.aliveSince = time.Now()
 	}
 	pcs.lastHealthy = newHealthy
 	pcs.lastAlive = newAlive
-	if changed {
+	// don't forget the last bootID if we temporarily lose the peer, only reset it when it really changes
+	if bootID != nil {
+		pcs.lastBootID = bootID
+	}
+	// don't log the first boot as a reboot
+	if bootChanged && !firstBoot {
+		log.Info("Peer %s is now %s (rebooted)", name, pcs.Describe())
+	} else if changed {
 		log.Info("Peer %s is now %s", name, pcs.Describe())
 	}
 	return pcs

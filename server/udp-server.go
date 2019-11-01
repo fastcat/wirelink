@@ -14,11 +14,13 @@ import (
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/signing"
+	"github.com/google/uuid"
 )
 
 // LinkServer represents the server component of wirelink
 // sending/receiving on a socket
 type LinkServer struct {
+	bootID      uuid.UUID
 	stateAccess *sync.Mutex
 	config      *config.Server
 	mgr         *apply.Manager
@@ -102,6 +104,7 @@ func Create(ctrl *wgctrl.Client, config *config.Server) (*LinkServer, error) {
 	}
 
 	ret := &LinkServer{
+		bootID:          uuid.Must(uuid.NewRandom()),
 		config:          config,
 		mgr:             mgr,
 		conn:            conn,
