@@ -3,6 +3,7 @@ module github.com/fastcat/wirelink
 go 1.12
 
 require (
+	github.com/google/uuid v1.1.1
 	github.com/jsimonetti/rtnetlink v0.0.0-20190830100107-3784a6c7c552 // indirect
 	github.com/magiconair/properties v1.8.1 // indirect
 	github.com/mdlayher/genetlink v0.0.0-20191008151445-a2cadeac9a63 // indirect

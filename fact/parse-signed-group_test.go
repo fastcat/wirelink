@@ -5,29 +5,38 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/poly1305"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 func TestParseSignedGroup_Trivial(t *testing.T) {
 	// trivial test: inner is one empty fact
 	// crypto here is all empty
 
-	// lazy way to test against all zeros
-	var emptyKey wgtypes.Key
-	var emptyNonce [chacha20poly1305.NonceSizeX]byte
-	var emptyTag [poly1305.TagSize]byte
+	// make up some data to verify it's copied around properly
+	mockSubjectKey := mustKey(t)
+	mockSignerKey := mustKey(t)
+	var mockNonce [chacha20poly1305.NonceSizeX]byte
+	var mockTag [poly1305.TagSize]byte
+	mustRandBytes(t, mockNonce[:])
+	mustRandBytes(t, mockTag[:])
+	var mockBootID uuid.UUID
+	mustRandBytes(t, mockBootID[:])
 
-	f, w, p := mustEmptyPacket(t)
+	//TODO: use mock data for TTL, hard because clock moves
+
+	f, w, p := mustMockAlivePacket(t, &mockSubjectKey, &mockBootID)
 
 	f, w, p = mustSerialize(t, &Fact{
 		Attribute: AttributeSignedGroup,
-		Subject:   &PeerSubject{},
+		Subject:   &PeerSubject{Key: mockSignerKey},
 		Expires:   time.Time{},
 		Value: &SignedGroupValue{
+			Nonce:      mockNonce,
+			Tag:        mockTag,
 			InnerBytes: p,
 		},
 	})
@@ -41,22 +50,23 @@ func TestParseSignedGroup_Trivial(t *testing.T) {
 
 	require.IsType(t, &PeerSubject{}, f.Subject)
 	s := f.Subject.(*PeerSubject)
-	assert.Equal(t, emptyKey, s.Key, "parsed subject should be zeros")
+	assert.Equal(t, mockSignerKey, s.Key, "parsed signer subject should be correct")
 	assert.False(t, f.Expires.After(time.Now()), "Parsed expires should be <= now")
 
 	require.IsType(t, &SignedGroupValue{}, f.Value)
 	sgv := f.Value.(*SignedGroupValue)
-	assert.Equal(t, emptyNonce, sgv.Nonce, "Parsed nonce should be zeros")
-	assert.Equal(t, emptyTag, sgv.Tag, "Parsed tag should be zeros")
+	assert.Equal(t, mockNonce, sgv.Nonce, "Parsed nonce should be zeros")
+	assert.Equal(t, mockTag, sgv.Tag, "Parsed tag should be zeros")
 
 	f, w = mustDeserialize(t, sgv.InnerBytes)
 	assert.EqualValues(t, 0, w.ttl, "SGV inner TTL should be zero")
-	assert.Equal(t, AttributeUnknown, f.Attribute, "SGV inner attr")
+	assert.Equal(t, AttributeAlive, f.Attribute, "SGV inner attr")
 	require.IsType(t, &PeerSubject{}, f.Subject)
 	s = f.Subject.(*PeerSubject)
-	assert.Equal(t, emptyKey, s.Key, "SGV inner subject should be zeros")
+	assert.Equal(t, mockSubjectKey, s.Key, "SGV inner subject should be correct")
 	assert.False(t, f.Expires.After(time.Now()), "SGV inner expires should be <= now")
-	require.IsType(t, EmptyValue{}, f.Value)
+	assert.IsType(t, &UUIDValue{}, f.Value)
+	assert.Equal(t, &UUIDValue{UUID: mockBootID}, f.Value, "SGV inner uuid should be all zeros")
 }
 
 func TestParseSignedGroup_Large(t *testing.T) {

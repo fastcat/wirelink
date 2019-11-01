@@ -8,6 +8,7 @@ import (
 // fact types, denoted as attributes of a subject
 const (
 	AttributeUnknown       Attribute = 0
+	AttributeAlive         Attribute = '!'
 	AttributeEndpointV4    Attribute = 'e'
 	AttributeEndpointV6    Attribute = 'E'
 	AttributeAllowedCidrV4 Attribute = 'a'

@@ -17,10 +17,15 @@ type Key struct {
 
 // KeyOf returns the FactKey for a Fact
 func KeyOf(fact *Fact) Key {
+	valueBytes := fact.Value.Bytes()
+	// special case: for Alive, we ignore the value!
+	if fact.Attribute == AttributeAlive {
+		valueBytes = []byte{}
+	}
 	return Key{
 		attribute: fact.Attribute,
 		subject:   string(fact.Subject.Bytes()),
-		value:     string(fact.Value.Bytes()),
+		value:     string(valueBytes),
 	}
 }
 

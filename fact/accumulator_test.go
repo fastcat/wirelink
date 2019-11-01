@@ -10,7 +10,7 @@ import (
 )
 
 func TestAccumulatorLimits(t *testing.T) {
-	ef, _, ep := mustEmptyPacket(t)
+	ef, _, ep := mustMockAlivePacket(t, nil, nil)
 
 	a := NewAccumulator(len(ep)*4 - 1)
 
@@ -25,7 +25,7 @@ func TestAccumulatorLimits(t *testing.T) {
 }
 
 func TestAccumulatorSigning(t *testing.T) {
-	ef, _, ep := mustEmptyPacket(t)
+	ef, _, ep := mustMockAlivePacket(t, nil, nil)
 
 	a := NewAccumulator(len(ep)*4 - 1)
 	for i := 0; i < 4; i++ {
@@ -36,9 +36,9 @@ func TestAccumulatorSigning(t *testing.T) {
 	priv, signer := mustKeyPair(t)
 	_, pub := mustKeyPair(t)
 
-	s := signing.New(priv)
+	s := signing.New(&priv)
 
-	facts, err := a.MakeSignedGroups(s, pub)
+	facts, err := a.MakeSignedGroups(s, &pub)
 	require.Nil(t, err)
 
 	require.Len(t, facts, 2, "Should have two SGVs")
@@ -47,7 +47,7 @@ func TestAccumulatorSigning(t *testing.T) {
 		assert.Equal(t, AttributeSignedGroup, sf.Attribute, "Signing output should be SignedGroups")
 		assert.IsType(t, &PeerSubject{}, sf.Subject)
 		// the subject must be the public key of the signer, _not the recipient_
-		assert.Equal(t, *signer, sf.Subject.(*PeerSubject).Key)
+		assert.Equal(t, signer, sf.Subject.(*PeerSubject).Key)
 		assert.False(t, sf.Expires.After(time.Now()), "Expiration should be <= now")
 		require.IsType(t, &SignedGroupValue{}, sf.Value, "SG Value should be an SGV")
 		sgv := sf.Value.(*SignedGroupValue)

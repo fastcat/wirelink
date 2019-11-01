@@ -11,6 +11,7 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
 	"github.com/fastcat/wirelink/util"
+	"github.com/google/uuid"
 )
 
 // Subject is the subject of a Fact
@@ -90,6 +91,8 @@ func (ipn IPNetValue) String() string {
 
 // EmptyValue is used to represent facts of AttributeUnknown with a zero length value,
 // which indicate just that a remote peer is alive and talking to us
+//
+// Deprecated: prior uses of this should often use UUIDValue instead
 type EmptyValue struct{}
 
 var _ Value = EmptyValue{}
@@ -102,6 +105,21 @@ func (v EmptyValue) Bytes() []byte {
 func (v EmptyValue) String() string {
 	return "<empty>"
 }
+
+// UUIDValue represents a UUID, often used as a random marker or tag
+type UUIDValue struct {
+	uuid.UUID
+}
+
+// UUIDValue must implement Value
+var _ Value = &UUIDValue{}
+
+// Bytes returns the 16 bytes of the UUID as a slice
+func (v *UUIDValue) Bytes() []byte {
+	return v.UUID[:]
+}
+
+// UUIDValue inherits its String(er) from UUID
 
 // SignedGroupValue represents a signed chunk of other fact data.
 // Note that this structure does _not_ include parsing those inner bytes!

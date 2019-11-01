@@ -6,9 +6,16 @@ import (
 	"net"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
+
+// UUID package doesn't provide this constant for us
+const uuidLen = 16
+
+// prove to ourselves it's correct
+var _ = uuid.UUID([uuidLen]byte{})
 
 // Parse tries to parse the intermediate packet format to a full data structure
 func Parse(p *OnWire) (f *Fact, err error) {
@@ -17,7 +24,7 @@ func Parse(p *OnWire) (f *Fact, err error) {
 
 	switch p.attribute {
 	case byte(AttributeUnknown):
-		// ping packet
+		// Legacy ping packet
 		subject, err = ParsePeerSubject(p.subject)
 		if err != nil {
 			return
@@ -26,6 +33,20 @@ func Parse(p *OnWire) (f *Fact, err error) {
 			return nil, fmt.Errorf("No-attribute packets must have empty value, not %d", len(p.value))
 		}
 		value = EmptyValue{}
+
+	case byte(AttributeAlive):
+		// Modern ping packet with boot id embedded in value
+		subject, err = ParsePeerSubject(p.subject)
+		if err != nil {
+			return
+		}
+		if len(p.value) != uuidLen {
+			return nil, fmt.Errorf("Alive packets must have UUID-sized value, not %d", len(p.value))
+		}
+		value, err = ParseUUID(p.value)
+		if err != nil {
+			return
+		}
 
 	case byte(AttributeEndpointV4):
 		subject, err = ParsePeerSubject(p.subject)
@@ -82,6 +103,16 @@ func Parse(p *OnWire) (f *Fact, err error) {
 		Subject:   subject,
 		Value:     value,
 	}, nil
+}
+
+// ParseUUID parses bytes from the wire into a uuid value object
+func ParseUUID(data []byte) (*UUIDValue, error) {
+	if len(data) != uuidLen {
+		return nil, fmt.Errorf("data len wrong for uuid value")
+	}
+	var val UUIDValue
+	copy(val.UUID[:], data)
+	return &val, nil
 }
 
 // ParsePeerSubject parses bytes from the wire into a peer subject object

@@ -33,7 +33,8 @@ lint-gopls:
 # need to group files to gopls check by directory it seems
 # unclear if this does anything useful at all
 	find -type f -name \*.go -print0 | xargs -0 dirname -z | sort -uz | xargs -P0 -0 -n1 sh -c 'set -x ; gopls check "$$1"/*.go' --
-test: vet lint
+test: vet lint test-go
+test-go:
 	go test ./...
 coverage.out: test
 	go test -coverprofile=coverage.out ./...
@@ -89,7 +90,7 @@ clean: checkinstall-clean
 #TODO: any way to clean the go cache for just this package?
 
 .PHONY: all info fmt compile run install everything clean
-.PHONY: vet lint lint-golint lint-gopls test cover htmlcover
+.PHONY: vet lint lint-golint lint-gopls test test-go cover htmlcover
 .PHONY: checkinstall checkinstall-prep checkinstall-clean
 # wirelink isn't actually phony, but we can't compute deps for it, so pretend
 .PHONY: wirelink
