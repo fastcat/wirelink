@@ -76,11 +76,16 @@ func (s *LinkServer) shouldSendTo(p *wgtypes.Peer, factsByPeer map[wgtypes.Key][
 		return sendFacts
 	}
 
-	// if we are not operating in chatty mode and we are not special, stop here
+	// if neither end is special or chatty, just send pings to keep the connection alive
 	if !s.config.Chatty && !s.config.IsRouter {
 		log.Debug("Don't send to %s: not special, not chatty, not router", s.peerName(p.PublicKey))
 		return sendPing
 	}
+
+	// past here, remote and/or local are special (chatty, router, trust source, or fact exchange)
+	// in all such cases the goal is full exchange in both directions
+	// we send facts if we think they'll get through, or pings if we're trying to establish a connection,
+	// and only fall back on nothing if we don't think we can make a connection
 
 	// if the handshake is healthy (and we are chatty and/or router), send all our info to the peer
 	if apply.IsHandshakeHealthy(p.LastHandshakeTime) {
