@@ -95,6 +95,12 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device) (ret []*fact.Fact, err er
 			}
 
 			for _, ip := range ips {
+				// don't publish localhost-ish or link-local addresses,
+				// these are not going to be useful, but may appear if we ourselves
+				// are listed with a static endpoint that resolves oddly locally
+				if !ip.IsGlobalUnicast() {
+					continue
+				}
 				nip := util.NormalizeIP(ip)
 				var attr fact.Attribute
 				if len(nip) == net.IPv4len {
