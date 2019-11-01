@@ -48,12 +48,12 @@ func (s *LinkServer) readPackets(endReader <-chan bool, packets chan<- *Received
 			if pp.Attribute == fact.AttributeSignedGroup {
 				err = s.processGroup(pp, addr, packets)
 				if err != nil {
-					log.Error("Unable to process SignedGroup: %v", err)
+					log.Error("Unable to process SignedGroup from %v: %v", *addr, err)
 				}
 			} else {
 				// if we had a peerLookup, we could map the source IP to a name here,
 				// but creating that is unnecessarily expensive for this rare error
-				log.Error("Ignoring unsigned fact from %v", addr)
+				log.Error("Ignoring unsigned fact from %v", *addr)
 				// rcv := &ReceivedFact{fact: pp, source: *addr}
 				// packets <- rcv
 			}
