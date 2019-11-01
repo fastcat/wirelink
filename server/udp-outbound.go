@@ -67,7 +67,7 @@ func (s *LinkServer) shouldSendTo(p *wgtypes.Peer, factsByPeer map[wgtypes.Key][
 	// if the peer is a router or otherwise has elevated trust, always try to send
 	// this is partly to address problems where we wake from sleep and everything is stale
 	// and we don't talk to anyone to refresh anything
-	if s.config.Peers.Trust(p.PublicKey, trust.Untrusted) >= trust.AllowedIPs {
+	if s.config.Peers.Trust(p.PublicKey, trust.Untrusted) >= trust.AllowedIPs || trust.IsRouter(p) {
 		return sendFacts
 	}
 

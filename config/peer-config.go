@@ -19,5 +19,6 @@ func (p *Peer) String() string {
 	if p.Trust != nil {
 		trustStr = p.Trust.String()
 	}
-	return fmt.Sprintf("{Name:%s Trust:%s}", p.Name, trustStr)
+	return fmt.Sprintf("{Name:%s Trust:%s Exch:%v EPs:%d}",
+		p.Name, trustStr, p.FactExchanger, len(p.Endpoints))
 }
