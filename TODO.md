@@ -70,10 +70,16 @@
 * Use `pcap` or the like to detect when we are actually trying to talk to a peer
   * Use this to only do peer setup when we need it
 
-### Reduced Chatter
+### Chatter Management
 
 * Tell routers who we want to talk to (a peer-valued fact)
   * Only tell leaves info about peers they want
+* Embed a random invocation id in alive fact so peers know when we've forgotten everything
+  * When restarting a node, it can take several minutes before all the information trickles in,
+    this would allow other peers to know when we've forgotten everything and that they should
+    re-send immediately.
+  * Changing this key would help if we detect a resume from sleep, e.g. if time
+    between processing received chunks is longer than FactTTL
 
 ### Config
 
