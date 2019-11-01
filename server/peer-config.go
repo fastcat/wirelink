@@ -132,6 +132,10 @@ func (s *LinkServer) deletePeers(
 			if trust.IsRouter(&peer) {
 				continue
 			}
+			// never delete fact exchangers
+			if s.config.Peers.IsFactExchanger(peer.PublicKey) {
+				continue
+			}
 			log.Info("Removing peer: %s", s.peerName(peer.PublicKey))
 			cfg.Peers = append(cfg.Peers, wgtypes.PeerConfig{
 				PublicKey: peer.PublicKey,

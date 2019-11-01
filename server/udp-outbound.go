@@ -48,51 +48,60 @@ func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) {
 	}
 }
 
-func (s *LinkServer) shouldSendTo(p *wgtypes.Peer, factsByPeer map[wgtypes.Key][]*fact.Fact) bool {
+type sendLevel int
+
+const (
+	sendNothing sendLevel = iota
+	sendPing
+	sendFacts
+)
+
+func (s *LinkServer) shouldSendTo(p *wgtypes.Peer, factsByPeer map[wgtypes.Key][]*fact.Fact) sendLevel {
 	// don't try to send info to the peer if the wireguard interface doesn't have
 	// an endpoint for it: this will just get rejected by the kernel
 	if p.Endpoint == nil {
 		log.Debug("Don't send to %s: no wg endpoint", s.peerName(p.PublicKey))
-		return false
+		return sendNothing
 	}
 
 	// if the peer is a router or otherwise has elevated trust, always try to send
 	// this is partly to address problems where we wake from sleep and everything is stale
 	// and we don't talk to anyone to refresh anything
 	if s.config.Peers.Trust(p.PublicKey, trust.Untrusted) >= trust.AllowedIPs {
-		return true
+		return sendFacts
 	}
 
 	// similarly always send if the peer is designated as an exchange point
 	if s.config.Peers.IsFactExchanger(p.PublicKey) {
-		return true
+		return sendFacts
 	}
 
 	// if we are not operating in chatty mode and we are not special, stop here
 	if !s.config.Chatty && !s.config.IsRouter {
 		log.Debug("Don't send to %s: not special, not chatty, not router", s.peerName(p.PublicKey))
-		return false
+		return sendPing
 	}
 
-	// if the handshake is healty, send to the peer
+	// if the handshake is healthy (and we are chatty and/or router), send all our info to the peer
 	if apply.IsHandshakeHealthy(p.LastHandshakeTime) {
-		return true
+		return sendFacts
 	}
 
-	// if we know some endpoint to try, try to send, hopefully it will get through soon
+	// if we know some endpoint to try, try to ping to activate the handshake
+	// the fact set will go through later
 	for _, f := range factsByPeer[p.PublicKey] {
 		switch f.Attribute {
 		case fact.AttributeEndpointV4:
 			fallthrough
 		case fact.AttributeEndpointV6:
-			return true
+			return sendPing
 		}
 	}
 
 	// peer is unhealthy and not likely to become so without help from someone else,
 	// don't waste time trying to send to it
 	log.Debug("Don't send to %s: unhealty and no endpoints", s.peerName(p.PublicKey))
-	return false
+	return sendNothing
 }
 
 // broadcastFacts tries to send every fact to every peer
@@ -114,33 +123,36 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 	factsByPeer := groupFactsByPeer(facts)
 
 	for i, p := range peers {
-		if !s.shouldSendTo(&p, factsByPeer) {
+		sendLevel := s.shouldSendTo(&p, factsByPeer)
+		if sendLevel == sendNothing {
 			continue
 		}
 
 		ga := fact.NewAccumulator(fact.SignedGroupMaxSafeInnerLength)
 
-		for _, f := range facts {
-			// don't tell peers things about themselves
-			// they won't accept it unless we are a router,
-			// the only way this would be useful would be to tell them their external endpoint,
-			// but that's only useful if they can tell others and we can't, but if they can tell others,
-			// then those others don't need to know it because they are already connected
-			if ps, ok := f.Subject.(*fact.PeerSubject); ok && *ps == (fact.PeerSubject{Key: p.PublicKey}) {
-				continue
-			}
-			// don't tell peers other things they already know
-			if !s.peerKnowledge.peerNeeds(&p, f, ChunkPeriod+time.Second) {
-				continue
-			}
-			err := ga.AddFact(f)
-			if err != nil {
-				log.Error("Unable to add fact to group: %v", err)
-			} else {
-				log.Debug("Peer %s needs %v", s.peerName(p.PublicKey), f)
-				// assume we will successfully send and peer will accept the info
-				// if these assumptions are wrong, re-sending more often is unlikely to help
-				s.peerKnowledge.upsertSent(&p, f)
+		if sendLevel >= sendFacts {
+			for _, f := range facts {
+				// don't tell peers things about themselves
+				// they won't accept it unless we are a router,
+				// the only way this would be useful would be to tell them their external endpoint,
+				// but that's only useful if they can tell others and we can't, but if they can tell others,
+				// then those others don't need to know it because they are already connected
+				if ps, ok := f.Subject.(*fact.PeerSubject); ok && *ps == (fact.PeerSubject{Key: p.PublicKey}) {
+					continue
+				}
+				// don't tell peers other things they already know
+				if !s.peerKnowledge.peerNeeds(&p, f, ChunkPeriod+time.Second) {
+					continue
+				}
+				err := ga.AddFact(f)
+				if err != nil {
+					log.Error("Unable to add fact to group: %v", err)
+				} else {
+					log.Debug("Peer %s needs %v", s.peerName(p.PublicKey), f)
+					// assume we will successfully send and peer will accept the info
+					// if these assumptions are wrong, re-sending more often is unlikely to help
+					s.peerKnowledge.upsertSent(&p, f)
+				}
 			}
 		}
 
