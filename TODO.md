@@ -28,8 +28,6 @@
 
 * Output verbosity levels
   * Esp. add debug/trace
-* Faster AIP config when receiving the first ping fact from a peer
-  * Check received ping facts against `peerAlive`, if new force ending the current receive chunk?
 * Don't activate AIP config until we think the peer will reciprocate
 * Intelligent prioritizaiton of peer EPs to try
   * EPs that are on a local subnet, then EPs on the internet, then everything else?
@@ -74,12 +72,6 @@
 
 * Tell routers who we want to talk to (a peer-valued fact)
   * Only tell leaves info about peers they want
-* Embed a random invocation id in alive fact so peers know when we've forgotten everything
-  * When restarting a node, it can take several minutes before all the information trickles in,
-    this would allow other peers to know when we've forgotten everything and that they should
-    re-send immediately.
-  * Changing this key would help if we detect a resume from sleep, e.g. if time
-    between processing received chunks is longer than FactTTL
 
 ### Config
 
