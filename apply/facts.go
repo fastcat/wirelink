@@ -2,6 +2,7 @@ package apply
 
 import (
 	"github.com/fastcat/wirelink/fact"
+	"github.com/fastcat/wirelink/log"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -10,13 +11,11 @@ import (
 func EnsureAllowedIPs(peer *wgtypes.Peer, facts []*fact.Fact, cfg *wgtypes.PeerConfig) *wgtypes.PeerConfig {
 	curAIPs := make(map[string]bool)
 	for _, aip := range peer.AllowedIPs {
-		ipn := fact.IPNetValue{IPNet: aip}
-		curAIPs[string(ipn.Bytes())] = true
+		curAIPs[string(fact.IPNetValue{IPNet: aip}.Bytes())] = true
 	}
 	if cfg != nil {
 		for _, aip := range cfg.AllowedIPs {
-			ipn := fact.IPNetValue{IPNet: aip}
-			curAIPs[string(ipn.Bytes())] = true
+			curAIPs[string(fact.IPNetValue{IPNet: aip}.Bytes())] = true
 		}
 	}
 
@@ -33,6 +32,8 @@ func EnsureAllowedIPs(peer *wgtypes.Peer, facts []*fact.Fact, cfg *wgtypes.PeerC
 					cfg = &wgtypes.PeerConfig{PublicKey: peer.PublicKey}
 				}
 				cfg.AllowedIPs = append(cfg.AllowedIPs, ipn.IPNet)
+			} else {
+				log.Error("AIP Fact has wrong value type: %v => %T: %v", f.Attribute, f.Value, f.Value)
 			}
 		}
 	}

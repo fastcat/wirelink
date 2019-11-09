@@ -231,6 +231,7 @@ func (s *LinkServer) configurePeer(
 		return
 	}
 
+	log.Debug("Applying peer configuration: %v", *pcfg)
 	err = s.ctrl.ConfigureDevice(s.config.Iface, wgtypes.Config{
 		Peers: []wgtypes.PeerConfig{*pcfg},
 	})

@@ -42,13 +42,13 @@ func LocalFacts(peer *wgtypes.Peer, ttl time.Duration) (ret []*fact.Fact, err er
 	for _, peerIP := range peer.AllowedIPs {
 		// TODO: ignore the auto-generated v6 address
 		if peerIP.IP.To4() != nil {
-			addAttr(fact.AttributeAllowedCidrV4, fact.IPNetValue{IPNet: peerIP})
+			addAttr(fact.AttributeAllowedCidrV4, &fact.IPNetValue{IPNet: peerIP})
 		} else if peerIP.IP.To16() != nil {
 			// ignore link-local addresses, particularly the auto-generated v6 one
 			if peerIP.IP[0] == 0xfe && peerIP.IP[1] == 0x80 {
 				continue
 			}
-			addAttr(fact.AttributeAllowedCidrV6, fact.IPNetValue{IPNet: peerIP})
+			addAttr(fact.AttributeAllowedCidrV6, &fact.IPNetValue{IPNet: peerIP})
 		}
 	}
 
