@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/fastcat/wirelink/log"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
@@ -12,6 +13,9 @@ import (
 
 // DumpConfigFlag is the name of the flag to request config dumping
 const DumpConfigFlag = "dump"
+
+// DebugFlag enables debug logging
+const DebugFlag = "debug"
 
 // RouterFlag is the name of the flag to set router mode
 const RouterFlag = "router"
@@ -41,7 +45,9 @@ func Init() (flags *pflag.FlagSet, vcfg *viper.Viper) {
 	vcfg.SetDefault(DumpConfigFlag, false)
 	flags.Bool(DumpConfigFlag, false, "Dump configuration instead of running")
 	vcfg.SetDefault(ConfigPathFlag, "/etc/wireguard")
-	// no flag for this one for now, only env
+	// no flag for config-path for now, only env
+	vcfg.SetDefault(DebugFlag, false)
+	flags.Bool(DebugFlag, false, "Enable debug logging output")
 
 	vcfg.BindPFlags(flags)
 	vcfg.SetEnvPrefix("wirelink")
@@ -59,6 +65,10 @@ func Parse(flags *pflag.FlagSet, vcfg *viper.Viper) (ret *ServerData, err error)
 		// TODO: this causes the error to be printed twice: once by flags and once by `main`
 		// TODO: this also causes an error to be printed & returned when run with `--help`
 		return
+	}
+	// activate debug logging immediately
+	if debug, _ := flags.GetBool(DebugFlag); debug {
+		log.SetDebug(true)
 	}
 
 	// setup the config file -- can't do this until after we've parsed the iface flag

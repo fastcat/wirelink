@@ -26,8 +26,6 @@
 
 ## Functionality
 
-* Output verbosity levels
-  * Esp. add debug/trace
 * Don't activate AIP config until we think the peer will reciprocate
 * Intelligent prioritizaiton of peer EPs to try
   * EPs that are on a local subnet, then EPs on the internet, then everything else?

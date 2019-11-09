@@ -26,6 +26,8 @@ type ServerData struct {
 	ReportIfaces []string
 	HideIfaces   []string
 
+	Debug bool
+
 	Dump bool
 
 	// this prop is here for compat, but is ignored because it's how we find the
@@ -35,6 +37,9 @@ type ServerData struct {
 
 // Parse converts the raw configuration data into a ready to use server config.
 func (s *ServerData) Parse(vcfg *viper.Viper, wgc *wgctrl.Client) (ret *Server, err error) {
+	// apply this right away
+	log.SetDebug(s.Debug)
+
 	ret = new(Server)
 	ret.Iface = s.Iface
 	ret.Port = s.Port
@@ -112,6 +117,8 @@ func (s *ServerData) Parse(vcfg *viper.Viper, wgc *wgctrl.Client) (ret *Server, 
 		ret.Peers[key] = &peerConf
 		log.Info("Configured peer '%s': %s", key, &peerConf)
 	}
+
+	ret.Debug = s.Debug
 
 	return
 }

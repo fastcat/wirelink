@@ -11,4 +11,6 @@ type Server struct {
 	HideIfaces   []string
 
 	Peers Peers
+
+	Debug bool
 }
