@@ -110,14 +110,14 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device) (ret []*fact.Fact, err er
 				} else {
 					continue
 				}
-				sfact := &fact.Fact{
+				staticFact := &fact.Fact{
 					Attribute: attr,
 					Subject:   &fact.PeerSubject{Key: pk},
 					Expires:   expires,
 					Value:     &fact.IPPortValue{IP: ip, Port: port},
 				}
-				log.Debug("Tracking static fact: %v", sfact)
-				ret = append(ret, sfact)
+				log.Debug("Tracking static fact: %v", staticFact)
+				ret = append(ret, staticFact)
 			}
 		}
 	}

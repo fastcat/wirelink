@@ -75,11 +75,11 @@ func Create(ctrl *wgctrl.Client, config *config.Server) (*LinkServer, error) {
 	if err != nil {
 		return nil, err
 	}
-	setll, err := mgr.EnsureLocalAutoIP(device)
+	setLL, err := mgr.EnsureLocalAutoIP(device)
 	if err != nil {
 		return nil, err
 	}
-	if setll {
+	if setLL {
 		log.Info("Configured IPv6-LL address on local interface")
 	}
 

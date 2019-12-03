@@ -38,9 +38,9 @@ func TestParseEndpointV4(t *testing.T) {
 		t.Errorf("Parsed key as %v, should be %v", ps.Key, key)
 	}
 
-	if ippv, ok := parsed.Value.(*IPPortValue); !ok {
+	if ipPortVal, ok := parsed.Value.(*IPPortValue); !ok {
 		t.Errorf("Parsed value as a %T, not an IPPortValue", parsed.Value)
-	} else if !ippv.IP.Equal(ep.IP) || ippv.Port != ep.Port {
-		t.Errorf("Parsed value as %v, should be %v", *ippv, ep)
+	} else if !ipPortVal.IP.Equal(ep.IP) || ipPortVal.Port != ep.Port {
+		t.Errorf("Parsed value as %v, should be %v", *ipPortVal, ep)
 	}
 }

@@ -87,7 +87,7 @@ func Parse(flags *pflag.FlagSet, vcfg *viper.Viper) (ret *ServerData, err error)
 		}
 	}
 
-	// load peer configuations
+	// load peer configurations
 	ret = new(ServerData)
 	// TODO: can't use UnmarshalExact here because we have lots of keys we don't care about for now
 	if err = vcfg.UnmarshalExact(ret); err != nil {

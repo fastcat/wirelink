@@ -67,15 +67,15 @@ func realMain() error {
 		nodeModeDesc,
 	)
 
-	sigs := make(chan os.Signal, 5)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
+	signals := make(chan os.Signal, 5)
+	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
 
 	onStopped := server.OnStopped()
 
 DONE:
 	for {
 		select {
-		case sig := <-sigs:
+		case sig := <-signals:
 			if sig == syscall.SIGUSR1 {
 				server.RequestPrint()
 			} else {

@@ -105,7 +105,7 @@ func (s *LinkServer) shouldSendTo(p *wgtypes.Peer, factsByPeer map[wgtypes.Key][
 
 	// peer is unhealthy and not likely to become so without help from someone else,
 	// don't waste time trying to send to it
-	log.Debug("Don't send to %s: unhealty and no endpoints", s.peerName(p.PublicKey))
+	log.Debug("Don't send to %s: unhealthy and no endpoints", s.peerName(p.PublicKey))
 	return sendNothing
 }
 
@@ -187,16 +187,16 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 			s.peerKnowledge.upsertSent(&p, pingFact)
 		}
 
-		sgfs, err := ga.MakeSignedGroups(s.signer, &p.PublicKey)
+		signedGroupFacts, err := ga.MakeSignedGroups(s.signer, &p.PublicKey)
 		if err != nil {
 			log.Error("Unable to sign groups: %v", err)
 			continue
 		}
 
-		for j := range sgfs {
+		for j := range signedGroupFacts {
 			wg.Add(1)
 			// have to use &arr[idx] here because we don't want to bind the loop var
-			go s.sendFact(&peers[i], &sgfs[j], &wg, &counter, errs)
+			go s.sendFact(&peers[i], &signedGroupFacts[j], &wg, &counter, errs)
 		}
 	}
 
@@ -231,8 +231,8 @@ func (s *LinkServer) sendFact(peer *wgtypes.Peer, f *fact.Fact, wg *sync.WaitGro
 	sent, err := s.conn.WriteToUDP(wpb, &addr)
 	if err != nil {
 		// certain errors are expected
-		nerr := err.(*net.OpError)
-		if serr, ok := nerr.Err.(*os.SyscallError); ok && serr.Err == syscall.EDESTADDRREQ {
+		opErr := err.(*net.OpError)
+		if sysErr, ok := opErr.Err.(*os.SyscallError); ok && sysErr.Err == syscall.EDESTADDRREQ {
 			// this is expected, ignore it
 			err = nil
 		} else {

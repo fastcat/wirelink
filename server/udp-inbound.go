@@ -26,7 +26,7 @@ func (s *LinkServer) readPackets(endReader <-chan bool, packets chan<- *Received
 			s.conn.SetReadDeadline(time.Now().Add(time.Second))
 			n, addr, err := s.conn.ReadFromUDP(buffer[:])
 			if err != nil {
-				if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
+				if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 					// send a nil to wake up the processor in case it has other work to do
 					packets <- nil
 					continue

@@ -41,7 +41,7 @@ func TestAccumulatorSigning(t *testing.T) {
 	facts, err := a.MakeSignedGroups(s, &pub)
 	require.Nil(t, err)
 
-	require.Len(t, facts, 2, "Should have two SGVs")
+	require.Len(t, facts, 2, "Should have two SignedGroupValues")
 
 	for i, sf := range facts {
 		assert.Equal(t, AttributeSignedGroup, sf.Attribute, "Signing output should be SignedGroups")

@@ -113,7 +113,7 @@ func (s *LinkServer) deletePeers(
 				continue
 			}
 			//FIXME: this can go wrong and cause us to delete peers, because facts
-			// are alowed to get very close to expiration before being renewed
+			// are allowed to get very close to expiration before being renewed
 			if !pcs.IsHealthy() || now.Sub(pcs.AliveSince()) < FactTTL {
 				continue
 			}

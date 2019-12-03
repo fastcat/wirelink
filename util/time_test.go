@@ -8,11 +8,11 @@ import (
 )
 
 func Test_TimeMaxVsNow(t *testing.T) {
-	tmax := TimeMax()
+	timeMax := TimeMax()
 	now := time.Now()
 
-	assert.True(t, tmax.After(now))
-	assert.True(t, now.Before(tmax))
-	assert.True(t, now.Sub(tmax) < 255*time.Second)
-	assert.Less(t, int64(now.Sub(tmax)), int64(255*time.Second))
+	assert.True(t, timeMax.After(now))
+	assert.True(t, now.Before(timeMax))
+	assert.True(t, now.Sub(timeMax) < 255*time.Second)
+	assert.Less(t, int64(now.Sub(timeMax)), int64(255*time.Second))
 }

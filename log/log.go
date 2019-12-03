@@ -1,5 +1,5 @@
 // Package log is a bit of a ridiculous package to have, but the built in `log` package
-// always writes to stderr, and fancy structured logging isn't wnat this tool needs
+// always writes to stderr, and fancy structured logging isn't what this tool needs
 package log
 
 import (

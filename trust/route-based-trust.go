@@ -65,7 +65,7 @@ func (rbt *routeBasedTrust) TrustLevel(f *fact.Fact, source net.UDPAddr) *Level 
 	// any other peer, as they are inferred to control the network this has
 	// to come before the peer self check, because the routers need to be
 	// permitted to tell us their own AllowedIPs, not just others.
-	// re-evaulating this each time instead of caching it once at startup is
+	// re-evaluating this each time instead of caching it once at startup is
 	// intentional as peer AIPs that drive this can change
 	if IsRouter(peer.peer) {
 		ret := AllowedIPs
@@ -103,9 +103,9 @@ func IsRouter(peer *wgtypes.Peer) bool {
 		if !aip.IP.IsGlobalUnicast() {
 			continue
 		}
-		aipn := util.NormalizeIP(aip.IP)
+		apiNorm := util.NormalizeIP(aip.IP)
 		ones, size := aip.Mask.Size()
-		if len(aipn)*8 == size && ones < size {
+		if len(apiNorm)*8 == size && ones < size {
 			return true
 		}
 	}

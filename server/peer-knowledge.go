@@ -46,12 +46,12 @@ func (pks *peerKnowledgeSet) upsertReceived(rf *ReceivedFact, pl peerLookup) boo
 	// alive facts need special handling to understand that the peer has "forgotten" everything
 	// if its boot id changes
 	if rf.fact.Attribute == fact.AttributeAlive {
-		oldid, oldidok := pks.bootIDs[k.peer]
-		uv, uvok := rf.fact.Value.(*fact.UUIDValue)
+		oldID, oldIDOk := pks.bootIDs[k.peer]
+		uv, uvOk := rf.fact.Value.(*fact.UUIDValue)
 		// we prune on the first receive in addition to any changes,
 		// since it likely didn't hear things we sent before
 		// note that this is intentionally different from how the alive logging elsewhere works
-		if !oldidok || !uvok || oldid != uv.UUID {
+		if !oldIDOk || !uvOk || oldID != uv.UUID {
 			// TODO: use peername here
 			log.Debug("Detected bootID change from %v, pruning knowledge", k.peer)
 			// boot id changed, prune everything we think this peer knows
@@ -61,7 +61,7 @@ func (pks *peerKnowledgeSet) upsertReceived(rf *ReceivedFact, pl peerLookup) boo
 				}
 			}
 		}
-		if uvok {
+		if uvOk {
 			pks.bootIDs[k.peer] = uv.UUID
 		}
 	}
@@ -141,14 +141,14 @@ func (pks *peerKnowledgeSet) peerAlive(peer wgtypes.Key, maxTTL time.Duration) (
 	}
 	pks.access.RLock()
 	e, eok := pks.data[k]
-	id, idok := pks.bootIDs[peer]
+	id, idOk := pks.bootIDs[peer]
 	pks.access.RUnlock()
-	idret := &id
-	if !idok {
-		idret = nil
+	idRet := &id
+	if !idOk {
+		idRet = nil
 	}
 	// a peer is alive if it has sent us a null fact that is not going to expire within maxTTL
-	return eok && time.Now().Add(maxTTL).Before(e), idret
+	return eok && time.Now().Add(maxTTL).Before(e), idRet
 }
 
 // forcePing forgets that we have sent a ping to the peer, forcing it to be re-sent

@@ -28,10 +28,10 @@ func TestFactKeyEquality(t *testing.T) {
 		Value:     &IPPortValue{IP: net.IPv4(127, 0, 0, 1), Port: 51820},
 	}
 
-	fkey1 := KeyOf(&fact1)
-	fkey2 := KeyOf(&fact2)
+	factKey1 := KeyOf(&fact1)
+	factKey2 := KeyOf(&fact2)
 
-	if fkey1 != fkey2 {
-		t.Errorf("Keys for same facts are unequal: %v, %v", fkey1, fkey2)
+	if factKey1 != factKey2 {
+		t.Errorf("Keys for same facts are unequal: %v, %v", factKey1, factKey2)
 	}
 }
