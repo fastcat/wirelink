@@ -15,6 +15,7 @@ type PeerData struct {
 	Trust         string
 	FactExchanger bool
 	Endpoints     []string
+	Basic         bool
 }
 
 // Parse validates the info in the PeerData and returns the parsed tuple + error
@@ -45,5 +46,6 @@ func (p *PeerData) Parse() (key wgtypes.Key, peer Peer, err error) {
 		//TODO: can validate port here
 	}
 	peer.Endpoints = p.Endpoints
+	peer.Basic = p.Basic
 	return
 }

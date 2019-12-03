@@ -177,10 +177,10 @@ func (s *LinkServer) configurePeer(
 	logged := false
 
 	if state.IsHealthy() {
-		// don't setup the AllowedIPs until it's both healthy and alive,
+		// don't setup the AllowedIPs until it's healthy and, unless it's basic, alive,
 		// as we don't want to start routing traffic to it if it won't accept it
 		// and reciprocate
-		if state.IsAlive() {
+		if state.IsAlive() || s.config.Peers.IsBasic(peer.PublicKey) {
 			pcfg = apply.EnsureAllowedIPs(peer, facts, pcfg)
 			if pcfg != nil && len(pcfg.AllowedIPs) > 0 {
 				log.Info("Adding AIPs to peer %s: %d", peerName, len(pcfg.AllowedIPs))

@@ -33,3 +33,12 @@ func (p Peers) IsFactExchanger(peer wgtypes.Key) bool {
 	}
 	return false
 }
+
+// IsBasic returns true if the peer is explicitly configured as a basic peer,
+// or false otherwise
+func (p Peers) IsBasic(peer wgtypes.Key) bool {
+	if config, ok := p[peer]; ok && config.Basic {
+		return true
+	}
+	return false
+}
