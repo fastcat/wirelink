@@ -39,7 +39,7 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 
 		wg := new(sync.WaitGroup)
 
-		updatePeer := func(peer *wgtypes.Peer) {
+		updatePeer := func(peer *wgtypes.Peer, allowAdd bool) {
 			fg, ok := factsByPeer[peer.PublicKey]
 			if !ok {
 				removePeer[peer.PublicKey] = true
@@ -53,7 +53,7 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 				// we don't allow peers to be deconfigured until we've been running for longer than the fact ttl
 				// so that we don't remove config until we have a reasonable shot at having received everything
 				// from the network
-				newState, _ := s.configurePeer(ps, &dev.PublicKey, peer, fg, time.Now().Sub(startTime) > FactTTL)
+				newState, _ := s.configurePeer(ps, &dev.PublicKey, peer, fg, time.Now().Sub(startTime) > FactTTL, allowAdd)
 				s.peerConfig.Set(peer.PublicKey, newState)
 			}()
 		}
@@ -61,7 +61,7 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 		for i := range dev.Peers {
 			peer := &dev.Peers[i]
 			localPeers[peer.PublicKey] = true
-			updatePeer(peer)
+			updatePeer(peer, false)
 		}
 
 		// add peers for which we have trusted facts but which are not present in the local device
@@ -79,7 +79,7 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 			log.Info("Adding new local peer %s", s.peerName(peer))
 			updatePeer(&wgtypes.Peer{
 				PublicKey: peer,
-			})
+			}, true)
 		}
 
 		wg.Add(1)
@@ -161,6 +161,7 @@ func (s *LinkServer) configurePeer(
 	peer *wgtypes.Peer,
 	facts []*fact.Fact,
 	allowDeconfigure bool,
+	allowAdd bool,
 ) (state *apply.PeerConfigState, err error) {
 	peerName := s.peerName(peer.PublicKey)
 	// alive check uses 0 for the maxTTL, as we just care whether the alive fact
@@ -230,6 +231,8 @@ func (s *LinkServer) configurePeer(
 	if pcfg == nil {
 		return
 	}
+
+	pcfg.UpdateOnly = !allowAdd
 
 	log.Debug("Applying peer configuration: %v", *pcfg)
 	err = s.ctrl.ConfigureDevice(s.config.Iface, wgtypes.Config{
