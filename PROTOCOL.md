@@ -5,13 +5,14 @@
 Each UDP packet on the wire has the following payload:
 
 * Attribute (1 byte)
-* TTL (1 byte)
-* Subject length (1 byte)
-* Value length (1-4 bytes)
-  * This is encoded using the UTF-8 scheme, but it is encoding a _number_, not
-    a character
+* TTL (1-3 bytes: varint up to uint16)
+* Subject length (1-3 bytes: varint up to uint16)
+* Value length (1-3 bytes: varint up to uint16)
 * Subject (N bytes)
 * Value (N bytes)
+
+The "varint" fields use Go / Protocol Buffer's
+[varint encoding](https://developers.google.com/protocol-buffers/docs/encoding#varints).
 
 The interpretation & expectations of subject & value depend on the attribute.
 
@@ -67,7 +68,8 @@ Signed groups are used to combine two goals:
 2. Reducing network activity (esp WiFi/LTE radios on battery powered devices)
    by combining several facts into a single packet
 
-The `Subject` of a `SignedGroup` is the (public) key that signed it. The `Value` is:
+The `Subject` of a `SignedGroup` is the (public) key that signed it. The
+`Value` is:
 
 * Nonce (24 bytes, for XChaCha20-Poly1305)
 * Authentication Tag (16 bytes, for XChaCha20-Poly1305)
