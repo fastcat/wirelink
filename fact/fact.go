@@ -3,6 +3,8 @@ package fact
 import (
 	"fmt"
 	"time"
+
+	"github.com/fastcat/wirelink/util"
 )
 
 // fact types, denoted as attributes of a subject
@@ -59,6 +61,6 @@ func (f *Fact) ToWire() (p *OnWire, err error) {
 		attribute: byte(f.Attribute),
 		ttl:       uint8(ttl),
 		subject:   f.Subject.Bytes(),
-		value:     f.Value.Bytes(),
+		value:     util.MustBytes(f.Value.MarshalBinary()),
 	}, nil
 }

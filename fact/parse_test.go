@@ -4,6 +4,7 @@ import (
 	"net"
 	"testing"
 
+	"github.com/fastcat/wirelink/util"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -21,7 +22,7 @@ func TestParseEndpointV4(t *testing.T) {
 		attribute: byte(AttributeEndpointV4),
 		ttl:       1,
 		subject:   key[:],
-		value:     ep.Bytes(),
+		value:     util.MustBytes(ep.MarshalBinary()),
 	}
 	parsed, err := Parse(&ow)
 	if err != nil {

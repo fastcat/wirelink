@@ -18,6 +18,7 @@
 		"stringifying",
 		"systemctl",
 		"systemd",
+		"uint",
 		"unencrypted",
 		"uuid",
 		"vcfg",

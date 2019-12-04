@@ -1,6 +1,7 @@
 package fact
 
 import (
+	"encoding"
 	"encoding/binary"
 	"fmt"
 	"net"
@@ -23,7 +24,7 @@ type Subject interface {
 // Value represents the value of a Fact
 type Value interface {
 	fmt.Stringer
-	Bytes() []byte
+	encoding.BinaryMarshaler
 }
 
 // Attribute is a byte identifying what aspect of a Subject a Fact describes
@@ -54,13 +55,13 @@ type IPPortValue struct {
 // same pointer criteria as for PeerSubject
 var _ Value = &IPPortValue{}
 
-// Bytes returns the normalized binary representation
-func (ipp *IPPortValue) Bytes() []byte {
+// MarshalBinary returns the normalized binary representation
+func (ipp *IPPortValue) MarshalBinary() ([]byte, error) {
 	normalized := util.NormalizeIP(ipp.IP)
 	ret := make([]byte, len(normalized)+2)
 	copy(ret, normalized)
 	binary.BigEndian.PutUint16(ret[len(normalized):], uint16(ipp.Port))
-	return ret
+	return ret, nil
 }
 
 func (ipp *IPPortValue) String() string {
@@ -75,14 +76,14 @@ type IPNetValue struct {
 // IPNetValue must implement Value
 var _ Value = IPNetValue{}
 
-// Bytes gives the binary representation of the ip and cidr prefix
-func (ipn IPNetValue) Bytes() []byte {
+// MarshalBinary gives the binary representation of the ip and cidr prefix
+func (ipn IPNetValue) MarshalBinary() ([]byte, error) {
 	ipNorm := util.NormalizeIP(ipn.IP)
 	ones, _ := ipn.Mask.Size()
 	ret := make([]byte, len(ipNorm), len(ipNorm)+1)
 	copy(ret, ipNorm)
 	ret = append(ret, uint8(ones))
-	return ret
+	return ret, nil
 }
 
 func (ipn IPNetValue) String() string {
@@ -97,9 +98,9 @@ type EmptyValue struct{}
 
 var _ Value = EmptyValue{}
 
-// Bytes always returns an empty slice for EmptyValue
-func (v EmptyValue) Bytes() []byte {
-	return []byte{}
+// MarshalBinary always returns an empty slice for EmptyValue
+func (v EmptyValue) MarshalBinary() ([]byte, error) {
+	return []byte{}, nil
 }
 
 func (v EmptyValue) String() string {
@@ -114,10 +115,7 @@ type UUIDValue struct {
 // UUIDValue must implement Value
 var _ Value = &UUIDValue{}
 
-// Bytes returns the 16 bytes of the UUID as a slice
-func (v *UUIDValue) Bytes() []byte {
-	return v.UUID[:]
-}
+// UUIDValue inherits its MarshalBinary from UUID
 
 // UUIDValue inherits its String(er) from UUID
 
@@ -145,13 +143,13 @@ const sgvFactOverhead = 4 + wgtypes.KeyLen
 // on the max safe UDP payload for IPv6, minus the fact & crypto overheads.
 const SignedGroupMaxSafeInnerLength = UDPMaxSafePayload - sgvFactOverhead - sgvOverhead
 
-// Bytes gives the on-wire form of the value
-func (sgv *SignedGroupValue) Bytes() []byte {
+// MarshalBinary gives the on-wire form of the value
+func (sgv *SignedGroupValue) MarshalBinary() ([]byte, error) {
 	ret := make([]byte, 0, len(sgv.Nonce)+len(sgv.Tag)+len(sgv.InnerBytes))
 	ret = append(ret, sgv.Nonce[:]...)
 	ret = append(ret, sgv.Tag[:]...)
 	ret = append(ret, sgv.InnerBytes...)
-	return ret
+	return ret, nil
 }
 
 func (sgv *SignedGroupValue) String() string {
