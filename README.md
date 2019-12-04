@@ -84,12 +84,13 @@ renewed as fresh versions come in from trusted sources.
 
 ## Connecting two peers
 
-To connect two peers that aren't directly connected, each end (independently)
-configures the remote peer in the local wireguard interface with that peer's
-automatic link local address. It then cycles through the known endpoints and
-attempts to contact the peer. This should work with simple NATs, but may fail
-for more complex ones where a full STUN/ICE system would succeed, esp. since
-there is no coordination on which endpoints are being tried when.
+To connect two peers that aren't directly connected, each end
+(independently) configures the remote peer in the local wireguard interface
+with that peer's automatic link local address.  It then cycles through the
+known endpoints and attempts to contact the peer.  This should work with
+simple NAT configurations, but may fail for more complex ones where a full
+STUN/ICE system would succeed, esp.  since there is no coordination on which
+endpoints are being tried when.
 
 If contact is successful, then the peers other allowed IPs are added and
 traffic can start to flow directly.
@@ -117,7 +118,7 @@ Determining when there is a live connection to a peer is based on two things:
 A couple key items from upstream inspired this:
 
 * Automatic assigning of link-local IPv6 addresses:
-  https://lists.zx2c4.com/pipermail/wireguard/2017-April/001177.html
+  <https://lists.zx2c4.com/pipermail/wireguard/2017-April/001177.html>
   (and following messages, about the `wg set wg0 llv6 on` proposal)
 * The NAT hole-punching example that ships with the wireguard source:
-  https://git.zx2c4.com/WireGuard/tree/contrib/examples/nat-hole-punching
+  <https://git.zx2c4.com/WireGuard/tree/contrib/examples/nat-hole-punching>

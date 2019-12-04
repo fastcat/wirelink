@@ -1,5 +1,6 @@
 {
 	"cSpell.words": [
+		"Cidr",
 		"Iface",
 		"Ifaces",
 		"Untrusted",
@@ -15,6 +16,9 @@
 		"pflag",
 		"stretchr",
 		"stringifying",
+		"systemctl",
+		"systemd",
+		"unencrypted",
 		"uuid",
 		"vcfg",
 		"vishvananda",

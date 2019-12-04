@@ -42,7 +42,7 @@ aggregate data into fewer packets and to provide security.
 Currently all attributes use a single kind of subject, namely a wireguard
 public key, in binary form (32 bytes). For most attributes, this identifies the
 peer being described by the attribute. For the `SignedGroup` attribute, this
-represence the key of the _source_ peer against which the signature should be
+represents the key of the _source_ peer against which the signature should be
 verified.
 
 ## Values
@@ -67,19 +67,17 @@ Signed groups are used to combine two goals:
 2. Reducing network activity (esp WiFi/LTE radios on battery powered devices)
    by combining several facts into a single packet
 
-The wire form of the value is:
+The `Subject` of a `SignedGroup` is the (public) key that signed it. The `Value` is:
 
 * Nonce (24 bytes, for XChaCha20-Poly1305)
 * Authentication Tag (16 bytes, for XChaCha20-Poly1305)
 * Inner Facts (N bytes)
 
-The `Subject` of a `SignedGroup` is the (public) key that signed it. The value
-is the signature tag (16 bytes) followed by a sequence of concatenated facts.
-Note that this means that a corrupted fact will also prevent parsing following
-facts in the group.
+Note that, since the inner facts are simply concatenated, this means that a
+corrupted fact will also prevent parsing following facts in the group.
 
-The TTL of a `SignedGroup` is ignored and should be zero. The meaningful TTLs
-come from the facts contained within it.
+The TTL of a `SignedGroup` is ignored and should be zero. The meaningful TTL
+values come from the facts contained within it.
 
 Signing (authentication) is done with the XChaCha20-Poly1305 AEAD construction,
 the same as wireguard itself uses, where we derive the private key for the

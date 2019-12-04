@@ -27,7 +27,7 @@
 ## Functionality
 
 * Don't activate AIP config until we think the peer will reciprocate
-* Intelligent prioritizaiton of peer EPs to try
+* Intelligent prioritization of peer EPs to try
   * EPs that are on a local subnet, then EPs on the internet, then everything else?
   * Implement via LRU penalty?
 * Option to de-configure at exit for leaves
@@ -36,7 +36,7 @@
   * Causes peers to appear unhealthy and get deconfigured until reconnected
   * Shouldn't be fatal as routers can't be deconfigured, but will make for some packet loss
   * Happens even with persistent keepalive enabled between the peers
-  * For now, handled with `HealthHysteresisBandiad`
+  * For now, handled with `HealthHysteresisBandaid`
   * For super-idle peers, is this related to the interaction between persistent keepalive
     and the peer alive fact interval?
 * Only do lookups for static facts when we _really_ need them
@@ -57,13 +57,13 @@
 * Drop privileges after startup
   * Close the netlink socket for local interface config when we don't need it any more
   * This is obstructed by Go's lack of support:
-    https://github.com/golang/go/issues/1435
-  * Worked around for now by having systemd units drop privs
+    [golang/go#1435](https://github.com/golang/go/issues/1435)
+  * Worked around for now by having systemd units drop privileges
 * Improved trust models
 
 ## Fancy
 
-* Use `pcap` or the like to detect when we are actually trying to talk to a peer
+* Use packet capture to detect when we are actually trying to talk to a peer
   * Use this to only do peer setup when we need it
 
 ### Chatter Management
