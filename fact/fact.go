@@ -12,7 +12,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-
 // fact types, denoted as attributes of a subject
 const (
 	AttributeUnknown       Attribute = 0

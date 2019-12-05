@@ -44,7 +44,6 @@ jobs:
         git diff --exit-code
 
     - name: Lint
-      #run: go build -v .
       run: make vet lint
 
     - name: Test
