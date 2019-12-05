@@ -10,7 +10,7 @@ import (
 )
 
 func TestAccumulatorLimits(t *testing.T) {
-	ef, _, ep := mustMockAlivePacket(t, nil, nil)
+	ef, ep := mustMockAlivePacket(t, nil, nil)
 
 	a := NewAccumulator(len(ep)*4 - 1)
 
@@ -25,7 +25,7 @@ func TestAccumulatorLimits(t *testing.T) {
 }
 
 func TestAccumulatorSigning(t *testing.T) {
-	ef, _, ep := mustMockAlivePacket(t, nil, nil)
+	ef, ep := mustMockAlivePacket(t, nil, nil)
 
 	a := NewAccumulator(len(ep)*4 - 1)
 	for i := 0; i < 4; i++ {

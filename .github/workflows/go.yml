@@ -27,32 +27,36 @@ jobs:
       run: |
         go get -v -t -d ./...
     - name: Get tools
-      # this has to run from outside GOPATH to work
+      # cd /tmp: this has to run from outside GOPATH to work
       run: |
         cd /tmp
+        go get golang.org/x/tools/cmd/goimports
         go get golang.org/x/lint/golint
         go get golang.org/x/tools/gopls@latest
-        find $(go env GOPATH)/bin -ls
-
-    - name: Lint
-      #run: go build -v .
-      run: make vet lint
 
     - name: Build
       #run: go build -v .
       run: make compile
 
+    - name: Format check
+      run: |
+        make fmt
+        git diff --exit-code
+
+    - name: Lint
+      run: make vet lint
+
     - name: Test
       run: make test-go coverage.html
-
-    - name: Upload coverage (codecov)
-      uses: codecov/codecov-action@v1
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./coverage.out
 
     - name: Upload coverage (artifact)
       uses: actions/upload-artifact@v1.0.0
       with:
         name: coverage.html
         path: ./coverage.html
+
+    - name: Upload coverage (codecov)
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: ./coverage.out

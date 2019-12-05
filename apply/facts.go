@@ -3,6 +3,7 @@ package apply
 import (
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
+	"github.com/fastcat/wirelink/util"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -11,11 +12,11 @@ import (
 func EnsureAllowedIPs(peer *wgtypes.Peer, facts []*fact.Fact, cfg *wgtypes.PeerConfig) *wgtypes.PeerConfig {
 	curAIPs := make(map[string]bool)
 	for _, aip := range peer.AllowedIPs {
-		curAIPs[string(fact.IPNetValue{IPNet: aip}.Bytes())] = true
+		curAIPs[string(util.MustBytes(fact.IPNetValue{IPNet: aip}.MarshalBinary()))] = true
 	}
 	if cfg != nil {
 		for _, aip := range cfg.AllowedIPs {
-			curAIPs[string(fact.IPNetValue{IPNet: aip}.Bytes())] = true
+			curAIPs[string(util.MustBytes(fact.IPNetValue{IPNet: aip}.MarshalBinary()))] = true
 		}
 	}
 
@@ -24,7 +25,7 @@ func EnsureAllowedIPs(peer *wgtypes.Peer, facts []*fact.Fact, cfg *wgtypes.PeerC
 		case fact.AttributeAllowedCidrV4:
 			fallthrough
 		case fact.AttributeAllowedCidrV6:
-			if curAIPs[string(f.Value.Bytes())] {
+			if curAIPs[string(util.MustBytes(f.Value.MarshalBinary()))] {
 				continue
 			}
 			if ipn, ok := f.Value.(*fact.IPNetValue); ok {

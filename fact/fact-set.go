@@ -3,6 +3,8 @@ package fact
 import (
 	"sort"
 	"time"
+
+	"github.com/fastcat/wirelink/util"
 )
 
 // Key is a comparable version of the subject, attribute, and value of a Fact
@@ -17,14 +19,14 @@ type Key struct {
 
 // KeyOf returns the FactKey for a Fact
 func KeyOf(fact *Fact) Key {
-	valueBytes := fact.Value.Bytes()
+	valueBytes := util.MustBytes(fact.Value.MarshalBinary())
 	// special case: for Alive, we ignore the value!
 	if fact.Attribute == AttributeAlive {
 		valueBytes = []byte{}
 	}
 	return Key{
 		attribute: fact.Attribute,
-		subject:   string(fact.Subject.Bytes()),
+		subject:   string(util.MustBytes(fact.Subject.MarshalBinary())),
 		value:     string(valueBytes),
 	}
 }

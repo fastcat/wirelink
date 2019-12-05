@@ -139,7 +139,7 @@ func (pcs *PeerConfigState) NextEndpoint(peerFacts []*fact.Fact) *net.UDPAddr {
 		case fact.AttributeEndpointV4:
 			fallthrough
 		case fact.AttributeEndpointV6:
-			fvk := string(pf.Value.Bytes())
+			fvk := string(util.MustBytes(pf.Value.MarshalBinary()))
 			lu := pcs.endpointLastUsed[fvk]
 			if lu.Before(bestLastUsed) {
 				best = pf
@@ -152,7 +152,7 @@ func (pcs *PeerConfigState) NextEndpoint(peerFacts []*fact.Fact) *net.UDPAddr {
 		return nil
 	}
 
-	pcs.endpointLastUsed[string(best.Value.Bytes())] = time.Now()
+	pcs.endpointLastUsed[string(util.MustBytes(best.Value.MarshalBinary()))] = time.Now()
 	fv := best.Value.(*fact.IPPortValue)
 	return &net.UDPAddr{
 		IP:   fv.IP,

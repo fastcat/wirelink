@@ -26,13 +26,9 @@ func NewAccumulator(maxGroupLen int) *GroupAccumulator {
 
 // AddFact appends the given fact into the accumulator
 func (ga *GroupAccumulator) AddFact(f *Fact) error {
-	p, err := f.ToWire()
+	b, err := f.MarshalBinary()
 	if err != nil {
-		return errors.Wrapf(err, "Unable to convert fact to wire")
-	}
-	b, err := p.Serialize()
-	if err != nil {
-		return errors.Wrapf(err, "Unable to convert wire form to packet bytes")
+		return errors.Wrapf(err, "Unable to convert fact to packet bytes")
 	}
 	lgi := len(ga.groups) - 1
 	lg := ga.groups[lgi]
@@ -48,13 +44,9 @@ func (ga *GroupAccumulator) AddFact(f *Fact) error {
 // AddFactIfRoom conditionally adds the fact if and only if it won't result in
 // creating a new group
 func (ga *GroupAccumulator) AddFactIfRoom(f *Fact) (added bool, err error) {
-	p, err := f.ToWire()
+	b, err := f.MarshalBinary()
 	if err != nil {
-		return false, errors.Wrapf(err, "Unable to convert fact to wire")
-	}
-	b, err := p.Serialize()
-	if err != nil {
-		return false, errors.Wrapf(err, "Unable to convert wire form to packet bytes")
+		return false, errors.Wrapf(err, "Unable to convert fact to packet bytes")
 	}
 	lgi := len(ga.groups) - 1
 	lg := ga.groups[lgi]

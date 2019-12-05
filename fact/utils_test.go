@@ -1,6 +1,7 @@
 package fact
 
 import (
+	"bytes"
 	"crypto/rand"
 	"testing"
 	"time"
@@ -10,7 +11,7 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-func mustMockAlivePacket(t *testing.T, subject *wgtypes.Key, id *uuid.UUID) (*Fact, *OnWire, []byte) {
+func mustMockAlivePacket(t *testing.T, subject *wgtypes.Key, id *uuid.UUID) (*Fact, []byte) {
 	if subject == nil {
 		sk := mustKey(t)
 		subject = &sk
@@ -27,18 +28,15 @@ func mustMockAlivePacket(t *testing.T, subject *wgtypes.Key, id *uuid.UUID) (*Fa
 	})
 }
 
-func mustSerialize(t *testing.T, f *Fact) (*Fact, *OnWire, []byte) {
-	w, err := f.ToWire()
+func mustSerialize(t *testing.T, f *Fact) (*Fact, []byte) {
+	p, err := f.MarshalBinary()
 	require.Nil(t, err)
-	p, err := w.Serialize()
-	require.Nil(t, err)
-	return f, w, p
+	return f, p
 }
 
-func mustDeserialize(t *testing.T, p []byte) (f *Fact, w *OnWire) {
-	w, err := Deserialize(p)
-	require.Nil(t, err)
-	f, err = Parse(w)
+func mustDeserialize(t *testing.T, p []byte) (f *Fact) {
+	f = &Fact{}
+	err := f.DecodeFrom(len(p), bytes.NewBuffer(p))
 	require.Nil(t, err)
 	return
 }
