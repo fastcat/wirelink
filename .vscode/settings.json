@@ -1,10 +1,13 @@
 {
 	"cSpell.words": [
 		"Cidr",
+		"Decodable",
 		"GOBIN",
 		"GOPATH",
 		"Iface",
 		"Ifaces",
+		"Newf",
+		"Unmarshaller",
 		"Untrusted",
 		"Wrapf",
 		"aips",
@@ -22,7 +25,9 @@
 		"stringifying",
 		"systemctl",
 		"systemd",
+		"uint",
 		"unencrypted",
+		"unmarshalling",
 		"uuid",
 		"vcfg",
 		"vishvananda",

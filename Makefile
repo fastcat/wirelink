@@ -37,7 +37,7 @@ test: vet lint test-go
 test-go:
 	go test ./...
 coverage.out: test-go
-	go test -coverprofile=coverage.out ./...
+	go test -coverpkg=./... -coverprofile=coverage.out ./...
 cover: coverage.out
 coverage.html: coverage.out
 	go tool cover -html=coverage.out -o=coverage.html
@@ -86,7 +86,7 @@ checkinstall: checkinstall-prep
 everything: fmt vet lint compile wirelink test
 
 clean: checkinstall-clean
-	rm -vf ./wirelink
+	rm -vf ./wirelink ./coverage.out ./coverage.html
 #TODO: any way to clean the go cache for just this package?
 
 .PHONY: all info fmt compile run install everything clean
