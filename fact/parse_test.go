@@ -17,7 +17,9 @@ import (
 func Test_TTLClamping(t *testing.T) {
 	// going to modify the fact before serializing it
 	f, _ := mustMockAlivePacket(t, nil, nil)
-	f.Expires = time.Now().Add(time.Second * (math.MaxUint16 + 1))
+	// needs to be +2 so that forwards movement of the clock combined with
+	// rounding errors don't cause it to miss the clamping branch
+	f.Expires = time.Now().Add(time.Second * (math.MaxUint16 + 2))
 	_, p := mustSerialize(t, f)
 
 	// TODO: find a cleaner way to verify serialization-time clamping
