@@ -20,6 +20,8 @@ jobs:
 
     - name: Record go env
       run: |
+        set -x
+        env
         go env
 
     - name: Get dependencies
@@ -29,6 +31,7 @@ jobs:
         cd /tmp
         go get golang.org/x/lint/golint
         go get golang.org/x/tools/gopls@latest
+        find $(go env GOPATH) -ls
 
     - name: Lint
       #run: go build -v .
