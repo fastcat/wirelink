@@ -45,14 +45,14 @@ jobs:
     - name: Test
       run: make test-go coverage.html
 
-    - name: Upload coverage (codecov)
-      uses: codecov/codecov-action@v1
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./coverage.out
-
     - name: Upload coverage (artifact)
       uses: actions/upload-artifact@v1.0.0
       with:
         name: coverage.html
         path: ./coverage.html
+
+    - name: Upload coverage (codecov)
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: ./coverage.out
