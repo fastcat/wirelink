@@ -83,10 +83,3 @@
     * With signed facts, could have a fact for the fact port,
       though deciding among multiple values could get weird
 * Allow configuring allowed ips in config file
-
-### Code Cleanup
-
-* Use `encoding.Binary...` instead of custom `Bytes` method and parsers
-  * May require some restructuring of parsers
-* Consider using `encoding.binary.varint` instead of utf8 fakery
-* Use variable length encoding for TTL so it can exceed 255s
