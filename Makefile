@@ -86,7 +86,7 @@ checkinstall: checkinstall-prep
 everything: fmt vet lint compile wirelink test
 
 clean: checkinstall-clean
-	rm -vf ./wirelink
+	rm -vf ./wirelink ./coverage.out ./coverage.html
 #TODO: any way to clean the go cache for just this package?
 
 .PHONY: all info fmt compile run install everything clean
