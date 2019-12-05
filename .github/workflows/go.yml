@@ -27,20 +27,22 @@ jobs:
       run: |
         go get -v -t -d ./...
     - name: Get tools
-      # this has to run from outside GOPATH to work
+      # cd /tmp: this has to run from outside GOPATH to work
       run: |
         cd /tmp
-        go get golang.org/x/lint/golint
-        go get golang.org/x/tools/gopls@latest
-        find $(go env GOPATH)/bin -ls
-
-    - name: Lint
-      #run: go build -v .
-      run: make vet lint
+        go get golang.org/x/tools/cmd/goimports golang.org/x/lint/golint golang.org/x/tools/gopls@latest
 
     - name: Build
       #run: go build -v .
       run: make compile
+
+    - name: Format check
+      run: |
+        make fmt
+
+    - name: Lint
+      #run: go build -v .
+      run: make vet lint
 
     - name: Test
       run: make test-go coverage.html
