@@ -30,7 +30,9 @@ jobs:
       # cd /tmp: this has to run from outside GOPATH to work
       run: |
         cd /tmp
-        go get golang.org/x/tools/cmd/goimports golang.org/x/lint/golint golang.org/x/tools/gopls@latest
+        go get golang.org/x/tools/cmd/goimports
+        go get golang.org/x/lint/golint
+        go get golang.org/x/tools/gopls@latest
 
     - name: Build
       #run: go build -v .
