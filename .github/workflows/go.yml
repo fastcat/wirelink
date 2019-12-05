@@ -20,19 +20,15 @@ jobs:
 
     # https://github.com/actions/setup-go/issues/14
     - name: Add GOPATH/bin to path
-      # don't expect GOBIN to be set
+      # not expecting GOBIN to be set
       run: echo "::add-path::$(go env GOPATH)/bin"
-
-    - name: Record go env
-      run: |
-        set -x
-        env
-        go env
 
     - name: Get dependencies
       run: |
-        set -x
         go get -v -t -d ./...
+    - name: Get tools
+      # this has to run from outside GOPATH to work
+      run: |
         cd /tmp
         go get golang.org/x/lint/golint
         go get golang.org/x/tools/gopls@latest
@@ -49,7 +45,13 @@ jobs:
     - name: Test
       run: make test-go coverage.html
 
-    - name: Upload coverage
+    - name: Upload coverage (codecov)
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: ./coverage.out
+
+    - name: Upload coverage (artifact)
       uses: actions/upload-artifact@v1.0.0
       with:
         name: coverage.html

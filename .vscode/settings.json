@@ -1,6 +1,8 @@
 {
 	"cSpell.words": [
 		"Cidr",
+		"GOBIN",
+		"GOPATH",
 		"Iface",
 		"Ifaces",
 		"Untrusted",
@@ -12,6 +14,8 @@
 		"dedupe",
 		"deserialize",
 		"deserialized",
+		"golint",
+		"gopls",
 		"pcfg",
 		"pflag",
 		"stretchr",
