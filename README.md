@@ -1,5 +1,6 @@
 # wirelink
 
+[![Actions Status](https://github.com/fastcat/wirelink/workflows/Go/badge.svg)](https://github.com/fastcat/wirelink/actions)
 [![codecov](https://codecov.io/gh/fastcat/wirelink/branch/master/graph/badge.svg)](https://codecov.io/gh/fastcat/wirelink)
 
 ## Concept
