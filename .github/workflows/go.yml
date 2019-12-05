@@ -7,6 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GO111MODULE: "on"
+      PATH: "${{env.GOPATH}}/bin:${{env.PATH}}"
     steps:
 
     - name: Set up Go 1.13
@@ -31,7 +32,7 @@ jobs:
         cd /tmp
         go get golang.org/x/lint/golint
         go get golang.org/x/tools/gopls@latest
-        find $(go env GOPATH) -ls
+        find $(go env GOPATH)/bin -ls
 
     - name: Lint
       #run: go build -v .
