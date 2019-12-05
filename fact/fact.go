@@ -1,10 +1,14 @@
 package fact
 
 import (
+	"bytes"
+	"encoding"
+	"encoding/binary"
 	"fmt"
 	"time"
 
 	"github.com/fastcat/wirelink/util"
+	"github.com/pkg/errors"
 )
 
 // fact types, denoted as attributes of a subject
@@ -24,6 +28,9 @@ const (
 // Fact represents a single piece of information about a subject, with an
 // associated expiration time
 type Fact struct {
+	encoding.BinaryMarshaler
+	util.Decodable
+
 	Attribute Attribute
 	Expires   time.Time
 	Subject   Subject
@@ -49,18 +56,40 @@ func (f *Fact) FancyString(subjectFormatter func(s Subject) string) string {
 	)
 }
 
-// ToWire turns a structured fact into its intermediate wire format
-func (f *Fact) ToWire() (p *OnWire, err error) {
+// MarshalBinary serializes a Fact to its on-wire format
+func (f *Fact) MarshalBinary() ([]byte, error) {
+	var buf bytes.Buffer
+	var tmp [binary.MaxVarintLen64]byte
+	var tmpLen int
+
+	buf.WriteByte(byte(f.Attribute))
+
 	ttl := f.Expires.Sub(time.Now()) / time.Second
 	if ttl < 0 {
 		ttl = 0
-	} else if ttl > 255 {
-		ttl = 255
 	}
-	return &OnWire{
-		attribute: byte(f.Attribute),
-		ttl:       uint8(ttl),
-		subject:   f.Subject.Bytes(),
-		value:     util.MustBytes(f.Value.MarshalBinary()),
-	}, nil
+	tmpLen = binary.PutUvarint(tmp[:], uint64(ttl))
+	if n, err := buf.Write(tmp[0:tmpLen]); err != nil || n != tmpLen {
+		return buf.Bytes(), util.WrapOrNewf(err, "Failed to write ttl bytes, wrote %d of %d", n, tmpLen)
+	}
+
+	// these should never return errors, but ...
+
+	subjectData, err := f.Subject.MarshalBinary()
+	if err != nil {
+		return buf.Bytes(), errors.Wrap(err, "Failed to marshal Subject")
+	}
+	if n, err := buf.Write(subjectData); err != nil || n != len(subjectData) {
+		return buf.Bytes(), util.WrapOrNewf(err, "Failed to write subject to buffer, wrote %d of %d", n, len(subjectData))
+	}
+
+	valueData, err := f.Value.MarshalBinary()
+	if err != nil {
+		return buf.Bytes(), errors.Wrap(err, "Failed to marshal Value")
+	}
+	if n, err := buf.Write(valueData); err != nil || n != len(valueData) {
+		return buf.Bytes(), util.WrapOrNewf(err, "Failed to write Value to buffer, wrote %d of %d", n, len(valueData))
+	}
+
+	return buf.Bytes(), nil
 }

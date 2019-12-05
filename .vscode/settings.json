@@ -1,8 +1,11 @@
 {
 	"cSpell.words": [
 		"Cidr",
+		"Decodable",
 		"Iface",
 		"Ifaces",
+		"Newf",
+		"Unmarshaller",
 		"Untrusted",
 		"Wrapf",
 		"aips",

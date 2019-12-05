@@ -3,44 +3,70 @@ package fact
 import (
 	"net"
 	"testing"
-
-	"github.com/fastcat/wirelink/util"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+	"time"
 )
 
 func TestParseEndpointV4(t *testing.T) {
-	ep := IPPortValue{
-		IP:   net.IPv4(127, 0, 0, 1),
+	ep := &IPPortValue{
+		IP:   mustRandBytes(t, make([]byte, net.IPv4len)),
 		Port: 1,
 	}
-	key, err := wgtypes.GeneratePrivateKey()
-	if err != nil {
-		t.Fatalf("%v", err)
-	}
-	key = key.PublicKey()
-	ow := OnWire{
-		attribute: byte(AttributeEndpointV4),
-		ttl:       1,
-		subject:   key[:],
-		value:     util.MustBytes(ep.MarshalBinary()),
-	}
-	parsed, err := Parse(&ow)
-	if err != nil {
-		t.Fatalf("Should have been able to parse: %v", err)
+	key := mustKey(t)
+
+	f, p := mustSerialize(t, &Fact{
+		Attribute: AttributeEndpointV4,
+		Expires:   time.Time{},
+		Subject:   &PeerSubject{Key: key},
+		Value:     ep,
+	})
+
+	f = mustDeserialize(t, p)
+
+	if f.Attribute != AttributeEndpointV4 {
+		t.Errorf("Parsed attr as %q, should be %q", f.Attribute, AttributeEndpointV4)
 	}
 
-	if parsed.Attribute != AttributeEndpointV4 {
-		t.Errorf("Parsed attr as %v, should be %v", parsed.Attribute, AttributeEndpointV4)
-	}
-
-	if ps, ok := parsed.Subject.(*PeerSubject); !ok {
-		t.Errorf("Parsed subject as a %T, not a PeerSubject", parsed.Subject)
+	if ps, ok := f.Subject.(*PeerSubject); !ok {
+		t.Errorf("Parsed subject as a %T, not a PeerSubject", f.Subject)
 	} else if ps.Key != key {
 		t.Errorf("Parsed key as %v, should be %v", ps.Key, key)
 	}
 
-	if ipPortVal, ok := parsed.Value.(*IPPortValue); !ok {
-		t.Errorf("Parsed value as a %T, not an IPPortValue", parsed.Value)
+	if ipPortVal, ok := f.Value.(*IPPortValue); !ok {
+		t.Errorf("Parsed value as a %T, not an IPPortValue", f.Value)
+	} else if !ipPortVal.IP.Equal(ep.IP) || ipPortVal.Port != ep.Port {
+		t.Errorf("Parsed value as %v, should be %v", *ipPortVal, ep)
+	}
+}
+
+func TestParseEndpointV6(t *testing.T) {
+	ep := &IPPortValue{
+		IP:   mustRandBytes(t, make([]byte, net.IPv6len)),
+		Port: 1,
+	}
+	key := mustKey(t)
+
+	f, p := mustSerialize(t, &Fact{
+		Attribute: AttributeEndpointV6,
+		Expires:   time.Time{},
+		Subject:   &PeerSubject{Key: key},
+		Value:     ep,
+	})
+
+	f = mustDeserialize(t, p)
+
+	if f.Attribute != AttributeEndpointV6 {
+		t.Errorf("Parsed attr as %q, should be %q", f.Attribute, AttributeEndpointV6)
+	}
+
+	if ps, ok := f.Subject.(*PeerSubject); !ok {
+		t.Errorf("Parsed subject as a %T, not a PeerSubject", f.Subject)
+	} else if ps.Key != key {
+		t.Errorf("Parsed key as %v, should be %v", ps.Key, key)
+	}
+
+	if ipPortVal, ok := f.Value.(*IPPortValue); !ok {
+		t.Errorf("Parsed value as a %T, not an IPPortValue", f.Value)
 	} else if !ipPortVal.IP.Equal(ep.IP) || ipPortVal.Port != ep.Port {
 		t.Errorf("Parsed value as %v, should be %v", *ipPortVal, ep)
 	}

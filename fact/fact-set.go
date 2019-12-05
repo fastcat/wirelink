@@ -26,7 +26,7 @@ func KeyOf(fact *Fact) Key {
 	}
 	return Key{
 		attribute: fact.Attribute,
-		subject:   string(fact.Subject.Bytes()),
+		subject:   string(util.MustBytes(fact.Subject.MarshalBinary())),
 		value:     string(valueBytes),
 	}
 }

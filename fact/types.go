@@ -2,157 +2,24 @@ package fact
 
 import (
 	"encoding"
-	"encoding/binary"
 	"fmt"
-	"net"
-
-	"golang.org/x/crypto/chacha20poly1305"
-	"golang.org/x/crypto/poly1305"
-
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
 	"github.com/fastcat/wirelink/util"
-	"github.com/google/uuid"
 )
 
 // Subject is the subject of a Fact
 type Subject interface {
 	fmt.Stringer
-	Bytes() []byte
+	encoding.BinaryMarshaler
+	util.Decodable
 }
 
 // Value represents the value of a Fact
 type Value interface {
 	fmt.Stringer
 	encoding.BinaryMarshaler
+	util.Decodable
 }
 
 // Attribute is a byte identifying what aspect of a Subject a Fact describes
 type Attribute byte
-
-// PeerSubject is a subject that is a peer identified via its public key
-type PeerSubject struct {
-	wgtypes.Key
-}
-
-// Bytes gives the binary representation of a peer's public key
-func (s *PeerSubject) Bytes() []byte {
-	return s.Key[:]
-}
-
-// *PeerSubject must implement Subject
-// we do this with the pointer because if we do it with the struct, the pointer
-// matches too, and that confuses things
-var _ Subject = &PeerSubject{}
-
-// IPPortValue represents an IP:port pair as an Attribute of a Subject
-type IPPortValue struct {
-	IP   net.IP
-	Port int
-}
-
-// IPValue must implement Value
-// same pointer criteria as for PeerSubject
-var _ Value = &IPPortValue{}
-
-// MarshalBinary returns the normalized binary representation
-func (ipp *IPPortValue) MarshalBinary() ([]byte, error) {
-	normalized := util.NormalizeIP(ipp.IP)
-	ret := make([]byte, len(normalized)+2)
-	copy(ret, normalized)
-	binary.BigEndian.PutUint16(ret[len(normalized):], uint16(ipp.Port))
-	return ret, nil
-}
-
-func (ipp *IPPortValue) String() string {
-	return fmt.Sprintf("%v:%v", ipp.IP, ipp.Port)
-}
-
-// IPNetValue represents some IP+Mask as an Attribute of a Subject
-type IPNetValue struct {
-	net.IPNet
-}
-
-// IPNetValue must implement Value
-var _ Value = IPNetValue{}
-
-// MarshalBinary gives the binary representation of the ip and cidr prefix
-func (ipn IPNetValue) MarshalBinary() ([]byte, error) {
-	ipNorm := util.NormalizeIP(ipn.IP)
-	ones, _ := ipn.Mask.Size()
-	ret := make([]byte, len(ipNorm), len(ipNorm)+1)
-	copy(ret, ipNorm)
-	ret = append(ret, uint8(ones))
-	return ret, nil
-}
-
-func (ipn IPNetValue) String() string {
-	return ipn.IPNet.String()
-}
-
-// EmptyValue is used to represent facts of AttributeUnknown with a zero length value,
-// which indicate just that a remote peer is alive and talking to us
-//
-// Deprecated: prior uses of this should often use UUIDValue instead
-type EmptyValue struct{}
-
-var _ Value = EmptyValue{}
-
-// MarshalBinary always returns an empty slice for EmptyValue
-func (v EmptyValue) MarshalBinary() ([]byte, error) {
-	return []byte{}, nil
-}
-
-func (v EmptyValue) String() string {
-	return "<empty>"
-}
-
-// UUIDValue represents a UUID, often used as a random marker or tag
-type UUIDValue struct {
-	uuid.UUID
-}
-
-// UUIDValue must implement Value
-var _ Value = &UUIDValue{}
-
-// UUIDValue inherits its MarshalBinary from UUID
-
-// UUIDValue inherits its String(er) from UUID
-
-// SignedGroupValue represents a signed chunk of other fact data.
-// Note that this structure does _not_ include parsing those inner bytes!
-type SignedGroupValue struct {
-	Nonce      [chacha20poly1305.NonceSizeX]byte
-	Tag        [poly1305.TagSize]byte
-	InnerBytes []byte
-}
-
-var _ Value = &SignedGroupValue{}
-
-const sgvOverhead = chacha20poly1305.NonceSizeX + poly1305.TagSize
-
-// UDPMaxSafePayload is the maximum payload size of a UDP packet we can safely send.
-// we only need to worry about IPv6 for this
-const UDPMaxSafePayload = 1212
-
-// fixed prefix + subject (key) length
-const sgvFactOverhead = 4 + wgtypes.KeyLen
-
-// SignedGroupMaxSafeInnerLength is the maximum safe length for `InnerBytes`
-// above which fragmentation or packet drops may happen. This is computed based
-// on the max safe UDP payload for IPv6, minus the fact & crypto overheads.
-const SignedGroupMaxSafeInnerLength = UDPMaxSafePayload - sgvFactOverhead - sgvOverhead
-
-// MarshalBinary gives the on-wire form of the value
-func (sgv *SignedGroupValue) MarshalBinary() ([]byte, error) {
-	ret := make([]byte, 0, len(sgv.Nonce)+len(sgv.Tag)+len(sgv.InnerBytes))
-	ret = append(ret, sgv.Nonce[:]...)
-	ret = append(ret, sgv.Tag[:]...)
-	ret = append(ret, sgv.InnerBytes...)
-	return ret, nil
-}
-
-func (sgv *SignedGroupValue) String() string {
-	// could parse the inner bytes for this, but probably not worth it
-	return fmt.Sprintf("{SGV: %d bytes}", len(sgv.InnerBytes))
-}

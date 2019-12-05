@@ -213,12 +213,7 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 
 func (s *LinkServer) sendFact(peer *wgtypes.Peer, f *fact.Fact, wg *sync.WaitGroup, counter *int32, errs chan<- error) {
 	defer wg.Done()
-	wp, err := f.ToWire()
-	if err != nil {
-		errs <- err
-		return
-	}
-	wpb, err := wp.Serialize()
+	wpb, err := f.MarshalBinary()
 	if err != nil {
 		errs <- err
 		return

@@ -6,15 +6,14 @@ Each UDP packet on the wire has the following payload:
 
 * Attribute (1 byte)
 * TTL (1-3 bytes: varint up to uint16)
-* Subject length (1-3 bytes: varint up to uint16)
-* Value length (1-3 bytes: varint up to uint16)
 * Subject (N bytes)
 * Value (N bytes)
 
 The "varint" fields use Go / Protocol Buffer's
 [varint encoding](https://developers.google.com/protocol-buffers/docs/encoding#varints).
 
-The interpretation & expectations of subject & value depend on the attribute.
+The value of the Attribute field determines the expected length and
+interpretation of the Subject and Value fields.
 
 All values are in network byte order if unspecified.
 
@@ -22,16 +21,17 @@ All values are in network byte order if unspecified.
 
 The following attributes are defined, mostly as 1 byte ASCII values:
 
-* `0x0`: `Unknown`: Not really unknown, but rather an "I'm here" fact, a cross
-  between a keep-alive and a ping.
-* `e`: `EndpointV4`: Value is a 4 byte IPv4 address followed by a two byte UDP
-  port
-* `E`: `EndpointV6`: Value is a 16 byte IPv6 address followed by a two byte UDP
-  port
-* `a`: `AllowedCidrV4`: Value is a 4 byte IPv4 network followed by a 1 byte
-  CIDR prefix length
-* `A`: `AllowedCidrV6`: Value is a 16 byte IPv6 network followed by a 1 byte
-  CIDR prefix length
+* `!`: `Alive`: An indicator that the remote peer is alive
+  * Value is a 16 byte UUID, which will change if the peer restarts or
+    otherwise forgets things and needs to be re-told them.
+* `e`: `EndpointV4`: A candidate IPv4 address + UDP port for reaching the peer
+  * Value is a 4 byte IPv4 address followed by a two byte UDP port
+* `E`: `EndpointV6`: A candidate IPv4 address + UDP port for reaching the peer
+  * Value is a 16 byte IPv6 address followed by a two byte UDP port
+* `a`: `AllowedCidrV4`: An IPv4 entry for the peer's AllowedIPs
+  * Value is a 4 byte IPv4 network followed by a 1 byte CIDR prefix length
+* `A`: `AllowedCidrV6`: An IPv6 entry for the peer's AllowedIPs
+  * Value is a 16 byte IPv6 network followed by a 1 byte CIDR prefix length
 * `S`: `SignedGroup`: Value is a signed group of facts (see below)
 
 In practice, the only attribute that appears directly on the wire is the
@@ -95,4 +95,5 @@ provide. Authenticating the data just considers authenticating the signature,
 and verifying it against the source address (as is done for unsigned facts).
 
 A `SignedGroup` value _MUST NOT_ itself contain a `SignedGroup` fact. Such a
-packet is invalid will be ignored.
+packet is invalid will be ignored. In addition to being redundant, the protocol
+would not allow locating the end of the inner `SignedGroup`.

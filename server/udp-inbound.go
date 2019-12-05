@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"fmt"
 	"net"
 	"time"
@@ -35,14 +36,10 @@ func (s *LinkServer) readPackets(endReader <-chan bool, packets chan<- *Received
 				s.onError(err)
 				break
 			}
-			p, err := fact.Deserialize(buffer[:n])
+			pp := &fact.Fact{}
+			err = pp.DecodeFrom(n, bytes.NewBuffer(buffer[:n]))
 			if err != nil {
-				log.Error("Unable to deserialize fact: %v %v", err, buffer[:n])
-				continue
-			}
-			pp, err := fact.Parse(p)
-			if err != nil {
-				log.Error("Unable to parse fact: %v", err)
+				log.Error("Unable to decode fact: %v %v", err, buffer[:n])
 				continue
 			}
 			if pp.Attribute == fact.AttributeSignedGroup {
