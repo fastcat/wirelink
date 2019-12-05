@@ -16,7 +16,7 @@ type IPPortValue struct {
 	Port int
 }
 
-// IPValue must implement Value
+// *IPValue must implement Value
 // same pointer criteria as for PeerSubject
 var _ Value = &IPPortValue{}
 
@@ -63,8 +63,9 @@ type IPNetValue struct {
 	net.IPNet
 }
 
-// IPNetValue must implement Value
-var _ Value = IPNetValue{}
+// *IPNetValue must implement Value
+// same pointer criteria as for PeerSubject
+var _ Value = &IPNetValue{}
 
 // MarshalBinary gives the binary representation of the ip and cidr prefix
 func (ipn IPNetValue) MarshalBinary() ([]byte, error) {
@@ -77,7 +78,7 @@ func (ipn IPNetValue) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary implements BinaryUnmarshaler
-func (ipn IPNetValue) UnmarshalBinary(data []byte) error {
+func (ipn *IPNetValue) UnmarshalBinary(data []byte) error {
 	if len(data) == net.IPv4len+1 {
 		ipn.IP = net.IP(data[0:net.IPv4len])
 		ipn.Mask = net.CIDRMask(int(data[net.IPv4len]), 8*net.IPv4len)
@@ -91,7 +92,7 @@ func (ipn IPNetValue) UnmarshalBinary(data []byte) error {
 }
 
 // DecodeFrom implements Decodable
-func (ipn IPNetValue) DecodeFrom(lengthHint int, reader io.Reader) error {
+func (ipn *IPNetValue) DecodeFrom(lengthHint int, reader io.Reader) error {
 	if lengthHint == net.IPv4len+1 {
 		return util.DecodeFrom(ipn, net.IPv4len+1, reader)
 	} else if lengthHint == net.IPv6len+1 {
@@ -101,9 +102,7 @@ func (ipn IPNetValue) DecodeFrom(lengthHint int, reader io.Reader) error {
 	}
 }
 
-func (ipn IPNetValue) String() string {
-	return ipn.IPNet.String()
-}
+// IPNetValue inherits Stringer from IPNet
 
 // EmptyValue is used to represent facts of AttributeUnknown with a zero length value,
 // which indicate just that a remote peer is alive and talking to us

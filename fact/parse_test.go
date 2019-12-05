@@ -1,9 +1,13 @@
 package fact
 
 import (
+	"math/rand"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseEndpointV4(t *testing.T) {
@@ -22,21 +26,14 @@ func TestParseEndpointV4(t *testing.T) {
 
 	f = mustDeserialize(t, p)
 
-	if f.Attribute != AttributeEndpointV4 {
-		t.Errorf("Parsed attr as %q, should be %q", f.Attribute, AttributeEndpointV4)
-	}
+	assert.Equal(t, AttributeEndpointV4, f.Attribute)
 
-	if ps, ok := f.Subject.(*PeerSubject); !ok {
-		t.Errorf("Parsed subject as a %T, not a PeerSubject", f.Subject)
-	} else if ps.Key != key {
-		t.Errorf("Parsed key as %v, should be %v", ps.Key, key)
-	}
+	require.IsType(t, &PeerSubject{}, f.Subject)
+	assert.Equal(t, key, f.Subject.(*PeerSubject).Key)
 
-	if ipPortVal, ok := f.Value.(*IPPortValue); !ok {
-		t.Errorf("Parsed value as a %T, not an IPPortValue", f.Value)
-	} else if !ipPortVal.IP.Equal(ep.IP) || ipPortVal.Port != ep.Port {
-		t.Errorf("Parsed value as %v, should be %v", *ipPortVal, ep)
-	}
+	require.IsType(t, &IPPortValue{}, f.Value)
+	assert.Equal(t, ep.IP, f.Value.(*IPPortValue).IP)
+	assert.Equal(t, ep.Port, f.Value.(*IPPortValue).Port)
 }
 
 func TestParseEndpointV6(t *testing.T) {
@@ -55,19 +52,72 @@ func TestParseEndpointV6(t *testing.T) {
 
 	f = mustDeserialize(t, p)
 
-	if f.Attribute != AttributeEndpointV6 {
-		t.Errorf("Parsed attr as %q, should be %q", f.Attribute, AttributeEndpointV6)
-	}
+	assert.Equal(t, AttributeEndpointV6, f.Attribute)
 
-	if ps, ok := f.Subject.(*PeerSubject); !ok {
-		t.Errorf("Parsed subject as a %T, not a PeerSubject", f.Subject)
-	} else if ps.Key != key {
-		t.Errorf("Parsed key as %v, should be %v", ps.Key, key)
-	}
+	require.IsType(t, &PeerSubject{}, f.Subject)
+	assert.Equal(t, key, f.Subject.(*PeerSubject).Key)
 
-	if ipPortVal, ok := f.Value.(*IPPortValue); !ok {
-		t.Errorf("Parsed value as a %T, not an IPPortValue", f.Value)
-	} else if !ipPortVal.IP.Equal(ep.IP) || ipPortVal.Port != ep.Port {
-		t.Errorf("Parsed value as %v, should be %v", *ipPortVal, ep)
+	require.IsType(t, &IPPortValue{}, f.Value)
+	assert.Equal(t, ep.IP, f.Value.(*IPPortValue).IP)
+	assert.Equal(t, ep.Port, f.Value.(*IPPortValue).Port)
+}
+
+func TestParseCidrV4(t *testing.T) {
+	ipn := &IPNetValue{
+		IPNet: net.IPNet{
+			IP:   mustRandBytes(t, make([]byte, net.IPv4len)),
+			Mask: net.CIDRMask(rand.Intn(8*net.IPv4len), 8*net.IPv4len),
+		},
 	}
+	key := mustKey(t)
+
+	f, p := mustSerialize(t, &Fact{
+		Attribute: AttributeAllowedCidrV4,
+		Expires:   time.Time{},
+		Subject:   &PeerSubject{Key: key},
+		Value:     ipn,
+	})
+	t.Logf("CidrV4 value: %#v", *ipn)
+	t.Logf("CidrV4 fact: %#v", f)
+	t.Logf("CidrV4 packet: %v", p)
+
+	f = mustDeserialize(t, p)
+
+	assert.Equal(t, AttributeAllowedCidrV4, f.Attribute)
+
+	require.IsType(t, &PeerSubject{}, f.Subject)
+	assert.Equal(t, key, f.Subject.(*PeerSubject).Key)
+
+	require.IsType(t, &IPNetValue{}, f.Value)
+	assert.Equal(t, ipn.IP, f.Value.(*IPNetValue).IP)
+	assert.Equal(t, ipn.Mask, f.Value.(*IPNetValue).Mask)
+}
+
+func TestParseCidrV6(t *testing.T) {
+	ipn := &IPNetValue{
+		IPNet: net.IPNet{
+			IP:   mustRandBytes(t, make([]byte, net.IPv6len)),
+			Mask: net.CIDRMask(rand.Intn(8*net.IPv6len), 8*net.IPv6len),
+		},
+	}
+	key := mustKey(t)
+
+	f, p := mustSerialize(t, &Fact{
+		Attribute: AttributeAllowedCidrV6,
+		Expires:   time.Time{},
+		Subject:   &PeerSubject{Key: key},
+		Value:     ipn,
+	})
+	t.Logf("CidrV6 packet: %v", p)
+
+	f = mustDeserialize(t, p)
+
+	assert.Equal(t, AttributeAllowedCidrV6, f.Attribute)
+
+	require.IsType(t, &PeerSubject{}, f.Subject)
+	assert.Equal(t, key, f.Subject.(*PeerSubject).Key)
+
+	require.IsType(t, &IPNetValue{}, f.Value)
+	assert.Equal(t, ipn.IP, f.Value.(*IPNetValue).IP)
+	assert.Equal(t, ipn.Mask, f.Value.(*IPNetValue).Mask)
 }

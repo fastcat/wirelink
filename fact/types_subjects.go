@@ -34,5 +34,6 @@ func (s *PeerSubject) DecodeFrom(lengthHint int, reader io.Reader) error {
 
 // *PeerSubject must implement Subject
 // we do this with the pointer because if we do it with the struct, the pointer
-// matches too, and that confuses things
+// matches too, and that confuses things, and critically because unmarshalling
+// and decoding require mutation of the value
 var _ Subject = &PeerSubject{}
