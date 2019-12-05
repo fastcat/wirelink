@@ -39,6 +39,7 @@ jobs:
     - name: Format check
       run: |
         make fmt
+        git diff --exit-code
 
     - name: Lint
       #run: go build -v .
