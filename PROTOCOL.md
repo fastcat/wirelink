@@ -5,7 +5,7 @@
 Each UDP packet on the wire has the following payload:
 
 * Attribute (1 byte)
-* TTL (1-3 bytes: varint up to uint16)
+* TTL (1-3 bytes: varint, seconds)
 * Subject (N bytes)
 * Value (N bytes)
 

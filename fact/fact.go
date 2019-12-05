@@ -5,6 +5,7 @@ import (
 	"encoding"
 	"encoding/binary"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/fastcat/wirelink/util"
@@ -65,8 +66,12 @@ func (f *Fact) MarshalBinary() ([]byte, error) {
 	buf.WriteByte(byte(f.Attribute))
 
 	ttl := f.Expires.Sub(time.Now()) / time.Second
+	// clamp ttl to uint16 range
+	// TODO: warn if we somehow get outside this range
 	if ttl < 0 {
 		ttl = 0
+	} else if ttl > math.MaxUint16 {
+		ttl = math.MaxUint16
 	}
 	tmpLen = binary.PutUvarint(tmp[:], uint64(ttl))
 	if n, err := buf.Write(tmp[0:tmpLen]); err != nil || n != tmpLen {

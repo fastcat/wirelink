@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"time"
 
@@ -30,6 +31,10 @@ func (f *Fact) DecodeFrom(lengthHint int, reader io.Reader) error {
 	ttl, err := binary.ReadUvarint(buf)
 	if err != nil {
 		return errors.Wrap(err, "Unable to read ttl from packet")
+	}
+	// clamp TTL to valid range
+	if ttl > math.MaxUint16 {
+		return errors.Errorf("Received TTL outside range: %v", ttl)
 	}
 	f.Expires = time.Now().Add(time.Duration(ttl) * time.Second)
 
