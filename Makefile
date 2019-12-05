@@ -36,7 +36,7 @@ lint-gopls:
 test: vet lint test-go
 test-go:
 	go test ./...
-coverage.out: test
+coverage.out: test-go
 	go test -coverprofile=coverage.out ./...
 cover: coverage.out
 coverage.html: coverage.out
