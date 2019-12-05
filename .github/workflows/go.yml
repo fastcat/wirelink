@@ -1,0 +1,58 @@
+name: Go
+on: [push]
+jobs:
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    env:
+      GO111MODULE: "on"
+    steps:
+
+    - name: Set up Go 1.13
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.13
+      id: go
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v1
+
+    # https://github.com/actions/setup-go/issues/14
+    - name: Add GOPATH/bin to path
+      # not expecting GOBIN to be set
+      run: echo "::add-path::$(go env GOPATH)/bin"
+
+    - name: Get dependencies
+      run: |
+        go get -v -t -d ./...
+    - name: Get tools
+      # this has to run from outside GOPATH to work
+      run: |
+        cd /tmp
+        go get golang.org/x/lint/golint
+        go get golang.org/x/tools/gopls@latest
+        find $(go env GOPATH)/bin -ls
+
+    - name: Lint
+      #run: go build -v .
+      run: make vet lint
+
+    - name: Build
+      #run: go build -v .
+      run: make compile
+
+    - name: Test
+      run: make test-go coverage.html
+
+    - name: Upload coverage (codecov)
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: ./coverage.out
+
+    - name: Upload coverage (artifact)
+      uses: actions/upload-artifact@v1.0.0
+      with:
+        name: coverage.html
+        path: ./coverage.html
