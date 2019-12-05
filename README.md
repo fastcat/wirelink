@@ -1,5 +1,7 @@
 # wirelink
 
+[![codecov](https://codecov.io/gh/fastcat/wirelink/branch/master/graph/badge.svg)](https://codecov.io/gh/fastcat/wirelink)
+
 ## Concept
 
 This is an experiment in implementing automatic peer-to-peer link setup in
