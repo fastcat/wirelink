@@ -6,7 +6,7 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     env:
-      GO111MODULEE: "on"
+      GO111MODULE: "on"
     steps:
 
     - name: Set up Go 1.13
