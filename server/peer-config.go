@@ -182,9 +182,13 @@ func (s *LinkServer) configurePeer(
 		// as we don't want to start routing traffic to it if it won't accept it
 		// and reciprocate
 		if state.IsAlive() || s.config.Peers.IsBasic(peer.PublicKey) {
-			pcfg = apply.EnsureAllowedIPs(peer, facts, pcfg)
-			if pcfg != nil && len(pcfg.AllowedIPs) > 0 {
-				log.Info("Adding AIPs to peer %s: %d", peerName, len(pcfg.AllowedIPs))
+			pcfg = apply.EnsureAllowedIPs(peer, facts, pcfg, allowDeconfigure)
+			if pcfg != nil && (len(pcfg.AllowedIPs) > 0 || pcfg.ReplaceAllowedIPs) {
+				if pcfg.ReplaceAllowedIPs {
+					log.Info("Resetting AIPs on peer %s: %d -> %d", peerName, len(peer.AllowedIPs), len(pcfg.AllowedIPs))
+				} else {
+					log.Info("Adding AIPs to peer %s: %d", peerName, len(pcfg.AllowedIPs))
+				}
 				logged = true
 			}
 		}
