@@ -31,11 +31,13 @@ func (ipp *IPPortValue) MarshalBinary() ([]byte, error) {
 
 // UnmarshalBinary implements BinaryUnmarshaler
 func (ipp *IPPortValue) UnmarshalBinary(data []byte) error {
+	// IMPORTANT: because we may be parsing from a packet buffer, we MUST NOT
+	// keep a reference to the data buffer after we return
 	if len(data) == net.IPv4len+2 {
-		ipp.IP = net.IP(data[0:net.IPv4len])
+		ipp.IP = net.IP(util.CloneBytes(data[0:net.IPv4len]))
 		ipp.Port = int(binary.BigEndian.Uint16(data[net.IPv4len:]))
 	} else if len(data) == net.IPv6len+2 {
-		ipp.IP = net.IP(data[0:net.IPv6len])
+		ipp.IP = net.IP(util.CloneBytes(data[0:net.IPv6len]))
 		ipp.Port = int(binary.BigEndian.Uint16(data[net.IPv6len:]))
 	} else {
 		return fmt.Errorf("ipv4 + port should be %d bytes, not %d", net.IPv4len+2, len(data))
@@ -79,11 +81,13 @@ func (ipn IPNetValue) MarshalBinary() ([]byte, error) {
 
 // UnmarshalBinary implements BinaryUnmarshaler
 func (ipn *IPNetValue) UnmarshalBinary(data []byte) error {
+	// IMPORTANT: because we may be parsing from a packet buffer, we MUST NOT
+	// keep a reference to the data buffer after we return
 	if len(data) == net.IPv4len+1 {
-		ipn.IP = net.IP(data[0:net.IPv4len])
+		ipn.IP = net.IP(util.CloneBytes(data[0:net.IPv4len]))
 		ipn.Mask = net.CIDRMask(int(data[net.IPv4len]), 8*net.IPv4len)
 	} else if len(data) == net.IPv6len+1 {
-		ipn.IP = net.IP(data[0:net.IPv6len])
+		ipn.IP = net.IP(util.CloneBytes(data[0:net.IPv6len]))
 		ipn.Mask = net.CIDRMask(int(data[net.IPv6len]), 8*net.IPv6len)
 	} else {
 		return fmt.Errorf("ipv4 + cidr should be %d bytes, not %d", net.IPv4len+1, len(data))

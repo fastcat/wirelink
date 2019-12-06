@@ -64,7 +64,9 @@ func (sgv *SignedGroupValue) DecodeFrom(lengthHint int, reader io.Reader) error 
 	if n, err = reader.Read(sgv.Tag[:]); err != nil || n != len(sgv.Tag) {
 		return util.WrapOrNewf(err, "Failed to read Tag for SignedGroupValue, got %d of %d bytes", n, len(sgv.Tag))
 	}
-	sgv.InnerBytes = buf.Bytes()
+	// IMPORTANT: because we may be parsing from a packet buffer, we MUST NOT
+	// keep a reference to the data buffer after we return
+	sgv.InnerBytes = util.CloneBytes(buf.Bytes())
 
 	return nil
 }
