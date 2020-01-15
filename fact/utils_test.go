@@ -2,10 +2,10 @@ package fact
 
 import (
 	"bytes"
-	"crypto/rand"
 	"testing"
 	"time"
 
+	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -13,7 +13,7 @@ import (
 
 func mustMockAlivePacket(t *testing.T, subject *wgtypes.Key, id *uuid.UUID) (*Fact, []byte) {
 	if subject == nil {
-		sk := mustKey(t)
+		sk := testutils.MustKey(t)
 		subject = &sk
 	}
 	if id == nil {
@@ -40,25 +40,6 @@ func mustDeserialize(t *testing.T, p []byte) (f *Fact) {
 	require.Nil(t, err)
 	// to help verify data races, randomize the input buffer after its consumed,
 	// so that any code that hangs onto it will show clear test failures
-	mustRandBytes(t, p)
+	testutils.MustRandBytes(t, p)
 	return
-}
-
-func mustKeyPair(t *testing.T) (privateKey, publicKey wgtypes.Key) {
-	priv, err := wgtypes.GeneratePrivateKey()
-	require.Nil(t, err)
-	pub := priv.PublicKey()
-	return priv, pub
-}
-
-func mustKey(t *testing.T) (key wgtypes.Key) {
-	mustRandBytes(t, key[:])
-	return
-}
-
-func mustRandBytes(t *testing.T, data []byte) []byte {
-	n, err := rand.Read(data)
-	require.Nil(t, err)
-	require.Equal(t, len(data), n)
-	return data
 }

@@ -7,10 +7,23 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
+// TODO: the timing constants here should be moved somewhere more general
+
 // HealthHysteresisBandaid is an extra delay to add before considering a peer
 // unhealthy, based on as-yet undiagnosed observations of handshakes not
 // refreshing as often as documentation seems to suggest they should
 const HealthHysteresisBandaid = 30 * time.Second
+
+// HandshakeValidityBase is the base amount of time we think a handshake should be valid for,
+// without accounting for tolerances
+const HandshakeValidityBase = device.RekeyAfterTime +
+	device.RekeyTimeout +
+	device.KeepaliveTimeout +
+	device.RekeyTimeoutJitterMaxMs*time.Millisecond
+
+// HandshakeValidity is how long we thing a handshake should be valid for,
+// including tolerances
+const HandshakeValidity = HandshakeValidityBase + HealthHysteresisBandaid
 
 // isHealthy checks the state of a peer to see if connectivity to it is probably
 // healthy (and thus we shouldn't change its config), or if it is unhealthy and
@@ -23,7 +36,7 @@ func isHealthy(state *PeerConfigState, peer *wgtypes.Peer) bool {
 		return false
 	}
 	// if the peer handshake is still valid, the peer is healthy
-	if peer.LastHandshakeTime.Add(handshakeValidity).After(time.Now()) {
+	if peer.LastHandshakeTime.Add(HandshakeValidity).After(time.Now()) {
 		return true
 	}
 	// if the peer handshake has moved since we last saw it, probably healthy
@@ -33,14 +46,8 @@ func isHealthy(state *PeerConfigState, peer *wgtypes.Peer) bool {
 	return false
 }
 
-const handshakeValidity = device.RekeyAfterTime +
-	device.RekeyTimeout +
-	device.KeepaliveTimeout +
-	device.RekeyTimeoutJitterMaxMs*time.Millisecond +
-	HealthHysteresisBandaid
-
 // IsHandshakeHealthy returns whether the handshake looks recent enough that the
 // peer is likely to be in communication.
 func IsHandshakeHealthy(lastHandshake time.Time) bool {
-	return lastHandshake.Add(handshakeValidity).After(time.Now())
+	return lastHandshake.Add(HandshakeValidity).After(time.Now())
 }

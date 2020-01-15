@@ -14,6 +14,7 @@ import (
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/trust"
+	"github.com/pkg/errors"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -231,7 +232,7 @@ func (s *LinkServer) sendFact(peer *wgtypes.Peer, f *fact.Fact, wg *sync.WaitGro
 			// this is expected, ignore it
 			err = nil
 		} else {
-			errs <- err
+			errs <- errors.Wrapf(err, "Failed to send to peer %s", s.peerName(peer.PublicKey))
 			return
 		}
 	} else if sent != len(wpb) {

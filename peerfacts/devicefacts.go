@@ -7,6 +7,7 @@ import (
 
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
+	"github.com/pkg/errors"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -16,6 +17,7 @@ func DeviceFacts(
 	dev *wgtypes.Device,
 	ttl time.Duration,
 	ifaceFilter func(name string) bool,
+	isRouter bool,
 ) (
 	ret []*fact.Fact,
 	err error,
@@ -45,31 +47,47 @@ func DeviceFacts(
 		if iface.Flags&net.FlagUp == 0 {
 			continue
 		}
-		// ignore the wireguard interface that we are monitoring
+		// don't report endpoints for the wireguard interface that we are monitoring
 		if iface.Name == dev.Name {
+			// but maybe do report allowedIPs
+			if isRouter {
+				log.Debug("Reporting AllowedIPs for local iface %s", iface.Name)
+				forEachAddr(iface, func(ipn *net.IPNet) error {
+					log.Debug("Reporting local AllowedIP: %s: %v", iface.Name, ipn)
+					// apply the mask to the IP so it matches how it will be interpreted by WG later
+					normalized := net.IPNet{
+						IP:   ipn.IP.Mask(ipn.Mask),
+						Mask: ipn.Mask,
+					}
+					// this should never happen
+					if normalized.IP == nil {
+						return errors.Errorf("What? Local interface ip/mask are mismatched sizes? %v", ipn)
+					}
+					if ip4 := ipn.IP.To4(); ip4 != nil {
+						addAttr(fact.AttributeAllowedCidrV4, &fact.IPNetValue{IPNet: normalized})
+					} else {
+						addAttr(fact.AttributeAllowedCidrV6, &fact.IPNetValue{IPNet: normalized})
+					}
+					return nil
+				})
+			}
 			continue
 		}
 		if !ifaceFilter(iface.Name) {
 			log.Debug("Excluding local iface '%s'\n", iface.Name)
 			continue
 		}
-		addrs, err := iface.Addrs()
-		if err != nil {
-			return nil, err
-		}
-		for _, addr := range addrs {
-			// on linux at least this should always be a safe type assertion
-			ipn := addr.(*net.IPNet)
-			if ipn == nil || !ipn.IP.IsGlobalUnicast() {
-				// ignore localhost for sure, and link local addresses at least for now
-				continue
-			}
-			log.Debug("Reporting local interface: %s: %v", iface.Name, ipn.IP)
+		err := forEachAddr(iface, func(ipn *net.IPNet) error {
+			log.Debug("Reporting local endpoint: %s: %v:%v", iface.Name, ipn.IP, dev.ListenPort)
 			if ip4 := ipn.IP.To4(); ip4 != nil {
 				addAttr(fact.AttributeEndpointV4, &fact.IPPortValue{IP: ip4, Port: dev.ListenPort})
 			} else {
 				addAttr(fact.AttributeEndpointV6, &fact.IPPortValue{IP: ipn.IP, Port: dev.ListenPort})
 			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -79,4 +97,24 @@ func DeviceFacts(
 	// TODO: more?
 
 	return ret, nil
+}
+
+func forEachAddr(iface net.Interface, handler func(ipn *net.IPNet) error) error {
+	addrs, err := iface.Addrs()
+	if err != nil {
+		return err
+	}
+	for _, addr := range addrs {
+		// on linux at least this should always be a safe type assertion
+		ipn := addr.(*net.IPNet)
+		if ipn == nil || !ipn.IP.IsGlobalUnicast() {
+			// ignore localhost for sure, and link local addresses at least for now
+			continue
+		}
+		err = handler(ipn)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

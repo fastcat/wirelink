@@ -50,11 +50,15 @@ func hasAutoIP(autoaddr net.IP, aips []net.IPNet) bool {
 // its automatic IPv6-LL address.
 func EnsurePeerAutoIP(peer *wgtypes.Peer, cfg *wgtypes.PeerConfig) (*wgtypes.PeerConfig, bool) {
 	autoaddr := autopeer.AutoAddress(peer.PublicKey)
-	skip := hasAutoIP(autoaddr, peer.AllowedIPs)
-	if cfg != nil && !skip {
-		skip = hasAutoIP(autoaddr, cfg.AllowedIPs)
+	hasNow := hasAutoIP(autoaddr, peer.AllowedIPs)
+	var alreadyAdding bool
+	var rebuilding bool
+	if cfg != nil {
+		alreadyAdding = hasAutoIP(autoaddr, cfg.AllowedIPs)
+		rebuilding = cfg.ReplaceAllowedIPs
 	}
-	if skip {
+	// we can skip this if we're already adding it, or if we have it and aren't rebuilding
+	if alreadyAdding || hasNow && !rebuilding {
 		return cfg, false
 	}
 
@@ -68,7 +72,9 @@ func EnsurePeerAutoIP(peer *wgtypes.Peer, cfg *wgtypes.PeerConfig) (*wgtypes.Pee
 		IP:   autoaddr,
 		Mask: net.CIDRMask(8*net.IPv6len, 8*net.IPv6len),
 	})
-	return cfg, true
+	// don't "say" we added it (for logging purposes) if we are "re-adding" it
+	// as part of a rebuild
+	return cfg, !hasNow
 }
 
 // OnlyAutoIP configures a peer to have _only_ its IPv6-LL IP in its AllowedIPs

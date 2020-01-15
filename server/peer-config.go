@@ -39,6 +39,11 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 
 		wg := new(sync.WaitGroup)
 
+		// we don't allow peers to be deconfigured until we've been running for longer than the fact ttl
+		// so that we don't remove config until we have a reasonable shot at having received everything
+		// from the network
+		allowDeconfigure := time.Now().Sub(startTime) > FactTTL
+
 		updatePeer := func(peer *wgtypes.Peer, allowAdd bool) {
 			fg, ok := factsByPeer[peer.PublicKey]
 			if !ok {
@@ -50,10 +55,7 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 			go func() {
 				defer wg.Done()
 				// TODO: inspect returned error? it has already been logged at this point so not much to do with it
-				// we don't allow peers to be deconfigured until we've been running for longer than the fact ttl
-				// so that we don't remove config until we have a reasonable shot at having received everything
-				// from the network
-				newState, _ := s.configurePeer(ps, &dev.PublicKey, peer, fg, time.Now().Sub(startTime) > FactTTL, allowAdd)
+				newState, _ := s.configurePeer(ps, &dev.PublicKey, peer, fg, allowDeconfigure, allowAdd)
 				s.peerConfig.Set(peer.PublicKey, newState)
 			}()
 		}
@@ -82,8 +84,10 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 			}, true)
 		}
 
-		wg.Add(1)
-		go s.deletePeers(wg, dev, removePeer)
+		if allowDeconfigure {
+			wg.Add(1)
+			go s.deletePeers(wg, dev, removePeer)
+		}
 
 		wg.Wait()
 
@@ -177,14 +181,28 @@ func (s *LinkServer) configurePeer(
 	var pcfg *wgtypes.PeerConfig
 	logged := false
 
+	//TODO: maybe should mask `allowDeconfigure` with `!s.config.IsRouter && !trust.IsRouter(peer)`?
+	// just as we don't want to restrict a peer to auto-ip-only if either end is a router,
+	// we also may not want to do any allowedip restrictions in that case.
+	// For now, this is probably saved because we will have facts for all the existing allowed ips,
+	// and so they should never be considered for removal.
+	// Also, allowing AIP edits of routers enables more live reconfig use cases.
+
 	if state.IsHealthy() {
 		// don't setup the AllowedIPs until it's healthy and, unless it's basic, alive,
 		// as we don't want to start routing traffic to it if it won't accept it
-		// and reciprocate
+		// and reciprocate.
+		// It is intentional that `healthy && !alive` results in doing nothing:
+		// this is a transient state that should clear soon, and so we leave it as
+		// hysteresis, esp. in case we miss alive pings a little.
 		if state.IsAlive() || s.config.Peers.IsBasic(peer.PublicKey) {
-			pcfg = apply.EnsureAllowedIPs(peer, facts, pcfg)
-			if pcfg != nil && len(pcfg.AllowedIPs) > 0 {
-				log.Info("Adding AIPs to peer %s: %d", peerName, len(pcfg.AllowedIPs))
+			pcfg = apply.EnsureAllowedIPs(peer, facts, pcfg, allowDeconfigure)
+			if pcfg != nil && (len(pcfg.AllowedIPs) > 0 || pcfg.ReplaceAllowedIPs) {
+				if pcfg.ReplaceAllowedIPs {
+					log.Info("Resetting AIPs on peer %s: %d -> %d", peerName, len(peer.AllowedIPs), len(pcfg.AllowedIPs))
+				} else {
+					log.Info("Adding AIPs to peer %s: %d", peerName, len(pcfg.AllowedIPs))
+				}
 				logged = true
 			}
 		}

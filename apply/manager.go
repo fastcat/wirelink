@@ -21,3 +21,9 @@ func NewManager() (*Manager, error) {
 
 	return &ret, nil
 }
+
+// Close releases resources associated with the manager
+func (m *Manager) Close() {
+	m.nlh.Delete()
+	m.nlh = nil
+}

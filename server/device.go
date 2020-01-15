@@ -8,6 +8,7 @@ import (
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/peerfacts"
+	"github.com/fastcat/wirelink/trust"
 	"github.com/fastcat/wirelink/util"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -47,15 +48,18 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device) (ret []*fact.Fact, err er
 	log.Debug("Collecting facts...")
 
 	// facts about the local node
-	ret, err = peerfacts.DeviceFacts(dev, FactTTL, s.shouldReportIface)
+	ret, err = peerfacts.DeviceFacts(dev, FactTTL, s.shouldReportIface, s.config.IsRouter)
 	if err != nil {
 		return
 	}
 
 	// facts the local node knows about peers configured in the wireguard device
+	//FIXME: find a better way to figure out if we should trust our local AIP list
+	useLocalAIPs := s.config.IsRouter || s.config.Peers.Trust(dev.PublicKey, trust.Untrusted) >= trust.AddPeer
+	log.Debug("Using local AIP facts: %v", useLocalAIPs)
 	for _, peer := range dev.Peers {
 		var pf []*fact.Fact
-		pf, err = peerfacts.LocalFacts(&peer, FactTTL)
+		pf, err = peerfacts.LocalFacts(&peer, FactTTL, useLocalAIPs)
 		if err != nil {
 			return
 		}

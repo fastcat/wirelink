@@ -75,6 +75,7 @@ func Create(ctrl *wgctrl.Client, config *config.Server) (*LinkServer, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer mgr.Close()
 	setLL, err := mgr.EnsureLocalAutoIP(device)
 	if err != nil {
 		return nil, err

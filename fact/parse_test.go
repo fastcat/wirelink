@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -43,10 +44,10 @@ func Test_TTLClamping(t *testing.T) {
 
 func TestParseEndpointV4(t *testing.T) {
 	ep := &IPPortValue{
-		IP:   mustRandBytes(t, make([]byte, net.IPv4len)),
+		IP:   testutils.MustRandBytes(t, make([]byte, net.IPv4len)),
 		Port: 1,
 	}
-	key := mustKey(t)
+	key := testutils.MustKey(t)
 
 	f, p := mustSerialize(t, &Fact{
 		Attribute: AttributeEndpointV4,
@@ -71,10 +72,10 @@ func TestParseEndpointV4(t *testing.T) {
 
 func TestParseEndpointV6(t *testing.T) {
 	ep := &IPPortValue{
-		IP:   mustRandBytes(t, make([]byte, net.IPv6len)),
+		IP:   testutils.MustRandBytes(t, make([]byte, net.IPv6len)),
 		Port: 1,
 	}
-	key := mustKey(t)
+	key := testutils.MustKey(t)
 
 	f, p := mustSerialize(t, &Fact{
 		Attribute: AttributeEndpointV6,
@@ -100,11 +101,11 @@ func TestParseEndpointV6(t *testing.T) {
 func TestParseCidrV4(t *testing.T) {
 	ipn := &IPNetValue{
 		IPNet: net.IPNet{
-			IP:   mustRandBytes(t, make([]byte, net.IPv4len)),
+			IP:   testutils.MustRandBytes(t, make([]byte, net.IPv4len)),
 			Mask: net.CIDRMask(rand.Intn(8*net.IPv4len), 8*net.IPv4len),
 		},
 	}
-	key := mustKey(t)
+	key := testutils.MustKey(t)
 
 	f, p := mustSerialize(t, &Fact{
 		Attribute: AttributeAllowedCidrV4,
@@ -133,11 +134,11 @@ func TestParseCidrV4(t *testing.T) {
 func TestParseCidrV6(t *testing.T) {
 	ipn := &IPNetValue{
 		IPNet: net.IPNet{
-			IP:   mustRandBytes(t, make([]byte, net.IPv6len)),
+			IP:   testutils.MustRandBytes(t, make([]byte, net.IPv6len)),
 			Mask: net.CIDRMask(rand.Intn(8*net.IPv6len), 8*net.IPv6len),
 		},
 	}
-	key := mustKey(t)
+	key := testutils.MustKey(t)
 
 	f, p := mustSerialize(t, &Fact{
 		Attribute: AttributeAllowedCidrV6,

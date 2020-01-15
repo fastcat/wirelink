@@ -2,6 +2,7 @@
 	"cSpell.words": [
 		"Cidr",
 		"Decodable",
+		"ENOKEY",
 		"Equalf",
 		"Falsef",
 		"GOBIN",
@@ -27,10 +28,12 @@
 		"gopls",
 		"pcfg",
 		"pflag",
+		"pflags",
 		"stretchr",
 		"stringifying",
 		"systemctl",
 		"systemd",
+		"testutils",
 		"uint",
 		"unencrypted",
 		"unmarshalling",
@@ -39,5 +42,8 @@
 		"vishvananda",
 		"wgctrl",
 		"wgtypes"
-	]
+	],
+	"go.alternateTools": {
+		"dlv": "${workspaceFolder}/.vscode/dlv-sudo.sh"
+	}
 }

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,12 +18,12 @@ func TestParseSignedGroup_Trivial(t *testing.T) {
 	// crypto here is all faked
 
 	// make up some data to verify it's copied around properly
-	mockSubjectKey := mustKey(t)
-	mockSignerKey := mustKey(t)
+	mockSubjectKey := testutils.MustKey(t)
+	mockSignerKey := testutils.MustKey(t)
 	var mockNonce [chacha20poly1305.NonceSizeX]byte
 	var mockTag [poly1305.TagSize]byte
-	mustRandBytes(t, mockNonce[:])
-	mustRandBytes(t, mockTag[:])
+	testutils.MustRandBytes(t, mockNonce[:])
+	testutils.MustRandBytes(t, mockTag[:])
 	mockBootID := uuid.Must(uuid.NewRandom())
 
 	//TODO: use mock data for TTL, hard because clock moves
@@ -97,11 +98,11 @@ func TestParseSignedGroup_Inner(t *testing.T) {
 	// as with the trivial test, crypto here is all faked
 
 	// make up some data to verify it's copied around properly
-	mockSignerKey := mustKey(t)
+	mockSignerKey := testutils.MustKey(t)
 	var mockNonce [chacha20poly1305.NonceSizeX]byte
 	var mockTag [poly1305.TagSize]byte
-	mustRandBytes(t, mockNonce[:])
-	mustRandBytes(t, mockTag[:])
+	testutils.MustRandBytes(t, mockNonce[:])
+	testutils.MustRandBytes(t, mockTag[:])
 
 	//TODO: use mock data for TTL, hard because clock moves
 
