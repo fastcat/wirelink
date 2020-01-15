@@ -41,5 +41,8 @@
 		"vishvananda",
 		"wgctrl",
 		"wgtypes"
-	]
+	],
+	"go.alternateTools": {
+		"dlv": "${workspaceFolder}/.vscode/dlv-sudo.sh"
+	}
 }
