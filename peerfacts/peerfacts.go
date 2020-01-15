@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/fastcat/wirelink/apply"
 	"github.com/fastcat/wirelink/fact"
 
-	"golang.zx2c4.com/wireguard/device"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -28,7 +28,7 @@ func LocalFacts(peer *wgtypes.Peer, ttl time.Duration) (ret []*fact.Fact, err er
 	}
 
 	// the endpoint is trustable if the last handshake age is less than the TTL
-	if peer.Endpoint != nil && peer.LastHandshakeTime.After(time.Now().Add(-device.RekeyAfterTime)) {
+	if peer.Endpoint != nil && peer.LastHandshakeTime.After(time.Now().Add(-apply.HandshakeValidity)) {
 		if peer.Endpoint.IP.To4() != nil {
 			addAttr(fact.AttributeEndpointV4, &fact.IPPortValue{IP: peer.Endpoint.IP, Port: peer.Endpoint.Port})
 		} else if peer.Endpoint.IP.To16() != nil {
