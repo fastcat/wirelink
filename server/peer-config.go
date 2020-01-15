@@ -181,10 +181,20 @@ func (s *LinkServer) configurePeer(
 	var pcfg *wgtypes.PeerConfig
 	logged := false
 
+	//TODO: maybe should mask `allowDeconfigure` with `!s.config.IsRouter && !trust.IsRouter(peer)`?
+	// just as we don't want to restrict a peer to auto-ip-only if either end is a router,
+	// we also may not want to do any allowedip restrictions in that case.
+	// For now, this is probably saved because we will have facts for all the existing allowed ips,
+	// and so they should never be considered for removal.
+	// Also, allowing AIP edits of routers enables more live reconfig use cases.
+
 	if state.IsHealthy() {
 		// don't setup the AllowedIPs until it's healthy and, unless it's basic, alive,
 		// as we don't want to start routing traffic to it if it won't accept it
-		// and reciprocate
+		// and reciprocate.
+		// It is intentional that `healthy && !alive` results in doing nothing:
+		// this is a transient state that should clear soon, and so we leave it as
+		// hysteresis, esp. in case we miss alive pings a little.
 		if state.IsAlive() || s.config.Peers.IsBasic(peer.PublicKey) {
 			pcfg = apply.EnsureAllowedIPs(peer, facts, pcfg, allowDeconfigure)
 			if pcfg != nil && (len(pcfg.AllowedIPs) > 0 || pcfg.ReplaceAllowedIPs) {
