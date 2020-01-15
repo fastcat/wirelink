@@ -11,7 +11,7 @@ import (
 )
 
 // LocalFacts gets all the known facts about a local peer
-func LocalFacts(peer *wgtypes.Peer, ttl time.Duration) (ret []*fact.Fact, err error) {
+func LocalFacts(peer *wgtypes.Peer, ttl time.Duration, includeAllowedIPs bool) (ret []*fact.Fact, err error) {
 	if ttl.Seconds() < 0 || ttl.Seconds() > 255 {
 		return nil, fmt.Errorf("ttl out of range")
 	}
@@ -39,16 +39,18 @@ func LocalFacts(peer *wgtypes.Peer, ttl time.Duration) (ret []*fact.Fact, err er
 	// don't publish the autoaddress, everyone can figure that out on their own,
 	// and must already know it in order to receive the data anyways
 
-	for _, peerIP := range peer.AllowedIPs {
-		// TODO: ignore the auto-generated v6 address
-		if peerIP.IP.To4() != nil {
-			addAttr(fact.AttributeAllowedCidrV4, &fact.IPNetValue{IPNet: peerIP})
-		} else if peerIP.IP.To16() != nil {
-			// ignore link-local addresses, particularly the auto-generated v6 one
-			if peerIP.IP[0] == 0xfe && peerIP.IP[1] == 0x80 {
-				continue
+	if includeAllowedIPs {
+		for _, peerIP := range peer.AllowedIPs {
+			// TODO: ignore the auto-generated v6 address
+			if peerIP.IP.To4() != nil {
+				addAttr(fact.AttributeAllowedCidrV4, &fact.IPNetValue{IPNet: peerIP})
+			} else if peerIP.IP.To16() != nil {
+				// ignore link-local addresses, particularly the auto-generated v6 one
+				if peerIP.IP[0] == 0xfe && peerIP.IP[1] == 0x80 {
+					continue
+				}
+				addAttr(fact.AttributeAllowedCidrV6, &fact.IPNetValue{IPNet: peerIP})
 			}
-			addAttr(fact.AttributeAllowedCidrV6, &fact.IPNetValue{IPNet: peerIP})
 		}
 	}
 

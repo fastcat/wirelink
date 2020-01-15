@@ -5,6 +5,7 @@ import (
 	"net"
 	"testing"
 
+	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/stretchr/testify/assert"
@@ -65,12 +66,15 @@ func Test_EnsureAllowedIPs_AddOne(t *testing.T) {
 func Test_EnsureAllowedIPs_RemoveOnly(t *testing.T) {
 	peer := makePeer(t)
 	peer.AllowedIPs = append(peer.AllowedIPs, makeIPNet(t))
+	autoAddr := autopeer.AutoAddressNet(peer.PublicKey)
+	peer.AllowedIPs = append(peer.AllowedIPs, autoAddr)
 
 	pc := EnsureAllowedIPs(peer, nil, nil, true)
 
 	require.NotNil(t, pc)
-	assert.Len(t, pc.AllowedIPs, 0)
+	assert.Len(t, pc.AllowedIPs, 1)
 	assert.True(t, pc.ReplaceAllowedIPs)
+	assert.Contains(t, pc.AllowedIPs, autoAddr)
 }
 
 func Test_EnsureAllowedIPs_ReplaceOnly(t *testing.T) {
@@ -83,13 +87,16 @@ func Test_EnsureAllowedIPs_ReplaceOnly(t *testing.T) {
 	pc := EnsureAllowedIPs(peer, facts, nil, true)
 
 	require.NotNil(t, pc)
-	require.Len(t, pc.AllowedIPs, 1)
+	require.Len(t, pc.AllowedIPs, 2)
 	assert.True(t, pc.ReplaceAllowedIPs)
-	assert.EqualValues(t, aip, pc.AllowedIPs[0])
+	assert.Contains(t, pc.AllowedIPs, aip)
+	assert.Contains(t, pc.AllowedIPs, autopeer.AutoAddressNet(peer.PublicKey))
 }
 
 func Test_EnsureAllowedIPs_ReplaceOne(t *testing.T) {
 	peer := makePeer(t)
+	autoAddr := autopeer.AutoAddressNet(peer.PublicKey)
+	peer.AllowedIPs = append(peer.AllowedIPs, autoAddr)
 	peer.AllowedIPs = append(peer.AllowedIPs, makeIPNet(t))
 	keepAip := makeIPNet(t)
 	peer.AllowedIPs = append(peer.AllowedIPs, keepAip)
@@ -102,8 +109,9 @@ func Test_EnsureAllowedIPs_ReplaceOne(t *testing.T) {
 	pc := EnsureAllowedIPs(peer, facts, nil, true)
 
 	require.NotNil(t, pc)
-	require.Len(t, pc.AllowedIPs, 2)
+	require.Len(t, pc.AllowedIPs, 3)
 	assert.True(t, pc.ReplaceAllowedIPs)
 	assert.Contains(t, pc.AllowedIPs, keepAip)
 	assert.Contains(t, pc.AllowedIPs, newAip)
+	assert.Contains(t, pc.AllowedIPs, autoAddr)
 }

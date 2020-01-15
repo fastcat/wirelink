@@ -3,6 +3,7 @@ package apply
 import (
 	"net"
 
+	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/util"
@@ -55,6 +56,8 @@ func EnsureAllowedIPs(
 			aipFlags[ipNetKey(aip)] |= aipAdding
 		}
 	}
+	// autoaddr is always valid
+	aipFlags[ipNetKey(autopeer.AutoAddressNet(peer.PublicKey))] |= aipValid
 
 	for _, f := range facts {
 		switch f.Attribute {
@@ -96,6 +99,7 @@ func EnsureAllowedIPs(
 			cfg.ReplaceAllowedIPs = true
 			cfg.AllowedIPs = nil
 			for k, f := range aipFlags {
+				// add anything that was already being added, or determined to be valid to have (present or not)
 				if f&aipRebuildMask == aipNone {
 					continue
 				}

@@ -16,3 +16,11 @@ func AutoAddress(key wgtypes.Key) net.IP {
 	copy(ip[8:], keySum[:8])
 	return ip
 }
+
+// AutoAddressNet returns the peer's AutoAddress with a /128 netmask
+func AutoAddressNet(key wgtypes.Key) net.IPNet {
+	return net.IPNet{
+		IP:   AutoAddress(key),
+		Mask: net.CIDRMask(8*net.IPv6len, 8*net.IPv6len),
+	}
+}
