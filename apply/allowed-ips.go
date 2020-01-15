@@ -38,7 +38,8 @@ func keyIPNet(key string) net.IPNet {
 }
 
 // EnsureAllowedIPs updates the device config if needed to add all the
-// AllowedIPs from the facts to the peer
+// AllowedIPs from the facts to the peer. This assumes that facts have already
+// been filtered to be just the trusted ones.
 func EnsureAllowedIPs(
 	peer *wgtypes.Peer,
 	facts []*fact.Fact,

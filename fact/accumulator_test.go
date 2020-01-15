@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/fastcat/wirelink/signing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,8 +34,8 @@ func TestAccumulatorSigning(t *testing.T) {
 		require.Nil(t, err)
 	}
 
-	priv, signer := mustKeyPair(t)
-	_, pub := mustKeyPair(t)
+	priv, signer := testutils.MustKeyPair(t)
+	_, pub := testutils.MustKeyPair(t)
 
 	s := signing.New(&priv)
 
