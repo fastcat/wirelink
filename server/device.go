@@ -48,7 +48,7 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device) (ret []*fact.Fact, err er
 	log.Debug("Collecting facts...")
 
 	// facts about the local node
-	ret, err = peerfacts.DeviceFacts(dev, FactTTL, s.shouldReportIface)
+	ret, err = peerfacts.DeviceFacts(dev, FactTTL, s.shouldReportIface, s.config.IsRouter)
 	if err != nil {
 		return
 	}
