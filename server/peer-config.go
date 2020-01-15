@@ -39,6 +39,11 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 
 		wg := new(sync.WaitGroup)
 
+		// we don't allow peers to be deconfigured until we've been running for longer than the fact ttl
+		// so that we don't remove config until we have a reasonable shot at having received everything
+		// from the network
+		allowDeconfigure := time.Now().Sub(startTime) > FactTTL
+
 		updatePeer := func(peer *wgtypes.Peer, allowAdd bool) {
 			fg, ok := factsByPeer[peer.PublicKey]
 			if !ok {
@@ -50,10 +55,7 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 			go func() {
 				defer wg.Done()
 				// TODO: inspect returned error? it has already been logged at this point so not much to do with it
-				// we don't allow peers to be deconfigured until we've been running for longer than the fact ttl
-				// so that we don't remove config until we have a reasonable shot at having received everything
-				// from the network
-				newState, _ := s.configurePeer(ps, &dev.PublicKey, peer, fg, time.Now().Sub(startTime) > FactTTL, allowAdd)
+				newState, _ := s.configurePeer(ps, &dev.PublicKey, peer, fg, allowDeconfigure, allowAdd)
 				s.peerConfig.Set(peer.PublicKey, newState)
 			}()
 		}
@@ -82,8 +84,10 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 			}, true)
 		}
 
-		wg.Add(1)
-		go s.deletePeers(wg, dev, removePeer)
+		if allowDeconfigure {
+			wg.Add(1)
+			go s.deletePeers(wg, dev, removePeer)
+		}
 
 		wg.Wait()
 
