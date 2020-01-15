@@ -90,6 +90,9 @@ func EnsureAllowedIPs(
 		}
 		if replace {
 			// rebuild
+			if cfg == nil {
+				cfg = &wgtypes.PeerConfig{PublicKey: peer.PublicKey}
+			}
 			cfg.ReplaceAllowedIPs = true
 			cfg.AllowedIPs = nil
 			for k, f := range aipFlags {
