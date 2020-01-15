@@ -141,6 +141,27 @@ func (s *LinkServer) receivePackets(
 	}
 }
 
+// pruneRemovedLocalFacts finds the difference between lastLocal and newLocal,
+// and returns chunk less any matching facts
+func pruneRemovedLocalFacts(chunk, lastLocal, newLocal []*fact.Fact) []*fact.Fact {
+	removed := make(map[fact.Key]bool, len(lastLocal))
+	for _, f := range lastLocal {
+		removed[fact.KeyOf(f)] = true
+	}
+	for _, f := range newLocal {
+		delete(removed, fact.KeyOf(f))
+	}
+	filtered := make([]*fact.Fact, 0, len(chunk)-len(removed))
+	for _, f := range chunk {
+		if !removed[fact.KeyOf(f)] {
+			filtered = append(filtered, f)
+		} else {
+			log.Debug("Pruning removed local fact: %v", f)
+		}
+	}
+	return filtered
+}
+
 func (s *LinkServer) processChunks(
 	newFacts <-chan []*ReceivedFact,
 	factsRefreshed chan<- []*fact.Fact,
@@ -149,6 +170,7 @@ func (s *LinkServer) processChunks(
 	defer close(factsRefreshed)
 
 	var currentFacts []*fact.Fact
+	var lastLocalFacts []*fact.Fact
 
 	for chunk := range newFacts {
 		now := time.Now()
@@ -174,6 +196,11 @@ func (s *LinkServer) processChunks(
 		// might still have gotten something before the error tho
 		if len(localFacts) != 0 {
 			newFactsChunk = append(newFactsChunk, localFacts...)
+		}
+		// only prune if we retrieved local facts without error
+		if err == nil {
+			newFactsChunk = pruneRemovedLocalFacts(newFactsChunk, lastLocalFacts, localFacts)
+			lastLocalFacts = localFacts
 		}
 
 		pl := createPeerLookup(dev.Peers)

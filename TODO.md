@@ -51,10 +51,6 @@
   * The problem is that the last facts can expire before we realize the trust source is gone
   * Probably need hysteresis on the delete decision: don't delete the peer until we've thought it was
     deletable for a full fact TTL
-* Allow the trust source to change a peer's AIP(s) without having to remove
-  the peer, wait for that to go through, and then re-add it with the new value(s)
-  * The problem here at the moment is that the old AIP fact is still in memory,
-    and so if you remove an AIP from a peer, it gets immediately re-added
 
 ## Security
 
