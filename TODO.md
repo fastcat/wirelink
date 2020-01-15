@@ -53,6 +53,8 @@
     deletable for a full fact TTL
 * Allow the trust source to change a peer's AIP(s) without having to remove
   the peer, wait for that to go through, and then re-add it with the new value(s)
+  * The problem here at the moment is that the old AIP fact is still in memory,
+    and so if you remove an AIP from a peer, it gets immediately re-added
 
 ## Security
 
