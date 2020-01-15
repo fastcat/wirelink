@@ -19,6 +19,7 @@
 * Better pre/post inst/rm scripts for systemd service
 * Release script
 * ChangeLog generation
+* Auto-tag and release from CI
 
 ## Systemd Integration
 
@@ -31,26 +32,19 @@
   * EPs that are on a local subnet, then EPs on the internet, then everything else?
   * Implement via LRU penalty?
 * Option to de-configure at exit for leaves
-  * i.e. reset wg config to as if every peer was unhealthy, only talk to routers
-* Every now and then the handshakes don't refresh as often as they seem they should?
-  * Causes peers to appear unhealthy and get deconfigured until reconnected
-  * Shouldn't be fatal as routers can't be deconfigured, but will make for some packet loss
-  * Happens even with persistent keepalive enabled between the peers
-  * For now, handled with `HealthHysteresisBandaid`
-  * For super-idle peers, is this related to the interaction between persistent keepalive
-    and the peer alive fact interval?
-* Only do lookups for static facts when we _really_ need them
-  * Current only does it when the peer isn't healthy & alive
-  * E.g. only do it if we have run through all the currently known endpoints
-    without success, then do one lookup round and add all those to the local state
-  * Even even better, only do lookups if we have no connections to any peers,
-    or maybe just any routers. If we have a peer connection, we _should_ be able
-    to get info from that peer, unless we've become an isolated island. If we
-    have connections to a router, we _definitely_ should have network visibility.
+  * i.e. reset wireguard config to as if every peer was unhealthy, only talk to routers,
+    or even just remove all non-router peers
 * Fix problems with peer deletion due to not having detected trust source went offline
   * The problem is that the last facts can expire before we realize the trust source is gone
   * Probably need hysteresis on the delete decision: don't delete the peer until we've thought it was
     deletable for a full fact TTL
+  * AIP removal feature fixed some bugs here, may not be an issue any more
+* Improved detection of local facts to trust / transmit
+  * `AllowedIPs` is assumed to be the whole subnet, which would be bad in more complex configurations
+    * Being able to list `AllowedIPs` in the config file may be enough to avoid this
+  * Only trust sources should trust the local AIP settings for peers, but
+    trust sources might not _know_ they are trusted
+    * Again, requiring configuration may be enough for this
 
 ## Security
 
@@ -59,6 +53,7 @@
   * This is obstructed by Go's lack of support:
     [golang/go#1435](https://github.com/golang/go/issues/1435)
   * Worked around for now by having systemd units drop privileges
+* Trust delegation (i.e. implement `SetTrust` level)
 * Improved trust models
 
 ## Fancy
@@ -70,6 +65,8 @@
 
 * Tell routers who we want to talk to (a peer-valued fact)
   * Only tell leaves info about peers they want
+  * Or by IP address (see packet capture): only enable local peers that we want
+    to talk to or who want to talk to us
 
 ### Config
 
@@ -82,4 +79,6 @@
     * This one is a bit tricky as it needs to be consistent across the network for now
     * With signed facts, could have a fact for the fact port,
       though deciding among multiple values could get weird
-* Allow configuring allowed ips in config file
+* Allow configuring `AllowedIPs` in config file
+  * With this we can get close to completely owning the wireguard config on leaves,
+    and owning most of it on routers and trust sources
