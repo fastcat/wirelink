@@ -231,6 +231,10 @@ func (s *LinkServer) sendFact(peer *wgtypes.Peer, f *fact.Fact, wg *sync.WaitGro
 		if sysErr, ok := opErr.Err.(*os.SyscallError); ok && sysErr.Err == syscall.EDESTADDRREQ {
 			// this is expected, ignore it
 			err = nil
+		} else if ok && sysErr.Err == syscall.ENOKEY {
+			// this is also expected on occasion during handshake refresh
+			log.Debug("Missing key to send to %s", s.peerName(peer.PublicKey))
+			err = nil
 		} else {
 			errs <- errors.Wrapf(err, "Failed to send to peer %s", s.peerName(peer.PublicKey))
 			return
