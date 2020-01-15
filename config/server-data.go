@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strconv"
 
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/trust"
@@ -18,7 +17,7 @@ import (
 type ServerData struct {
 	Iface  string
 	Port   int
-	Router string
+	Router *bool
 	Chatty bool
 
 	Peers []PeerData
@@ -49,13 +48,15 @@ func (s *ServerData) Parse(vcfg *viper.Viper, wgc *wgctrl.Client) (ret *Server, 
 		all := vcfg.AllSettings()
 		// don't dump the dump setting
 		delete(all, DumpConfigFlag)
-		// fixup the router flag
-		if rv, ok := all[RouterFlag]; ok && rv != RouterAuto {
-			if rv, err = strconv.ParseBool(rv.(string)); err != nil {
-				return nil, errors.Wrapf(err, "Invalid value for 'router'")
-			}
-			all[RouterFlag] = rv
+		// have to fix the Router setting again
+		if s.Router == nil {
+			delete(all, RouterFlag)
 		}
+		// this still leaves a few settings in the output that wouldn't _normally_
+		// be there, and which might not work fully in a config file:
+		// `config-path`, `debug`, and `iface` at least.
+		// however the point here is more to dump the effective config than to
+		// regurgitate the input
 		dump, err := json.MarshalIndent(all, "", "  ")
 		if err != nil {
 			return nil, errors.Wrapf(err, "Unable to serialize settings to JSON")
@@ -66,8 +67,8 @@ func (s *ServerData) Parse(vcfg *viper.Viper, wgc *wgctrl.Client) (ret *Server, 
 		return nil, err
 	}
 
-	// replace "auto" with the real value
-	if s.Router == RouterAuto || s.Router == "" {
+	// run autodetection for router mode
+	if s.Router == nil {
 		// try to auto-detect router mode
 		// if there are no other routers ... then we're probably a router
 		// this is pretty weak, better would be to check if our IP is within some other peer's AllowedIPs
@@ -86,11 +87,7 @@ func (s *ServerData) Parse(vcfg *viper.Viper, wgc *wgctrl.Client) (ret *Server, 
 
 		ret.IsRouter = !otherRouters
 	} else {
-		// force it to be a real bool for later
-		ret.IsRouter, err = strconv.ParseBool(s.Router)
-		if err != nil {
-			return nil, errors.Wrapf(err, "Invalid value for 'router'")
-		}
+		ret.IsRouter = *s.Router
 	}
 
 	// validate all the globs
