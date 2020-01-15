@@ -80,6 +80,7 @@ func (s *ServerData) Parse(vcfg *viper.Viper, wgc *wgctrl.Client) (ret *Server, 
 		otherRouters := false
 		for _, p := range dev.Peers {
 			if trust.IsRouter(&p) {
+				log.Debug("Router autodetect: found router peer %v", p.PublicKey)
 				otherRouters = true
 				break
 			}

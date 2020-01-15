@@ -6,6 +6,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/fastcat/wirelink/autopeer"
+	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/util"
 	"github.com/vishvananda/netlink"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -40,6 +41,8 @@ func (m *Manager) EnsureLocalAutoIP(dev *wgtypes.Device) (bool, error) {
 	if err != nil {
 		return false, errors.Wrapf(err, "Unable to add %v to %s", autoaddr, dev.Name)
 	}
+
+	log.Debug("Added local IPv6-LL %v to %s", autoaddr, dev.Name)
 
 	return true, nil
 }

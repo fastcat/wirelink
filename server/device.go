@@ -56,6 +56,7 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device) (ret []*fact.Fact, err er
 	// facts the local node knows about peers configured in the wireguard device
 	//FIXME: find a better way to figure out if we should trust our local AIP list
 	useLocalAIPs := s.config.IsRouter || s.config.Peers.Trust(dev.PublicKey, trust.Untrusted) >= trust.AddPeer
+	log.Debug("Using local AIP facts: %v", useLocalAIPs)
 	for _, peer := range dev.Peers {
 		var pf []*fact.Fact
 		pf, err = peerfacts.LocalFacts(&peer, FactTTL, useLocalAIPs)
