@@ -29,17 +29,12 @@ const ConfigPathFlag = "config-path"
 // ChattyFlag is the name of the setting to enable chatty mode
 const ChattyFlag = "chatty"
 
-// RouterAuto is the magic string for the Router config entry to request auto-detection
-const RouterAuto = "auto"
-
 // Init sets up the config flags and other parsing setup
 func Init() (flags *pflag.FlagSet, vcfg *viper.Viper) {
 	flags = pflag.NewFlagSet(os.Args[0], pflag.ContinueOnError)
 	vcfg = viper.New()
 
-	// viper.IsSet is useless when flags are in play, so we have to make this a string we parse ourselves
-	vcfg.SetDefault(RouterFlag, RouterAuto)
-	flags.String(RouterFlag, RouterAuto, "Is the local device a router (bool or \"auto\")")
+	flags.Bool(RouterFlag, false, "Is the local device a router (bool, omit for autodetect)")
 	vcfg.SetDefault(IfaceFlag, "wg0")
 	flags.String("iface", "wg0", "Interface on which to operate")
 	vcfg.SetDefault(DumpConfigFlag, false)
@@ -89,11 +84,16 @@ func Parse(flags *pflag.FlagSet, vcfg *viper.Viper) (ret *ServerData, err error)
 
 	// load peer configurations
 	ret = new(ServerData)
-	// TODO: can't use UnmarshalExact here because we have lots of keys we don't care about for now
 	if err = vcfg.UnmarshalExact(ret); err != nil {
 		// TODO: this doesn't print the program name header
 		flags.PrintDefaults()
 		return nil, errors.Wrapf(err, "Unable to parse config")
+	}
+
+	// viper/pflags doesn't have the concept of an optional setting that isn't set
+	// have to do some mucking to fake it
+	if !vcfg.IsSet(RouterFlag) {
+		ret.Router = nil
 	}
 
 	return
