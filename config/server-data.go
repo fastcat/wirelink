@@ -45,7 +45,6 @@ func (s *ServerData) Parse(vcfg *viper.Viper, wgc *wgctrl.Client) (ret *Server, 
 	ret.Port = s.Port
 	ret.Chatty = s.Chatty
 
-	// TODO: replace strings bool with real bool for router mode
 	if s.Dump {
 		all := vcfg.AllSettings()
 		// don't dump the dump setting
@@ -68,7 +67,7 @@ func (s *ServerData) Parse(vcfg *viper.Viper, wgc *wgctrl.Client) (ret *Server, 
 	}
 
 	// replace "auto" with the real value
-	if s.Router == RouterAuto {
+	if s.Router == RouterAuto || s.Router == "" {
 		// try to auto-detect router mode
 		// if there are no other routers ... then we're probably a router
 		// this is pretty weak, better would be to check if our IP is within some other peer's AllowedIPs

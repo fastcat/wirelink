@@ -37,8 +37,6 @@ func Init() (flags *pflag.FlagSet, vcfg *viper.Viper) {
 	flags = pflag.NewFlagSet(os.Args[0], pflag.ContinueOnError)
 	vcfg = viper.New()
 
-	// viper.IsSet is useless when flags are in play, so we have to make this a string we parse ourselves
-	vcfg.SetDefault(RouterFlag, RouterAuto)
 	flags.String(RouterFlag, RouterAuto, "Is the local device a router (bool or \"auto\")")
 	vcfg.SetDefault(IfaceFlag, "wg0")
 	flags.String("iface", "wg0", "Interface on which to operate")
@@ -89,7 +87,6 @@ func Parse(flags *pflag.FlagSet, vcfg *viper.Viper) (ret *ServerData, err error)
 
 	// load peer configurations
 	ret = new(ServerData)
-	// TODO: can't use UnmarshalExact here because we have lots of keys we don't care about for now
 	if err = vcfg.UnmarshalExact(ret); err != nil {
 		// TODO: this doesn't print the program name header
 		flags.PrintDefaults()
