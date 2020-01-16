@@ -85,6 +85,11 @@ func (p *PeerData) Parse() (key wgtypes.Key, peer Peer, err error) {
 			err = errors.Wrapf(err, "Bad AllowedIP '%s' for '%s'='%s'", aip, p.PublicKey, p.Name)
 			return
 		}
+		// allow config to contain ip details in the AllowedIPs that are outside the mask for now
+		// useful as "notes", may be useful for other things in the future such as interface config
+		// if we don't do this, it will confuse things since wireguard will do this when we send it down,
+		// making it look like the entry never is accepted
+		ipn.IP = ipn.IP.Mask(ipn.Mask)
 		// ipn is returned by reference, should never be returned nil
 		peer.AllowedIPs = append(peer.AllowedIPs, *ipn)
 	}
