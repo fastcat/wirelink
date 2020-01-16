@@ -11,7 +11,7 @@ import (
 )
 
 // LocalFacts gets all the known facts about a local peer
-func LocalFacts(peer *wgtypes.Peer, ttl time.Duration, includeAllowedIPs bool) (ret []*fact.Fact, err error) {
+func LocalFacts(peer *wgtypes.Peer, ttl time.Duration, trustLocalAIPs bool) (ret []*fact.Fact, err error) {
 	if ttl.Seconds() < 0 || ttl.Seconds() > 255 {
 		return nil, fmt.Errorf("ttl out of range")
 	}
@@ -39,7 +39,7 @@ func LocalFacts(peer *wgtypes.Peer, ttl time.Duration, includeAllowedIPs bool) (
 	// don't publish the autoaddress, everyone can figure that out on their own,
 	// and must already know it in order to receive the data anyways
 
-	if includeAllowedIPs {
+	if trustLocalAIPs {
 		for _, peerIP := range peer.AllowedIPs {
 			// TODO: ignore the auto-generated v6 address
 			if peerIP.IP.To4() != nil {

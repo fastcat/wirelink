@@ -79,6 +79,4 @@
     * This one is a bit tricky as it needs to be consistent across the network for now
     * With signed facts, could have a fact for the fact port,
       though deciding among multiple values could get weird
-* Allow configuring `AllowedIPs` in config file
-  * With this we can get close to completely owning the wireguard config on leaves,
-    and owning most of it on routers and trust sources
+* Better logger, at least add some basic filtering support

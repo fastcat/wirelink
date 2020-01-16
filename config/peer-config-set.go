@@ -1,7 +1,10 @@
 package config
 
 import (
+	"net"
+
 	"github.com/fastcat/wirelink/trust"
+
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -41,4 +44,20 @@ func (p Peers) IsBasic(peer wgtypes.Key) bool {
 		return true
 	}
 	return false
+}
+
+// AllowedIPs returns the array of AllowedIPs explicitly configured for the peer, if any
+func (p Peers) AllowedIPs(peer wgtypes.Key) []net.IPNet {
+	if config, ok := p[peer]; ok {
+		return config.AllowedIPs
+	}
+	return nil
+}
+
+// Endpoints returns the array of Endpoints explicitly configured for the peer, if any
+func (p Peers) Endpoints(peer wgtypes.Key) []PeerEndpoint {
+	if config, ok := p[peer]; ok {
+		return config.Endpoints
+	}
+	return nil
 }

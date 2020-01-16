@@ -5,10 +5,13 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/pkg/errors"
+
+	"github.com/spf13/viper"
+
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/trust"
-	"github.com/pkg/errors"
-	"github.com/spf13/viper"
+
 	"golang.zx2c4.com/wireguard/wgctrl"
 )
 
@@ -44,6 +47,45 @@ func (s *ServerData) Parse(vcfg *viper.Viper, wgc *wgctrl.Client) (ret *Server, 
 	ret.Port = s.Port
 	ret.Chatty = s.Chatty
 
+	// validate all the globs
+	for _, glob := range s.ReportIfaces {
+		if _, err = filepath.Match(glob, ""); err != nil {
+			return nil, errors.Wrapf(err, "Bad glob in ReportIfaces config: '%s'", glob)
+		}
+	}
+	for _, glob := range s.HideIfaces {
+		if _, err = filepath.Match(glob, ""); err != nil {
+			return nil, errors.Wrapf(err, "Bad glob in HideIfaces config: '%s'", glob)
+		}
+	}
+	ret.ReportIfaces = s.ReportIfaces
+	ret.HideIfaces = s.HideIfaces
+
+	ret.Peers = make(Peers)
+	for _, peerDatum := range s.Peers {
+		key, peerConf, err := peerDatum.Parse()
+		if err != nil {
+			return nil, errors.Wrapf(err, "Cannot parse peer config from %+v", peerDatum)
+		}
+		ret.Peers[key] = &peerConf
+		// skip this log if we're in config dump mode, so that the output is _just_ the JSON
+		if !s.Dump {
+			log.Info("Configured peer '%s': %s", key, &peerConf)
+		}
+	}
+
+	ret.Debug = s.Debug
+
+	if s.Router == nil {
+		// autodetect if we should be in router mode or not
+		ret.IsRouter, err = s.detectRouter(wgc)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		ret.IsRouter = *s.Router
+	}
+
 	if s.Dump {
 		all := vcfg.AllSettings()
 		// don't dump the dump setting
@@ -67,55 +109,30 @@ func (s *ServerData) Parse(vcfg *viper.Viper, wgc *wgctrl.Client) (ret *Server, 
 		return nil, err
 	}
 
-	// run autodetection for router mode
-	if s.Router == nil {
-		// try to auto-detect router mode
-		// if there are no other routers ... then we're probably a router
-		// this is pretty weak, better would be to check if our IP is within some other peer's AllowedIPs
-		dev, err := wgc.Device(s.Iface)
-		if err != nil {
-			return nil, errors.Wrapf(err, "Unable to open wireguard device for interface %s", s.Iface)
-		}
-
-		otherRouters := false
-		for _, p := range dev.Peers {
-			if trust.IsRouter(&p) {
-				log.Debug("Router autodetect: found router peer %v", p.PublicKey)
-				otherRouters = true
-				break
-			}
-		}
-
-		ret.IsRouter = !otherRouters
-	} else {
-		ret.IsRouter = *s.Router
-	}
-
-	// validate all the globs
-	for _, glob := range s.ReportIfaces {
-		if _, err = filepath.Match(glob, ""); err != nil {
-			return nil, errors.Wrapf(err, "Bad glob in ReportIfaces config: '%s'", glob)
-		}
-	}
-	for _, glob := range s.HideIfaces {
-		if _, err = filepath.Match(glob, ""); err != nil {
-			return nil, errors.Wrapf(err, "Bad glob in HideIfaces config: '%s'", glob)
-		}
-	}
-	ret.ReportIfaces = s.ReportIfaces
-	ret.HideIfaces = s.HideIfaces
-
-	ret.Peers = make(Peers)
-	for _, peerDatum := range s.Peers {
-		key, peerConf, err := peerDatum.Parse()
-		if err != nil {
-			return nil, errors.Wrapf(err, "Cannot parse peer config from %+v", peerDatum)
-		}
-		ret.Peers[key] = &peerConf
-		log.Info("Configured peer '%s': %s", key, &peerConf)
-	}
-
-	ret.Debug = s.Debug
-
 	return
+}
+
+func (s *ServerData) detectRouter(wgc *wgctrl.Client) (bool, error) {
+	// try to auto-detect router mode
+	// if there are no other routers ... then we're probably a router
+	// this is pretty weak, better would be to check if our IP is within some other peer's AllowedIPs
+	dev, err := wgc.Device(s.Iface)
+	if err != nil {
+		// in dump mode, ignore this error, we may be running unprivileged
+		if s.Dump {
+			return false, nil
+		}
+		return false, errors.Wrapf(err, "Unable to open wireguard device for interface %s", s.Iface)
+	}
+
+	otherRouters := false
+	for _, p := range dev.Peers {
+		if trust.IsRouter(&p) {
+			log.Debug("Router autodetect: found router peer %v", p.PublicKey)
+			otherRouters = true
+			break
+		}
+	}
+
+	return !otherRouters, nil
 }

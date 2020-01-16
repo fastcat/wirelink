@@ -5,6 +5,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/fastcat/wirelink/config"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
 	"github.com/pkg/errors"
@@ -17,7 +18,7 @@ func DeviceFacts(
 	dev *wgtypes.Device,
 	ttl time.Duration,
 	ifaceFilter func(name string) bool,
-	isRouter bool,
+	config *config.Server,
 ) (
 	ret []*fact.Fact,
 	err error,
@@ -47,10 +48,10 @@ func DeviceFacts(
 		if iface.Flags&net.FlagUp == 0 {
 			continue
 		}
-		// don't report endpoints for the wireguard interface that we are monitoring
+		// different reporting rules for the wireguard interface
 		if iface.Name == dev.Name {
-			// but maybe do report allowedIPs
-			if isRouter {
+			// but maybe do report allowedIPs, if we don't have them explicitly configured
+			if config.IsRouter && len(config.Peers.AllowedIPs(dev.PublicKey)) == 0 {
 				log.Debug("Reporting AllowedIPs for local iface %s", iface.Name)
 				forEachAddr(iface, func(ipn *net.IPNet) error {
 					log.Debug("Reporting local AllowedIP: %s: %v", iface.Name, ipn)
@@ -73,6 +74,7 @@ func DeviceFacts(
 			}
 			continue
 		}
+
 		if !ifaceFilter(iface.Name) {
 			log.Debug("Excluding local iface '%s'\n", iface.Name)
 			continue

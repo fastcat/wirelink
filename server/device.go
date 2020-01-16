@@ -5,11 +5,13 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/fastcat/wirelink/config"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/peerfacts"
 	"github.com/fastcat/wirelink/trust"
 	"github.com/fastcat/wirelink/util"
+
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -48,7 +50,7 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device) (ret []*fact.Fact, err er
 	log.Debug("Collecting facts...")
 
 	// facts about the local node
-	ret, err = peerfacts.DeviceFacts(dev, FactTTL, s.shouldReportIface, s.config.IsRouter)
+	ret, err = peerfacts.DeviceFacts(dev, FactTTL, s.shouldReportIface, s.config)
 	if err != nil {
 		return
 	}
@@ -71,60 +73,96 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device) (ret []*fact.Fact, err er
 	// static facts from the config
 	// these may duplicate other known facts, higher layers will dedupe
 	for pk, pc := range s.config.Peers {
-		// only do static lookups for dead peers
-		if pcs, ok := s.peerConfig.Get(pk); ok && (pcs.IsAlive() || pcs.IsHealthy()) {
-			log.Debug("Skipping static lookup for OK peer %s", s.peerName(pk))
-			continue
-		}
-		for _, ep := range pc.Endpoints {
-			var h, p string
-			h, p, err = net.SplitHostPort(ep)
-			if err != nil {
-				log.Error("Bad endpoint should have been caught at startup: %s", err)
-				continue
-			}
-			var ips []net.IP
-			ips, err = net.LookupIP(h)
-			if err != nil {
-				// DNS lookup errors are generally transient and not worth logging
-				continue
-			}
-			if len(ips) == 0 {
-				continue
-			}
-			var port int
-			port, err = net.LookupPort("udp", p)
-			if err != nil {
-				continue
-			}
-
-			for _, ip := range ips {
-				// don't publish localhost-ish or link-local addresses,
-				// these are not going to be useful, but may appear if we ourselves
-				// are listed with a static endpoint that resolves oddly locally
-				if !ip.IsGlobalUnicast() {
-					continue
-				}
-				nip := util.NormalizeIP(ip)
-				var attr fact.Attribute
-				if len(nip) == net.IPv4len {
-					attr = fact.AttributeEndpointV4
-				} else if len(nip) == net.IPv6len {
-					attr = fact.AttributeEndpointV6
-				} else {
-					continue
-				}
-				staticFact := &fact.Fact{
-					Attribute: attr,
-					Subject:   &fact.PeerSubject{Key: pk},
-					Expires:   expires,
-					Value:     &fact.IPPortValue{IP: ip, Port: port},
-				}
-				log.Debug("Tracking static fact: %v", staticFact)
-				ret = append(ret, staticFact)
-			}
+		ret = s.handlePeerConfigAllowedIPs(pk, pc, expires, ret)
+		// skip endpoint lookups for self
+		// if other peers need these as static facts, they would have it in their config
+		if pk != dev.PublicKey {
+			ret = s.handlePeerConfigEndpoints(pk, pc, expires, ret)
 		}
 	}
 
+	return
+}
+
+func (s *LinkServer) handlePeerConfigAllowedIPs(
+	pk wgtypes.Key,
+	pc *config.Peer,
+	expires time.Time,
+	currentFacts []*fact.Fact,
+) (facts []*fact.Fact) {
+	facts = currentFacts
+	for _, aip := range pc.AllowedIPs {
+		nip := util.NormalizeIP(aip.IP)
+		attr := fact.AttributeUnknown
+		if len(nip) == net.IPv4len {
+			attr = fact.AttributeAllowedCidrV4
+		} else if len(nip) == net.IPv6len {
+			attr = fact.AttributeAllowedCidrV6
+		}
+		if attr != fact.AttributeUnknown {
+			staticFact := &fact.Fact{
+				Attribute: attr,
+				Subject:   &fact.PeerSubject{Key: pk},
+				Expires:   expires,
+				Value:     &fact.IPNetValue{IPNet: aip},
+			}
+			// not worth logging this, it will happen on every loop
+			// log.Debug("Tracking static fact: %v", staticFact)
+			facts = append(facts, staticFact)
+		}
+	}
+	return
+}
+
+func (s *LinkServer) handlePeerConfigEndpoints(
+	pk wgtypes.Key,
+	pc *config.Peer,
+	expires time.Time,
+	currentFacts []*fact.Fact,
+) (facts []*fact.Fact) {
+	facts = currentFacts
+
+	// only do static lookups for dead peers
+	if pcs, ok := s.peerConfig.Get(pk); ok && (pcs.IsAlive() || pcs.IsHealthy()) {
+		log.Debug("Skipping static lookup for OK peer %s", s.peerName(pk))
+		return
+	}
+
+	for _, ep := range pc.Endpoints {
+		ips, err := net.LookupIP(ep.Host)
+		if err != nil {
+			// DNS lookup errors are generally transient and not worth logging
+			continue
+		}
+		if len(ips) == 0 {
+			continue
+		}
+
+		for _, ip := range ips {
+			// don't publish localhost-ish or link-local addresses,
+			// these are not going to be useful, but may appear if we ourselves
+			// are listed with a static endpoint that resolves oddly locally
+			if !ip.IsGlobalUnicast() {
+				continue
+			}
+			nip := util.NormalizeIP(ip)
+			var attr fact.Attribute
+			if len(nip) == net.IPv4len {
+				attr = fact.AttributeEndpointV4
+			} else if len(nip) == net.IPv6len {
+				attr = fact.AttributeEndpointV6
+			} else {
+				continue
+			}
+			staticFact := &fact.Fact{
+				Attribute: attr,
+				Subject:   &fact.PeerSubject{Key: pk},
+				Expires:   expires,
+				Value:     &fact.IPPortValue{IP: ip, Port: ep.Port},
+			}
+			log.Debug("Tracking static fact: %v", staticFact)
+			facts = append(facts, staticFact)
+		}
+	}
 	return
 }

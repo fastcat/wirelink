@@ -3,7 +3,13 @@
 		{
 			"PublicKey": "18dCY1rwCNo4aQaWFccKFfhbqG0FGBxDkCSbyQ3awkw=",
 			"Name": "test",
-			"Trust": "AddPeer"
+			"Trust": "AddPeer",
+			"AllowedIPs": [
+				"100.64.2.0/24"
+			],
+			"Endpoints": [
+				"100.64.1.1:1234"
+			]
 		},
 		{
 			"publickey": "6rxPhfwiMXp40mit6bdCytVlTCubK/qYxdo6K+liS2o="
