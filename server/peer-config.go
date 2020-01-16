@@ -45,6 +45,20 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 		// from the network
 		allowDeconfigure := time.Now().Sub(startTime) > FactTTL
 
+		// loop over the peers once to update their current state flags before we modify anything
+		// this is important for some race conditions where a trust source is going offline
+		for i := range dev.Peers {
+			peer := &dev.Peers[i]
+			localPeers[peer.PublicKey] = true
+			// alive check uses 0 for the maxTTL, as we just care whether the alive fact
+			// is still valid now
+			newAlive, bootID := s.peerKnowledge.peerAlive(peer.PublicKey, 0)
+			ps, _ := s.peerConfig.Get(peer.PublicKey)
+			ps = ps.Update(peer, s.peerName(peer.PublicKey), newAlive, bootID)
+			s.peerConfig.Set(peer.PublicKey, ps)
+		}
+
+		// do another loop to actually modify the peer configs
 		updatePeer := func(peer *wgtypes.Peer, allowAdd bool) {
 			fg, ok := factsByPeer[peer.PublicKey]
 			if !ok {
@@ -60,10 +74,8 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 				s.peerConfig.Set(peer.PublicKey, newState)
 			}()
 		}
-
 		for i := range dev.Peers {
 			peer := &dev.Peers[i]
-			localPeers[peer.PublicKey] = true
 			updatePeer(peer, false)
 		}
 
@@ -169,10 +181,7 @@ func (s *LinkServer) configurePeer(
 	allowAdd bool,
 ) (state *apply.PeerConfigState, err error) {
 	peerName := s.peerName(peer.PublicKey)
-	// alive check uses 0 for the maxTTL, as we just care whether the alive fact
-	// is still valid now
-	newAlive, bootID := s.peerKnowledge.peerAlive(peer.PublicKey, 0)
-	state = inputState.Update(peer, peerName, newAlive, bootID)
+	state = inputState
 
 	// TODO: make the lock window here smaller
 	// only want to take the lock for the regions where we change config

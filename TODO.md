@@ -34,11 +34,11 @@
 * Option to de-configure at exit for leaves
   * i.e. reset wireguard config to as if every peer was unhealthy, only talk to routers,
     or even just remove all non-router peers
-* Fix problems with peer deletion due to not having detected trust source went offline
-  * The problem is that the last facts can expire before we realize the trust source is gone
+* Fix race where facts expire before alive does for trust source going offline,
+  resulting in improper peer removal
   * Probably need hysteresis on the delete decision: don't delete the peer until we've thought it was
     deletable for a full fact TTL
-  * AIP removal feature fixed some bugs here, may not be an issue any more
+  * Several other sources of this bug symptom have been fixed
 * Improved detection of local facts to trust / transmit
   * `AllowedIPs` is assumed to be the whole subnet, which would be bad in more complex configurations
     * Being able to list `AllowedIPs` in the config file may be enough to avoid this
