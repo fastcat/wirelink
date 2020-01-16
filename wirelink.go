@@ -6,12 +6,13 @@ import (
 	"os/signal"
 	"syscall"
 
-	"golang.zx2c4.com/wireguard/wgctrl"
+	"github.com/pkg/errors"
 
 	"github.com/fastcat/wirelink/config"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/server"
-	"github.com/pkg/errors"
+
+	"golang.zx2c4.com/wireguard/wgctrl"
 )
 
 func main() {

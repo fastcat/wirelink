@@ -5,10 +5,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/fastcat/wirelink/log"
 	"github.com/pkg/errors"
+
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
+
+	"github.com/fastcat/wirelink/log"
 )
 
 // DumpConfigFlag is the name of the flag to request config dumping

@@ -8,6 +8,7 @@ import (
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/trust"
+
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 

@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/fastcat/wirelink/util"
+
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 

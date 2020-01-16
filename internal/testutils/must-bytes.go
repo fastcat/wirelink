@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 

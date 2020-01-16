@@ -6,6 +6,7 @@ import (
 
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/poly1305"
+
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 

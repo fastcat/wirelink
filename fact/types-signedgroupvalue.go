@@ -6,10 +6,13 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/fastcat/wirelink/util"
 	"github.com/pkg/errors"
+
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/poly1305"
+
+	"github.com/fastcat/wirelink/util"
+
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 

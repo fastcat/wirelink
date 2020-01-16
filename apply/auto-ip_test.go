@@ -3,8 +3,10 @@ package apply
 import (
 	"testing"
 
-	"github.com/fastcat/wirelink/autopeer"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/fastcat/wirelink/autopeer"
+
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 

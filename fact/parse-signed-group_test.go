@@ -5,12 +5,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/poly1305"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/fastcat/wirelink/internal/testutils"
 )
 
 func TestParseSignedGroup_Trivial(t *testing.T) {

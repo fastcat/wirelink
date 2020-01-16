@@ -4,10 +4,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fastcat/wirelink/internal/testutils"
-	"github.com/fastcat/wirelink/signing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/fastcat/wirelink/internal/testutils"
+	"github.com/fastcat/wirelink/signing"
 )
 
 func TestAccumulatorLimits(t *testing.T) {

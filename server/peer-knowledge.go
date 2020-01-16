@@ -4,9 +4,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
-	"github.com/google/uuid"
+
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 

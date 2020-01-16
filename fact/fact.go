@@ -8,8 +8,9 @@ import (
 	"math"
 	"time"
 
-	"github.com/fastcat/wirelink/util"
 	"github.com/pkg/errors"
+
+	"github.com/fastcat/wirelink/util"
 )
 
 // fact types, denoted as attributes of a subject

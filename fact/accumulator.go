@@ -3,8 +3,10 @@ package fact
 import (
 	"time"
 
-	"github.com/fastcat/wirelink/signing"
 	"github.com/pkg/errors"
+
+	"github.com/fastcat/wirelink/signing"
+
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 

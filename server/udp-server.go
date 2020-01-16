@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"golang.zx2c4.com/wireguard/wgctrl"
+	"github.com/google/uuid"
 
 	"github.com/fastcat/wirelink/apply"
 	"github.com/fastcat/wirelink/autopeer"
@@ -14,7 +14,8 @@ import (
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/signing"
-	"github.com/google/uuid"
+
+	"golang.zx2c4.com/wireguard/wgctrl"
 )
 
 // LinkServer represents the server component of wirelink

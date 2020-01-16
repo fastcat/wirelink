@@ -9,12 +9,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/fastcat/wirelink/apply"
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/trust"
-	"github.com/pkg/errors"
+
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 

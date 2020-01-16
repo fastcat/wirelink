@@ -2,6 +2,7 @@ package apply
 
 import (
 	"github.com/pkg/errors"
+
 	"github.com/vishvananda/netlink"
 )
 

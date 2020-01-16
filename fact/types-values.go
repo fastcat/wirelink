@@ -6,8 +6,9 @@ import (
 	"io"
 	"net"
 
-	"github.com/fastcat/wirelink/util"
 	"github.com/google/uuid"
+
+	"github.com/fastcat/wirelink/util"
 )
 
 // IPPortValue represents an IP:port pair as an Attribute of a Subject

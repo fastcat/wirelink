@@ -4,6 +4,7 @@ import (
 	"net"
 
 	"github.com/fastcat/wirelink/autopeer"
+
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 

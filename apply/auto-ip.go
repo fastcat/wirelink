@@ -3,8 +3,10 @@ package apply
 import (
 	"net"
 
-	"github.com/fastcat/wirelink/autopeer"
 	"github.com/pkg/errors"
+
+	"github.com/fastcat/wirelink/autopeer"
+
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )

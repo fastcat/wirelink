@@ -5,9 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/google/uuid"
+
 	"github.com/stretchr/testify/require"
+
+	"github.com/fastcat/wirelink/internal/testutils"
+
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 

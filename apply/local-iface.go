@@ -5,10 +5,12 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/vishvananda/netlink"
+
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/util"
-	"github.com/vishvananda/netlink"
+
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 

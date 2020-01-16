@@ -6,12 +6,13 @@ import (
 	"net"
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/config"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/trust"
-	"github.com/pkg/errors"
 )
 
 func (s *LinkServer) readPackets(endReader <-chan bool, packets chan<- *ReceivedFact) {
