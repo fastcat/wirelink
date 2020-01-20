@@ -27,6 +27,16 @@ type PeerConfigState struct {
 	endpointLastUsed map[string]time.Time
 }
 
+// EnsureNotNil returns either its receiver if not nil, or else a new object suitable to be its receiver
+func (pcs *PeerConfigState) EnsureNotNil() *PeerConfigState {
+	if pcs == nil {
+		pcs = &PeerConfigState{
+			endpointLastUsed: make(map[string]time.Time),
+		}
+	}
+	return pcs
+}
+
 // Update refreshes the PeerConfigState with new data from the wireguard device.
 // NOTE: It is safe to call this on a `nil` pointer, it will return a new state
 // TODO: give this access to the `peerKnowledgeSet` instead of passing in the alive state
@@ -36,11 +46,7 @@ func (pcs *PeerConfigState) Update(
 	newAlive bool,
 	bootID *uuid.UUID,
 ) *PeerConfigState {
-	if pcs == nil {
-		pcs = &PeerConfigState{
-			endpointLastUsed: make(map[string]time.Time),
-		}
-	}
+	pcs = pcs.EnsureNotNil()
 	pcs.lastHandshake = peer.LastHandshakeTime
 	newHealthy := isHealthy(pcs, peer)
 	bootChanged := bootID != nil && pcs.lastBootID != nil && *bootID != *pcs.lastBootID
@@ -112,6 +118,12 @@ const endpointInterval = device.RekeyTimeout + device.KeepaliveTimeout
 // TimeForNextEndpoint returns if we should try another endpoint for the peer
 // (or if we should wait for the current endpoint to test out)
 func (pcs *PeerConfigState) TimeForNextEndpoint() bool {
+	if pcs == nil {
+		// if we know nothing about the peer, we don't have an endpoint configured,
+		// and so we should definitely try to make one
+		return true
+	}
+
 	if pcs.lastHealthy {
 		return false
 	}

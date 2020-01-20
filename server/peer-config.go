@@ -181,7 +181,7 @@ func (s *LinkServer) configurePeer(
 	allowAdd bool,
 ) (state *apply.PeerConfigState, err error) {
 	peerName := s.peerName(peer.PublicKey)
-	state = inputState
+	state = inputState.EnsureNotNil()
 
 	// TODO: make the lock window here smaller
 	// only want to take the lock for the regions where we change config
