@@ -28,9 +28,10 @@ type ServerData struct {
 	ReportIfaces []string
 	HideIfaces   []string
 
-	Debug bool
-
-	Dump bool
+	Debug   bool
+	Dump    bool
+	Help    bool
+	Version bool
 
 	// this prop is here for compat, but is ignored because it's how we find the
 	// config file, so the config file can't use it to point at a different config
@@ -124,6 +125,7 @@ func (s *ServerData) detectRouter(wgc *wgctrl.Client) (bool, error) {
 		if s.Dump {
 			return false, nil
 		}
+		// TODO: return this error in a format that won't cause usage to be printed
 		return false, errors.Wrapf(err, "Unable to open wireguard device for interface %s", s.Iface)
 	}
 

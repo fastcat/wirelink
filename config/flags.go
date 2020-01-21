@@ -49,15 +49,14 @@ func Init() (flags *pflag.FlagSet, vcfg *viper.Viper) {
 
 	flags.Bool(RouterFlag, false, "Is the local device a router (bool, omit for autodetect)")
 	vcfg.SetDefault(IfaceFlag, "wg0")
-	flags.String("iface", "wg0", "Interface on which to operate")
+	flags.StringP(IfaceFlag, "i", "wg0", "Interface on which to operate")
 	vcfg.SetDefault(DumpConfigFlag, false)
 	flags.Bool(DumpConfigFlag, false, "Dump configuration instead of running")
 	flags.Bool(VersionFlag, false, "Print program version")
 	flags.BoolP(HelpFlag, "h", false, "Print program usage")
 	vcfg.SetDefault(ConfigPathFlag, "/etc/wireguard")
 	// no flag for config-path for now, only env
-	vcfg.SetDefault(DebugFlag, false)
-	flags.Bool(DebugFlag, false, "Enable debug logging output")
+	flags.BoolP(DebugFlag, "d", false, "Enable debug logging output")
 
 	vcfg.BindPFlags(flags)
 	vcfg.SetEnvPrefix("wirelink")
@@ -115,7 +114,7 @@ func Parse(flags *pflag.FlagSet, vcfg *viper.Viper) (ret *ServerData, err error)
 	// load peer configurations
 	ret = new(ServerData)
 	if err = vcfg.UnmarshalExact(ret); err != nil {
-		// TODO: this doesn't print the program name header
+		fmt.Fprintf(os.Stderr, "Usage of %s:\n", programName(os.Args))
 		flags.PrintDefaults()
 		return nil, errors.Wrapf(err, "Unable to parse config")
 	}
