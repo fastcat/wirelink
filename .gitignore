@@ -16,9 +16,6 @@ __debug_bin
 # binaries
 wirelink
 
-# local scripts
-deploy.sh
-
 packaging/checkinstall/*.deb
 # everything in doc-pak/ is copied from elsewhere
 packaging/checkinstall/doc-pak/*
