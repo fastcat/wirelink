@@ -10,11 +10,18 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
+	"github.com/fastcat/wirelink/internal"
 	"github.com/fastcat/wirelink/log"
 )
 
 // DumpConfigFlag is the name of the flag to request config dumping
 const DumpConfigFlag = "dump"
+
+// VersionFlag is the name of the flag to request printing the program version
+const VersionFlag = "version"
+
+// HelpFlag is the name of the flag to request printing program usage
+const HelpFlag = "help"
 
 // DebugFlag enables debug logging
 const DebugFlag = "debug"
@@ -31,9 +38,13 @@ const ConfigPathFlag = "config-path"
 // ChattyFlag is the name of the setting to enable chatty mode
 const ChattyFlag = "chatty"
 
+func programName(args []string) string {
+	return fmt.Sprintf("%s (%s)", os.Args[0], internal.Version)
+}
+
 // Init sets up the config flags and other parsing setup
 func Init() (flags *pflag.FlagSet, vcfg *viper.Viper) {
-	flags = pflag.NewFlagSet(os.Args[0], pflag.ContinueOnError)
+	flags = pflag.NewFlagSet(programName(os.Args), pflag.ContinueOnError)
 	vcfg = viper.New()
 
 	flags.Bool(RouterFlag, false, "Is the local device a router (bool, omit for autodetect)")
@@ -41,6 +52,8 @@ func Init() (flags *pflag.FlagSet, vcfg *viper.Viper) {
 	flags.String("iface", "wg0", "Interface on which to operate")
 	vcfg.SetDefault(DumpConfigFlag, false)
 	flags.Bool(DumpConfigFlag, false, "Dump configuration instead of running")
+	flags.Bool(VersionFlag, false, "Print program version")
+	flags.BoolP(HelpFlag, "h", false, "Print program usage")
 	vcfg.SetDefault(ConfigPathFlag, "/etc/wireguard")
 	// no flag for config-path for now, only env
 	vcfg.SetDefault(DebugFlag, false)
@@ -66,6 +79,21 @@ func Parse(flags *pflag.FlagSet, vcfg *viper.Viper) (ret *ServerData, err error)
 	// activate debug logging immediately
 	if debug, _ := flags.GetBool(DebugFlag); debug {
 		log.SetDebug(true)
+	}
+
+	// handle --version and --help specially
+	if help, _ := flags.GetBool(HelpFlag); help {
+		// if help is requested explicitly, don't send it to stderr
+		// have to do this by hand here for now as can't write a Usage
+		// func that can see flags.output
+		flags.SetOutput(os.Stdout)
+		fmt.Fprintf(os.Stdout, "Usage of %s:\n", programName(os.Args))
+		flags.PrintDefaults()
+		return nil, nil
+	}
+	if version, _ := flags.GetBool(VersionFlag); version {
+		_, err = fmt.Printf("%s\n", programName(os.Args))
+		return nil, err
 	}
 
 	// setup the config file -- can't do this until after we've parsed the iface flag

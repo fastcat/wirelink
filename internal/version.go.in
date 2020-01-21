@@ -1,0 +1,4 @@
+package internal
+
+// Version is the version from git describe used to build this release
+const Version = "__GIT_VERSION__"

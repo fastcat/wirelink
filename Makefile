@@ -16,25 +16,30 @@ info:
 	@echo PKGVER=$(PKGVER)
 	@echo PKGREL=$(PKGREL)
 
-fmt:
+generate: internal/version.go
+internal/version.go: internal/version.go.in .git/HEAD .git/index
+	cat $< | sed -e "s/__GIT_VERSION__/$(PKGVERREL)/" > $@.tmp
+	mv -f $@.tmp $@
+
+fmt: generate
 	go fmt ./...
 	goimports -w -l .
-compile:
+compile: generate
 	go build -v ./...
-wirelink:
+wirelink: generate
 # for some reason it only puts the exe in if you tell it to build just .
 	go build -v .
-vet:
+vet: generate
 	go vet ./...
 lint: lint-golint lint-gopls
-lint-golint:
+lint-golint: generate
 	golint -set_exit_status ./...
-lint-gopls:
+lint-gopls: generate
 # need to group files to gopls check by directory it seems
 # unclear if this does anything useful at all
 	find -type f -name \*.go -print0 | xargs -0 dirname -z | sort -uz | xargs -P0 -0 -n1 sh -c 'set -x ; gopls check "$$1"/*.go' --
 test: vet lint test-go
-test-go:
+test-go: generate
 	go test ./...
 coverage.out: test-go
 	go test -coverpkg=./... -coverprofile=coverage.out ./...
@@ -42,7 +47,7 @@ cover: coverage.out
 coverage.html: coverage.out
 	go tool cover -html=coverage.out -o=coverage.html
 
-run:
+run: generate
 	go run -exec sudo .
 
 #NOTE: this will delete ./wirelink *sigh
@@ -86,10 +91,10 @@ checkinstall: checkinstall-prep
 everything: fmt vet lint compile wirelink test
 
 clean: checkinstall-clean
-	rm -vf ./wirelink ./coverage.out ./coverage.html
+	rm -vf ./wirelink internal/version.go.tmp internal/version.go ./coverage.out ./coverage.html
 #TODO: any way to clean the go cache for just this package?
 
-.PHONY: all info fmt compile run install everything clean
+.PHONY: all info fmt generate compile run install everything clean
 .PHONY: vet lint lint-golint lint-gopls test test-go cover htmlcover
 .PHONY: checkinstall checkinstall-prep checkinstall-clean
 # wirelink isn't actually phony, but we can't compute deps for it, so pretend

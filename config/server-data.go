@@ -88,8 +88,10 @@ func (s *ServerData) Parse(vcfg *viper.Viper, wgc *wgctrl.Client) (ret *Server, 
 
 	if s.Dump {
 		all := vcfg.AllSettings()
-		// don't dump the dump setting
+		// don't dump cli mode args
 		delete(all, DumpConfigFlag)
+		delete(all, VersionFlag)
+		delete(all, HelpFlag)
 		// have to fix the Router setting again
 		if s.Router == nil {
 			delete(all, RouterFlag)

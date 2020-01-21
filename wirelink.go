@@ -7,8 +7,10 @@ import (
 	"syscall"
 
 	"github.com/pkg/errors"
+	"github.com/spf13/pflag"
 
 	"github.com/fastcat/wirelink/config"
+	"github.com/fastcat/wirelink/internal"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/server"
 
@@ -17,7 +19,8 @@ import (
 
 func main() {
 	err := realMain()
-	if err != nil {
+	// don't print on error just because help was requested
+	if err != nil && err != pflag.ErrHelp {
 		fmt.Fprintln(os.Stderr, err)
 		defer os.Exit(1)
 	}
@@ -33,6 +36,10 @@ func realMain() error {
 	var configData *config.ServerData
 	if configData, err = config.Parse(flags, vcfg); err != nil {
 		return errors.Wrapf(err, "Failed to load config")
+	}
+	// configData comes back nil if we ran --help or --version
+	if configData == nil {
+		return nil
 	}
 
 	var serverConfig *config.Server
@@ -60,7 +67,8 @@ func realMain() error {
 	if serverConfig.Chatty {
 		nodeModeDesc = "chatty"
 	}
-	log.Info("Server running on {%s} [%v]:%v (%s, %s)",
+	log.Info("Server version %s running on {%s} [%v]:%v (%s, %s)",
+		internal.Version,
 		serverConfig.Iface,
 		server.Address(),
 		server.Port(),

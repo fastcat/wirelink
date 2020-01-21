@@ -26,3 +26,5 @@ packaging/checkinstall/doc-pak/*
 
 coverage.out
 coverage.html
+
+version.go
