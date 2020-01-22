@@ -85,7 +85,7 @@ func (s *LinkServer) shouldSendTo(p *wgtypes.Peer, factsByPeer map[wgtypes.Key][
 		return sendPing
 	}
 
-	// past here, remote and/or local are special (chatty, router, trust source, or fact exchange)
+	// past here, remote and/or local are special (chatty, router, trust source, or fact exchanger)
 	// in all such cases the goal is full exchange in both directions
 	// we send facts if we think they'll get through, or pings if we're trying to establish a connection,
 	// and only fall back on nothing if we don't think we can make a connection
