@@ -55,13 +55,20 @@ func realMain() error {
 
 	server, err := server.Create(wgc, serverConfig)
 	if err != nil {
-		return errors.Wrapf(err, "Unable to initialize server for interface %s", serverConfig.Iface)
+		return errors.Wrapf(err, "Unable to create server for interface %s", serverConfig.Iface)
 	}
 	defer server.Close()
+	err = server.Start()
+	if err != nil {
+		return errors.Wrapf(err, "Unable to start server for interface %s", serverConfig.Iface)
+	}
 
 	nodeTypeDesc := "leaf"
-	if serverConfig.IsRouter {
+	if serverConfig.IsRouterNow {
 		nodeTypeDesc = "router"
+	}
+	if serverConfig.AutoDetectRouter {
+		nodeTypeDesc += " (auto)"
 	}
 	nodeModeDesc := "quiet"
 	if serverConfig.Chatty {

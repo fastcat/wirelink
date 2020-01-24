@@ -16,6 +16,7 @@ import (
 	"github.com/fastcat/wirelink/signing"
 
 	"golang.zx2c4.com/wireguard/wgctrl"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 // LinkServer represents the server component of wirelink
@@ -71,45 +72,18 @@ func Create(ctrl *wgctrl.Client, config *config.Server) (*LinkServer, error) {
 		config.Port = device.ListenPort + 1
 	}
 
-	// have to make sure we have the local IPv6-LL address configured before we can use it
-	mgr, err := apply.NewManager()
-	if err != nil {
-		return nil, err
-	}
-	defer mgr.Close()
-	setLL, err := mgr.EnsureLocalAutoIP(device)
-	if err != nil {
-		return nil, err
-	}
-	if setLL {
-		log.Info("Configured IPv6-LL address on local interface")
-	}
-
-	peerips, err := apply.EnsurePeersAutoIP(ctrl, device)
-	if err != nil {
-		return nil, err
-	}
-	if peerips > 0 {
-		log.Info("Added IPv6-LL for %d peers", peerips)
-	}
-
 	ip := autopeer.AutoAddress(device.PublicKey)
 	addr := net.UDPAddr{
 		IP:   ip,
 		Port: config.Port,
 		Zone: device.Name,
 	}
-	// only listen on the local ipv6 auto address on the specific interface
-	conn, err := net.ListenUDP("udp6", &addr)
-	if err != nil {
-		return nil, err
-	}
 
 	ret := &LinkServer{
 		bootID:          uuid.Must(uuid.NewRandom()),
 		config:          config,
-		mgr:             mgr,
-		conn:            conn,
+		mgr:             nil, // this will be filled in by `Start()`
+		conn:            nil, // this will be filled in by `Start()`
 		addr:            addr,
 		ctrl:            ctrl,
 		stateAccess:     new(sync.Mutex),
@@ -121,31 +95,74 @@ func Create(ctrl *wgctrl.Client, config *config.Server) (*LinkServer, error) {
 		printsRequested: new(int32),
 	}
 
+	return ret, nil
+}
+
+// Start makes the server open its listen socket and start all the goroutines
+// to receive and process packets
+func (s *LinkServer) Start() (err error) {
+	var device *wgtypes.Device
+	device, err = s.deviceState()
+	if err != nil {
+		return err
+	}
+
+	// have to make sure we have the local IPv6-LL address configured before we can use it
+	s.mgr, err = apply.NewManager()
+	if err != nil {
+		return err
+	}
+	defer s.mgr.Close()
+	if setLL, err := s.mgr.EnsureLocalAutoIP(device); err != nil {
+		return err
+	} else if setLL {
+		log.Info("Configured IPv6-LL address on local interface")
+	}
+
+	if peerips, err := apply.EnsurePeersAutoIP(s.ctrl, device); err != nil {
+		return err
+	} else if peerips > 0 {
+		log.Info("Added IPv6-LL for %d peers", peerips)
+	}
+
+	// only listen on the local ipv6 auto address on the specific interface
+	s.conn, err = net.ListenUDP("udp6", &s.addr)
+	if err != nil {
+		return err
+	}
+
+	err = s.UpdateRouterState()
+	if err != nil {
+		return err
+	}
+
+	// ok, network resources are initialized, start all the goroutines!
+
 	packets := make(chan *ReceivedFact, MaxChunk)
-	ret.wait.Add(1)
-	go ret.readPackets(ret.endReader, packets)
+	s.wait.Add(1)
+	go s.readPackets(s.endReader, packets)
 
 	newFacts := make(chan []*ReceivedFact, 1)
-	ret.wait.Add(1)
-	go ret.receivePackets(packets, newFacts, MaxChunk, ChunkPeriod)
+	s.wait.Add(1)
+	go s.receivePackets(packets, newFacts, MaxChunk, ChunkPeriod)
 
 	factsRefreshed := make(chan []*fact.Fact, 1)
 	factsRefreshedForBroadcast := make(chan []*fact.Fact, 1)
 	factsRefreshedForConfig := make(chan []*fact.Fact, 1)
 
-	ret.wait.Add(1)
-	go ret.processChunks(newFacts, factsRefreshed)
+	s.wait.Add(1)
+	go s.processChunks(newFacts, factsRefreshed)
 
-	ret.wait.Add(1)
-	go multiplexFactChunks(ret.wait, factsRefreshed, factsRefreshedForBroadcast, factsRefreshedForConfig)
+	s.wait.Add(1)
+	go multiplexFactChunks(s.wait, factsRefreshed, factsRefreshedForBroadcast, factsRefreshedForConfig)
 
-	ret.wait.Add(1)
-	go ret.broadcastFactUpdates(factsRefreshedForBroadcast)
+	s.wait.Add(1)
+	go s.broadcastFactUpdates(factsRefreshedForBroadcast)
 
-	ret.wait.Add(1)
-	go ret.configurePeers(factsRefreshedForConfig)
+	s.wait.Add(1)
+	go s.configurePeers(factsRefreshedForConfig)
 
-	return ret, nil
+	return nil
 }
 
 // RequestPrint asks the packet receiver to print out the full set of known facts (local and remote)

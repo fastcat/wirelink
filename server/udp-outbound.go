@@ -13,6 +13,7 @@ import (
 
 	"github.com/fastcat/wirelink/apply"
 	"github.com/fastcat/wirelink/autopeer"
+	"github.com/fastcat/wirelink/detect"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/trust"
@@ -70,7 +71,7 @@ func (s *LinkServer) shouldSendTo(p *wgtypes.Peer, factsByPeer map[wgtypes.Key][
 	// if the peer is a router or otherwise has elevated trust, always try to send
 	// this is partly to address problems where we wake from sleep and everything is stale
 	// and we don't talk to anyone to refresh anything
-	if s.config.Peers.Trust(p.PublicKey, trust.Untrusted) >= trust.AllowedIPs || trust.IsRouter(p) {
+	if s.config.Peers.Trust(p.PublicKey, trust.Untrusted) >= trust.AllowedIPs || detect.IsPeerRouter(p) {
 		return sendFacts
 	}
 
@@ -80,7 +81,7 @@ func (s *LinkServer) shouldSendTo(p *wgtypes.Peer, factsByPeer map[wgtypes.Key][
 	}
 
 	// if neither end is special or chatty, just send pings to keep the connection alive
-	if !s.config.Chatty && !s.config.IsRouter {
+	if !s.config.Chatty && !s.config.IsRouterNow {
 		log.Debug("Don't send to %s: not special, not chatty, not router", s.peerName(p.PublicKey))
 		return sendPing
 	}

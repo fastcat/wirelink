@@ -10,7 +10,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/fastcat/wirelink/log"
-	"github.com/fastcat/wirelink/trust"
 
 	"golang.zx2c4.com/wireguard/wgctrl"
 )
@@ -79,12 +78,11 @@ func (s *ServerData) Parse(vcfg *viper.Viper, wgc *wgctrl.Client) (ret *Server, 
 
 	if s.Router == nil {
 		// autodetect if we should be in router mode or not
-		ret.IsRouter, err = s.detectRouter(wgc)
-		if err != nil {
-			return nil, err
-		}
+		ret.AutoDetectRouter = true
+		// can't auto-detect yet until we start the server. OK to assume we are not a router for now.
 	} else {
-		ret.IsRouter = *s.Router
+		ret.AutoDetectRouter = false
+		ret.IsRouterNow = *s.Router
 	}
 
 	if s.Dump {
@@ -113,30 +111,4 @@ func (s *ServerData) Parse(vcfg *viper.Viper, wgc *wgctrl.Client) (ret *Server, 
 	}
 
 	return
-}
-
-func (s *ServerData) detectRouter(wgc *wgctrl.Client) (bool, error) {
-	// try to auto-detect router mode
-	// if there are no other routers ... then we're probably a router
-	// this is pretty weak, better would be to check if our IP is within some other peer's AllowedIPs
-	dev, err := wgc.Device(s.Iface)
-	if err != nil {
-		// in dump mode, ignore this error, we may be running unprivileged
-		if s.Dump {
-			return false, nil
-		}
-		// TODO: return this error in a format that won't cause usage to be printed
-		return false, errors.Wrapf(err, "Unable to open wireguard device for interface %s", s.Iface)
-	}
-
-	otherRouters := false
-	for _, p := range dev.Peers {
-		if trust.IsRouter(&p) {
-			log.Debug("Router autodetect: found router peer %v", p.PublicKey)
-			otherRouters = true
-			break
-		}
-	}
-
-	return !otherRouters, nil
 }

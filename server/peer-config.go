@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/fastcat/wirelink/apply"
+	"github.com/fastcat/wirelink/detect"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/trust"
@@ -119,7 +120,7 @@ func (s *LinkServer) deletePeers(
 	// and it has been online for longer than the fact TTL so that we are
 	// reasonably sure we have all the data from it ... and we are not a router
 	doDelPeers := false
-	if !s.config.IsRouter {
+	if !s.config.IsRouterNow {
 		now := time.Now()
 		for pk, pc := range s.config.Peers {
 			if pc.Trust == nil || *pc.Trust < trust.DelPeer {
@@ -146,7 +147,7 @@ func (s *LinkServer) deletePeers(
 				continue
 			}
 			// never delete routers
-			if trust.IsRouter(&peer) {
+			if detect.IsPeerRouter(&peer) {
 				continue
 			}
 			// never delete fact exchangers
@@ -224,7 +225,7 @@ func (s *LinkServer) configurePeer(
 			// router. for much the same reason, we don't want to remove AllowedIPs from
 			// routers.
 			// TODO: IsRouter doesn't belong in trust
-			if !s.config.IsRouter && !trust.IsRouter(peer) {
+			if !s.config.IsRouterNow && !detect.IsPeerRouter(peer) {
 				pcfg = apply.OnlyAutoIP(peer, pcfg)
 				if pcfg != nil && pcfg.ReplaceAllowedIPs {
 					log.Info("Restricting peer to be IPv6-LL only: %s", peerName)

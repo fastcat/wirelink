@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/fastcat/wirelink/autopeer"
+	"github.com/fastcat/wirelink/detect"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/util"
 
@@ -68,7 +69,7 @@ func (rbt *routeBasedTrust) TrustLevel(f *fact.Fact, source net.UDPAddr) *Level 
 	// permitted to tell us their own AllowedIPs, not just others.
 	// re-evaluating this each time instead of caching it once at startup is
 	// intentional as peer AIPs that drive this can change
-	if IsRouter(peer.peer) {
+	if detect.IsPeerRouter(peer.peer) {
 		ret := AllowedIPs
 		return &ret
 	}
@@ -95,20 +96,4 @@ func (rbt *routeBasedTrust) IsKnown(s fact.Subject) bool {
 	}
 	_, ok = rbt.peersByKey[ps.Key]
 	return ok
-}
-
-// IsRouter considers a router to be a peer that has a global unicast allowed
-// IP with a CIDR mask less than the full IP
-func IsRouter(peer *wgtypes.Peer) bool {
-	for _, aip := range peer.AllowedIPs {
-		if !aip.IP.IsGlobalUnicast() {
-			continue
-		}
-		apiNorm := util.NormalizeIP(aip.IP)
-		ones, size := aip.Mask.Size()
-		if len(apiNorm)*8 == size && ones < size {
-			return true
-		}
-	}
-	return false
 }

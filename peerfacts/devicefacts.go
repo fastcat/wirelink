@@ -52,7 +52,7 @@ func DeviceFacts(
 		// different reporting rules for the wireguard interface
 		if iface.Name == dev.Name {
 			// but maybe do report allowedIPs, if we don't have them explicitly configured
-			if config.IsRouter && len(config.Peers.AllowedIPs(dev.PublicKey)) == 0 {
+			if config.IsRouterNow && len(config.Peers.AllowedIPs(dev.PublicKey)) == 0 {
 				log.Debug("Reporting AllowedIPs for local iface %s", iface.Name)
 				forEachAddr(iface, func(ipn *net.IPNet) error {
 					log.Debug("Reporting local AllowedIP: %s: %v", iface.Name, ipn)

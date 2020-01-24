@@ -5,8 +5,10 @@ import (
 	"sync/atomic"
 
 	"github.com/fastcat/wirelink/apply"
+	"github.com/fastcat/wirelink/detect"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
+	"github.com/pkg/errors"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -57,4 +59,21 @@ func groupFactsByPeer(facts []*fact.Fact) map[wgtypes.Key][]*fact.Fact {
 		factsByPeer[ps.Key] = append(factsByPeer[ps.Key], f)
 	}
 	return factsByPeer
+}
+
+// UpdateRouterState will update `s.config.IsRouterNow` based on the device state,
+// if `s.config.AutoDetectRouter` is true
+func (s *LinkServer) UpdateRouterState() error {
+	if !s.config.AutoDetectRouter {
+		return nil
+	}
+
+	dev, err := s.deviceState()
+	if err != nil {
+		return errors.Wrapf(err, "Unable to open wireguard device for interface %s", s.config.Iface)
+	}
+
+	s.config.IsRouterNow = detect.IsDeviceRouter(dev)
+
+	return nil
 }
