@@ -131,7 +131,7 @@ func (s *LinkServer) Start() (err error) {
 		return err
 	}
 
-	err = s.UpdateRouterState()
+	err = s.UpdateRouterState(device, false)
 	if err != nil {
 		return err
 	}

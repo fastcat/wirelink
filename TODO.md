@@ -18,13 +18,12 @@
     process queued facts immediately, which should trigger that peer to also
     add AIPs if it didn't already.
 * Intelligent prioritization of peer EPs to try
-  * EPs that are on a local subnet, then EPs on the internet, then everything else?
+  * EPs that are on a local subnet, then EPs on the internet, then
+    everything else?
   * Mechanism? LRU penalty / bonus? I.e. add N ms to actual LU stamp for
     internet EPs, and M>n for non-matching LAN IPs?
-* Dynamic change of auto-detected "am I a router" state
-  * Re-check for other routers, update flag/behavior if it changes
-  * Inspect the `AllowedIP` facts other peers send about ourselves
-    (need to change `broadcastFacts` so they send those to us)
+* Router detection: Inspect the `AllowedIP` facts other peers send about
+  ourselves (need to change `broadcastFacts` so they send those to us)
 
 ## Security
 

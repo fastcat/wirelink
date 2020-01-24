@@ -25,6 +25,9 @@ func (s *LinkServer) readPackets(endReader <-chan bool, packets chan<- *Received
 		case <-endReader:
 			return
 		default:
+			// make sure we wake up often enough to check for the end signal,
+			// and to send the "nothing happened" signal to the next goroutine downstream from us,
+			// so that it can wake up and do some work to
 			s.conn.SetReadDeadline(time.Now().Add(time.Second))
 			n, addr, err := s.conn.ReadFromUDP(buffer[:])
 			if err != nil {
@@ -103,7 +106,7 @@ func (s *LinkServer) receivePackets(
 	defer close(newFacts)
 
 	var buffer []*ReceivedFact
-	ticker := time.NewTicker(chunkPeriod)
+	chunkTicker := time.NewTicker(chunkPeriod)
 
 	// send an empty chunk once at startup to prime things
 	newFacts <- nil
@@ -130,7 +133,7 @@ func (s *LinkServer) receivePackets(
 			if *s.printsRequested != 0 {
 				sendBuffer = true
 			}
-		case <-ticker.C:
+		case <-chunkTicker.C:
 			sendBuffer = true
 		}
 
@@ -189,6 +192,7 @@ func (s *LinkServer) processChunks(
 			s.onError(err)
 			continue
 		}
+		s.UpdateRouterState(dev, true)
 
 		localFacts, err := s.collectFacts(dev)
 		if err != nil {

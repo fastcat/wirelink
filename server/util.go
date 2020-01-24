@@ -8,7 +8,6 @@ import (
 	"github.com/fastcat/wirelink/detect"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
-	"github.com/pkg/errors"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -62,18 +61,20 @@ func groupFactsByPeer(facts []*fact.Fact) map[wgtypes.Key][]*fact.Fact {
 }
 
 // UpdateRouterState will update `s.config.IsRouterNow` based on the device state,
-// if `s.config.AutoDetectRouter` is true
-func (s *LinkServer) UpdateRouterState() error {
-	if !s.config.AutoDetectRouter {
-		return nil
+// if `s.config.AutoDetectRouter` is true.
+// The possible error return is for future use cases, it always returns `nil` for now
+func (s *LinkServer) UpdateRouterState(dev *wgtypes.Device, logChanges bool) error {
+	if s.config.AutoDetectRouter {
+		newValue := detect.IsDeviceRouter(dev)
+		if logChanges && newValue != s.config.IsRouterNow {
+			newState := "leaf"
+			if newValue {
+				newState = "router"
+			}
+			log.Info("Detected we are now a %s", newState)
+		}
+		s.config.IsRouterNow = newValue
 	}
-
-	dev, err := s.deviceState()
-	if err != nil {
-		return errors.Wrapf(err, "Unable to open wireguard device for interface %s", s.config.Iface)
-	}
-
-	s.config.IsRouterNow = detect.IsDeviceRouter(dev)
 
 	return nil
 }
