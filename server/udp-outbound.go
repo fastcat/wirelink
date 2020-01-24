@@ -1,15 +1,13 @@
 package server
 
 import (
-	"fmt"
 	"net"
 	"os"
-	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
 
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/fastcat/wirelink/apply"
 	"github.com/fastcat/wirelink/autopeer"
@@ -21,16 +19,17 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) {
-	defer s.wait.Done()
-
-	// TODO: should we fire this off into a goroutine when we call it?
-	broadcast := func(newFacts []*fact.Fact) (int, []error) {
+func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) error {
+	// TODO: naming here is confusing with the `newFacts` channel
+	for newFacts := range factsRefreshed {
 		dev, err := s.deviceState()
 		if err != nil {
-			return 0, []error{err}
+			// this probably means the interface is down
+			// the log message will be printed by the main app as it exits
+			return errors.Wrap(err, "Unable to load device state, giving up")
 		}
-		count, errs := s.broadcastFacts(dev.PublicKey, dev.Peers, newFacts, ChunkPeriod-time.Second)
+
+		_, errs := s.broadcastFacts(dev.PublicKey, dev.Peers, newFacts, ChunkPeriod-time.Second)
 		if errs != nil {
 			// don't print more than a handful of errors
 			if len(errs) > 5 {
@@ -39,17 +38,9 @@ func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) {
 				log.Error("Failed to send some facts: %v", errs)
 			}
 		}
-		return count, errs
 	}
 
-	// broadcast local facts once at startup
-	broadcast(nil)
-
-	// TODO: naming here is confusing with the `newFacts` channel
-	for newFacts := range factsRefreshed {
-		// error printing is handled inside `broadcast`, so we ignore the return
-		broadcast(newFacts)
-	}
+	return nil
 }
 
 type sendLevel int
@@ -116,8 +107,7 @@ func (s *LinkServer) shouldSendTo(p *wgtypes.Peer, factsByPeer map[wgtypes.Key][
 // broadcastFacts tries to send every fact to every peer
 // it returns the number of sends performed
 func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, facts []*fact.Fact, timeout time.Duration) (int, []error) {
-	var counter int32
-	var wg sync.WaitGroup
+	var sg errgroup.Group
 
 	s.conn.SetWriteDeadline(time.Now().Add(timeout))
 
@@ -131,8 +121,11 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 
 	factsByPeer := groupFactsByPeer(facts)
 
-	for i, p := range peers {
-		sendLevel := s.shouldSendTo(&p, factsByPeer)
+	for i := range peers {
+		// avoid closure binding problems
+		p := &peers[i]
+
+		sendLevel := s.shouldSendTo(p, factsByPeer)
 		if sendLevel == sendNothing {
 			continue
 		}
@@ -150,7 +143,7 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 					continue
 				}
 				// don't tell peers other things they already know
-				if !s.peerKnowledge.peerNeeds(&p, f, ChunkPeriod+time.Second) {
+				if !s.peerKnowledge.peerNeeds(p, f, ChunkPeriod+time.Second) {
 					continue
 				}
 				err := ga.AddFact(f)
@@ -160,7 +153,7 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 					log.Debug("Peer %s needs %v", s.peerName(p.PublicKey), f)
 					// assume we will successfully send and peer will accept the info
 					// if these assumptions are wrong, re-sending more often is unlikely to help
-					s.peerKnowledge.upsertSent(&p, f)
+					s.peerKnowledge.upsertSent(p, f)
 				}
 			}
 		}
@@ -170,7 +163,7 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 		// we want alive facts to live for the normal FactTTL, but we want to send them every AlivePeriod
 		// so the "forgetting window" is the difference between those
 		// we don't need to add the extra ChunkPeriod+1 buffer in this case
-		if s.peerKnowledge.peerNeeds(&p, pingFact, FactTTL-AlivePeriod) {
+		if s.peerKnowledge.peerNeeds(p, pingFact, FactTTL-AlivePeriod) {
 			log.Debug("Peer %s needs ping", s.peerName(p.PublicKey))
 			addPingErr = ga.AddFact(pingFact)
 			addedPing = true
@@ -188,7 +181,7 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 		} else if addedPing {
 			// assume we will successfully send and peer will accept the info
 			// if these assumptions are wrong, re-sending more often is unlikely to help
-			s.peerKnowledge.upsertSent(&p, pingFact)
+			s.peerKnowledge.upsertSent(p, pingFact)
 		}
 
 		signedGroupFacts, err := ga.MakeSignedGroups(s.signer, &p.PublicKey)
@@ -198,29 +191,43 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 		}
 
 		for j := range signedGroupFacts {
-			wg.Add(1)
-			// have to use &arr[idx] here because we don't want to bind the loop var
-			go s.sendFact(&peers[i], &signedGroupFacts[j], &wg, &counter, errs)
+			sg.Go(func() error {
+				err := s.sendFact(p, &signedGroupFacts[j])
+				errs <- err
+				return err
+			})
 		}
 	}
 
-	go func() { wg.Wait(); close(errs) }()
+	var wg errgroup.Group
+	var counter int32
 	var errlist []error
-	for err := range errs {
-		errlist = append(errlist, err)
-	}
+	// two goroutines: one to accumulate results from the senders,
+	// the other to close the channel when the sending group finishes so that
+	// the first goroutine will end
+	wg.Go(func() error {
+		for err := range errs {
+			if err != nil {
+				errlist = append(errlist, err)
+			} else {
+				counter++
+			}
+		}
+		return nil
+	})
+	wg.Go(func() error { sg.Wait(); close(errs); return nil })
+	wg.Wait()
+
 	if len(errlist) != 0 {
 		return int(counter), errlist
 	}
 	return int(counter), nil
 }
 
-func (s *LinkServer) sendFact(peer *wgtypes.Peer, f *fact.Fact, wg *sync.WaitGroup, counter *int32, errs chan<- error) {
-	defer wg.Done()
+func (s *LinkServer) sendFact(peer *wgtypes.Peer, f *fact.Fact) error {
 	wpb, err := f.MarshalBinary()
 	if err != nil {
-		errs <- err
-		return
+		return err
 	}
 	addr := net.UDPAddr{
 		IP:   autopeer.AutoAddress(peer.PublicKey),
@@ -235,14 +242,11 @@ func (s *LinkServer) sendFact(peer *wgtypes.Peer, f *fact.Fact, wg *sync.WaitGro
 			// this is expected, ignore it
 			err = nil
 		} else {
-			errs <- errors.Wrapf(err, "Failed to send to peer %s", s.peerName(peer.PublicKey))
-			return
+			return errors.Wrapf(err, "Failed to send to peer %s", s.peerName(peer.PublicKey))
 		}
 	} else if sent != len(wpb) {
-		errs <- fmt.Errorf("Sent %d instead of %d", sent, len(wpb))
-		return
+		return errors.Errorf("Sent %d instead of %d", sent, len(wpb))
 	}
 
-	// else/fall-through: sent OK
-	atomic.AddInt32(counter, 1)
+	return nil
 }

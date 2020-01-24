@@ -1,7 +1,6 @@
 package peerfacts
 
 import (
-	"fmt"
 	"net"
 	"time"
 
@@ -25,7 +24,7 @@ func DeviceFacts(
 	err error,
 ) {
 	if ttl.Seconds() < 0 || ttl.Seconds() > 255 {
-		return nil, fmt.Errorf("ttl out of range")
+		return nil, errors.Errorf("ttl out of range")
 	}
 
 	expiration := time.Now().Add(ttl)

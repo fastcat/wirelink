@@ -2,8 +2,8 @@ package server
 
 import (
 	"bytes"
-	"fmt"
 	"net"
+	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
@@ -15,15 +15,15 @@ import (
 	"github.com/fastcat/wirelink/trust"
 )
 
-func (s *LinkServer) readPackets(endReader <-chan bool, packets chan<- *ReceivedFact) {
-	defer s.wait.Done()
+func (s *LinkServer) readPackets(packets chan<- *ReceivedFact) error {
 	defer close(packets)
 
 	var buffer [fact.UDPMaxSafePayload * 2]byte
 	for {
 		select {
-		case <-endReader:
-			return
+		case <-s.ctx.Done():
+			// deferred close(packets) will wake up downstream
+			return nil
 		default:
 			// make sure we wake up often enough to check for the end signal,
 			// and to send the "nothing happened" signal to the next goroutine downstream from us,
@@ -36,9 +36,7 @@ func (s *LinkServer) readPackets(endReader <-chan bool, packets chan<- *Received
 					packets <- nil
 					continue
 				}
-				log.Error("Failed to read from socket, giving up: %v", err)
-				s.onError(err)
-				break
+				return errors.Wrap(err, "Failed to read from UDP socket, giving up")
 			}
 			pp := &fact.Fact{}
 			err = pp.DecodeFrom(n, bytes.NewBuffer(buffer[:n]))
@@ -65,15 +63,15 @@ func (s *LinkServer) readPackets(endReader <-chan bool, packets chan<- *Received
 func (s *LinkServer) processGroup(f *fact.Fact, source *net.UDPAddr, packets chan<- *ReceivedFact) error {
 	ps, ok := f.Subject.(*fact.PeerSubject)
 	if !ok {
-		return fmt.Errorf("SignedGroup has non-PeerSubject: %T", f.Subject)
+		return errors.Errorf("SignedGroup has non-PeerSubject: %T", f.Subject)
 	}
 	pv, ok := f.Value.(*fact.SignedGroupValue)
 	if !ok {
-		return fmt.Errorf("SignedGroup has non-SigendGroupValue: %T", f.Value)
+		return errors.Errorf("SignedGroup has non-SigendGroupValue: %T", f.Value)
 	}
 
 	if !autopeer.AutoAddress(ps.Key).Equal(source.IP) {
-		return fmt.Errorf("SignedGroup source %v does not match key %v", source.IP, ps.Key)
+		return errors.Errorf("SignedGroup source %v does not match key %v", source.IP, ps.Key)
 	}
 	// TODO: check the key is locally known/trusted
 	// for now we have a weak indirect version of that based on the trust model checking the source IP
@@ -83,7 +81,7 @@ func (s *LinkServer) processGroup(f *fact.Fact, source *net.UDPAddr, packets cha
 		return errors.Wrapf(err, "Failed to validate SignedGroup signature from %s", s.peerName(ps.Key))
 	} else if !valid {
 		// should never get here, verification errors should always make an error
-		return fmt.Errorf("Unknown error validating SignedGroup")
+		return errors.Errorf("Unknown error validating SignedGroup")
 	}
 
 	inner, err := pv.ParseInner()
@@ -101,8 +99,7 @@ func (s *LinkServer) receivePackets(
 	newFacts chan<- []*ReceivedFact,
 	maxChunk int,
 	chunkPeriod time.Duration,
-) {
-	defer s.wait.Done()
+) error {
 	defer close(newFacts)
 
 	var buffer []*ReceivedFact
@@ -130,7 +127,7 @@ func (s *LinkServer) receivePackets(
 			}
 			// push the buffer through if state report is requested so that it happens quickly
 			// don't need to use the atomic load here, as the worst case is a delay in printing
-			if *s.printsRequested != 0 {
+			if atomic.LoadInt32(s.printsRequested) != 0 {
 				sendBuffer = true
 			}
 		case <-chunkTicker.C:
@@ -143,6 +140,8 @@ func (s *LinkServer) receivePackets(
 			buffer = nil
 		}
 	}
+
+	return nil
 }
 
 // pruneRemovedLocalFacts finds the difference between lastLocal and newLocal,
@@ -169,8 +168,7 @@ func pruneRemovedLocalFacts(chunk, lastLocal, newLocal []*fact.Fact) []*fact.Fac
 func (s *LinkServer) processChunks(
 	newFacts <-chan []*ReceivedFact,
 	factsRefreshed chan<- []*fact.Fact,
-) {
-	defer s.wait.Done()
+) error {
 	defer close(factsRefreshed)
 
 	var currentFacts []*fact.Fact
@@ -188,9 +186,9 @@ func (s *LinkServer) processChunks(
 		}
 		dev, err := s.deviceState()
 		if err != nil {
-			log.Error("Unable to load device info to evaluate trust, giving up: %v", err)
-			s.onError(err)
-			continue
+			// this probably means the interface is down
+			// the log message will be printed by the main app as it exits
+			return errors.Wrap(err, "Unable to load device info to evaluate trust, giving up")
 		}
 		s.UpdateRouterState(dev, true)
 
@@ -236,4 +234,6 @@ func (s *LinkServer) processChunks(
 
 		factsRefreshed <- uniqueFacts
 	}
+
+	return nil
 }

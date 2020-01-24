@@ -7,6 +7,7 @@ import (
 	"net"
 
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 
 	"github.com/fastcat/wirelink/util"
 )
@@ -41,7 +42,7 @@ func (ipp *IPPortValue) UnmarshalBinary(data []byte) error {
 		ipp.IP = net.IP(util.CloneBytes(data[0:net.IPv6len]))
 		ipp.Port = int(binary.BigEndian.Uint16(data[net.IPv6len:]))
 	} else {
-		return fmt.Errorf("ipv4 + port should be %d bytes, not %d", net.IPv4len+2, len(data))
+		return errors.Errorf("ipv4 + port should be %d bytes, not %d", net.IPv4len+2, len(data))
 	}
 	return nil
 }
@@ -53,7 +54,7 @@ func (ipp *IPPortValue) DecodeFrom(lengthHint int, reader io.Reader) error {
 	} else if lengthHint == net.IPv6len+2 {
 		return util.DecodeFrom(ipp, net.IPv6len+2, reader)
 	} else {
-		return fmt.Errorf("Invalid length hint for for IPPortValue: %v", lengthHint)
+		return errors.Errorf("Invalid length hint for for IPPortValue: %v", lengthHint)
 	}
 }
 
@@ -91,7 +92,7 @@ func (ipn *IPNetValue) UnmarshalBinary(data []byte) error {
 		ipn.IP = net.IP(util.CloneBytes(data[0:net.IPv6len]))
 		ipn.Mask = net.CIDRMask(int(data[net.IPv6len]), 8*net.IPv6len)
 	} else {
-		return fmt.Errorf("ipv4 + cidr should be %d bytes, not %d", net.IPv4len+1, len(data))
+		return errors.Errorf("ipv4 + cidr should be %d bytes, not %d", net.IPv4len+1, len(data))
 	}
 	return nil
 }
@@ -103,7 +104,7 @@ func (ipn *IPNetValue) DecodeFrom(lengthHint int, reader io.Reader) error {
 	} else if lengthHint == net.IPv6len+1 {
 		return util.DecodeFrom(ipn, net.IPv6len+1, reader)
 	} else {
-		return fmt.Errorf("Invalid length hint for for IPNetValue: %v", lengthHint)
+		return errors.Errorf("Invalid length hint for for IPNetValue: %v", lengthHint)
 	}
 }
 

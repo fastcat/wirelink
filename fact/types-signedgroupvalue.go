@@ -55,7 +55,7 @@ func (sgv *SignedGroupValue) DecodeFrom(lengthHint int, reader io.Reader) error 
 	var buf *bytes.Buffer
 	var ok bool
 	if buf, ok = reader.(*bytes.Buffer); !ok {
-		return fmt.Errorf("Reading SignedGroupValue is only supported from a Buffer, not a %T", reader)
+		return errors.Errorf("Reading SignedGroupValue is only supported from a Buffer, not a %T", reader)
 	}
 
 	var n int

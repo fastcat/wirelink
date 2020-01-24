@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -10,7 +11,6 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/fastcat/wirelink/config"
-	"github.com/fastcat/wirelink/internal"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/server"
 
@@ -21,7 +21,7 @@ func main() {
 	err := realMain()
 	// don't print on error just because help was requested
 	if err != nil && err != pflag.ErrHelp {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintf(os.Stderr, "Fatal error: %v", err)
 		defer os.Exit(1)
 	}
 }
@@ -63,54 +63,27 @@ func realMain() error {
 		return errors.Wrapf(err, "Unable to start server for interface %s", serverConfig.Iface)
 	}
 
-	nodeTypeDesc := "leaf"
-	if serverConfig.IsRouterNow {
-		nodeTypeDesc = "router"
-	}
-	if serverConfig.AutoDetectRouter {
-		nodeTypeDesc += " (auto)"
-	}
-	nodeModeDesc := "quiet"
-	if serverConfig.Chatty {
-		nodeModeDesc = "chatty"
-	}
-	log.Info("Server version %s running on {%s} [%v]:%v (%s, %s)",
-		internal.Version,
-		serverConfig.Iface,
-		server.Address(),
-		server.Port(),
-		nodeTypeDesc,
-		nodeModeDesc,
-	)
+	log.Info("Server running: %s", server.Describe())
 
-	signals := make(chan os.Signal, 5)
-	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
-
-	onStopped := server.OnStopped()
-
-DONE:
-	for {
-		select {
-		case sig := <-signals:
-			if sig == syscall.SIGUSR1 {
-				server.RequestPrint()
-			} else {
-				log.Info("Received signal %v, stopping", sig)
-				// request stop in the background, we'll catch the channel message when it's complete
-				go server.Stop()
+	server.AddHandler(func(ctx context.Context) error {
+		signals := make(chan os.Signal, 5)
+		signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
+		for {
+			select {
+			case sig := <-signals:
+				if sig == syscall.SIGUSR1 {
+					server.RequestPrint()
+				} else {
+					log.Info("Received signal %v, stopping", sig)
+					// this will just initiate the shutdown, not block waiting for it
+					server.RequestStop()
+				}
+			case <-ctx.Done():
+				return nil
 			}
-		case exitOk := <-onStopped:
-			if !exitOk {
-				log.Error("Server hit an error")
-				defer os.Exit(1)
-			} else {
-				log.Info("Server stopped")
-				server.RequestPrint()
-			}
-			break DONE
 		}
-	}
+	})
 
 	// server.Close is handled by defer above
-	return nil
+	return server.Wait()
 }

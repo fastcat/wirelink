@@ -1,17 +1,22 @@
 package server
 
 import (
+	"context"
+	"fmt"
 	"net"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/fastcat/wirelink/apply"
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/config"
 	"github.com/fastcat/wirelink/fact"
+	"github.com/fastcat/wirelink/internal"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/signing"
 
@@ -29,11 +34,11 @@ type LinkServer struct {
 	conn        *net.UDPConn
 	addr        net.UDPAddr
 	ctrl        *wgctrl.Client
-	wait        *sync.WaitGroup
-	// sending on endReader will stop the packet reader goroutine
-	endReader chan bool
-	// closed tracks if we already ran `Close()`
-	closed bool
+
+	eg     *errgroup.Group
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	// peerKnowledgeSet tracks what is known by each peer to avoid sending them
 	// redundant information
 	peerKnowledge *peerKnowledgeSet
@@ -41,8 +46,6 @@ type LinkServer struct {
 	signer        *signing.Signer
 	// counter for asking it to print out its current info
 	printsRequested *int32
-	// folks listening for notification that we have closed
-	stopWatchers []chan<- bool
 }
 
 // MaxChunk is the max number of packets to receive before processing them
@@ -79,6 +82,9 @@ func Create(ctrl *wgctrl.Client, config *config.Server) (*LinkServer, error) {
 		Zone: device.Name,
 	}
 
+	eg, egCtx := errgroup.WithContext(context.Background())
+	ctx, cancel := context.WithCancel(egCtx)
+
 	ret := &LinkServer{
 		bootID:          uuid.Must(uuid.NewRandom()),
 		config:          config,
@@ -87,8 +93,9 @@ func Create(ctrl *wgctrl.Client, config *config.Server) (*LinkServer, error) {
 		addr:            addr,
 		ctrl:            ctrl,
 		stateAccess:     new(sync.Mutex),
-		wait:            new(sync.WaitGroup),
-		endReader:       make(chan bool),
+		eg:              eg,
+		ctx:             ctx,
+		cancel:          cancel,
 		peerKnowledge:   newPKS(),
 		peerConfig:      newPeerConfigSet(),
 		signer:          signing.New(&device.PrivateKey),
@@ -104,7 +111,7 @@ func (s *LinkServer) Start() (err error) {
 	var device *wgtypes.Device
 	device, err = s.deviceState()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Unable to load device state to initialize server")
 	}
 
 	// have to make sure we have the local IPv6-LL address configured before we can use it
@@ -139,30 +146,34 @@ func (s *LinkServer) Start() (err error) {
 	// ok, network resources are initialized, start all the goroutines!
 
 	packets := make(chan *ReceivedFact, MaxChunk)
-	s.wait.Add(1)
-	go s.readPackets(s.endReader, packets)
+	s.eg.Go(func() error { return s.readPackets(packets) })
 
 	newFacts := make(chan []*ReceivedFact, 1)
-	s.wait.Add(1)
-	go s.receivePackets(packets, newFacts, MaxChunk, ChunkPeriod)
+	s.eg.Go(func() error { return s.receivePackets(packets, newFacts, MaxChunk, ChunkPeriod) })
 
 	factsRefreshed := make(chan []*fact.Fact, 1)
 	factsRefreshedForBroadcast := make(chan []*fact.Fact, 1)
 	factsRefreshedForConfig := make(chan []*fact.Fact, 1)
 
-	s.wait.Add(1)
-	go s.processChunks(newFacts, factsRefreshed)
+	s.eg.Go(func() error { return s.processChunks(newFacts, factsRefreshed) })
 
-	s.wait.Add(1)
-	go multiplexFactChunks(s.wait, factsRefreshed, factsRefreshedForBroadcast, factsRefreshedForConfig)
+	s.eg.Go(func() error {
+		return multiplexFactChunks(factsRefreshed, factsRefreshedForBroadcast, factsRefreshedForConfig)
+	})
 
-	s.wait.Add(1)
-	go s.broadcastFactUpdates(factsRefreshedForBroadcast)
+	s.eg.Go(func() error { return s.broadcastFactUpdates(factsRefreshedForBroadcast) })
 
-	s.wait.Add(1)
-	go s.configurePeers(factsRefreshedForConfig)
+	s.eg.Go(func() error { return s.configurePeers(factsRefreshedForConfig) })
 
 	return nil
+}
+
+// AddHandler adds additional handler helpers to the server lifetime,
+// such as for signal handling, which are the domain of the main application
+func (s *LinkServer) AddHandler(handler func(ctx context.Context) error) {
+	s.eg.Go(func() error {
+		return handler(s.ctx)
+	})
 }
 
 // RequestPrint asks the packet receiver to print out the full set of known facts (local and remote)
@@ -172,8 +183,7 @@ func (s *LinkServer) RequestPrint() {
 
 // multiplexFactChunks copies values from input to each output. It will only
 // work smoothly if the outputs are buffered so that it doesn't block much
-func multiplexFactChunks(wg *sync.WaitGroup, input <-chan []*fact.Fact, outputs ...chan<- []*fact.Fact) {
-	defer wg.Done()
+func multiplexFactChunks(input <-chan []*fact.Fact, outputs ...chan<- []*fact.Fact) error {
 	for _, output := range outputs {
 		defer close(output)
 	}
@@ -183,57 +193,69 @@ func multiplexFactChunks(wg *sync.WaitGroup, input <-chan []*fact.Fact, outputs 
 			output <- chunk
 		}
 	}
+
+	return nil
+}
+
+// RequestStop asks the server to stop, but does not wait for this process to complete
+func (s *LinkServer) RequestStop() {
+	if s.cancel != nil {
+		s.cancel()
+		s.cancel = nil
+	}
 }
 
 // Stop halts the background goroutines and releases resources associated with
 // them, but leaves open some resources associated with the local device so that
 // final state can be inspected
 func (s *LinkServer) Stop() {
-	s.stop(true)
-}
-
-func (s *LinkServer) onError(err error) {
-	go s.stop(false)
-}
-
-func (s *LinkServer) stop(normal bool) {
-	if s.conn == nil {
-		return
+	s.RequestStop()
+	if s.eg != nil {
+		s.eg.Wait()
 	}
-	s.endReader <- true
-	s.wait.Wait()
-	s.conn.Close()
 
-	s.conn = nil
-	s.wait = nil
-	s.endReader = nil
-
-	for _, stopWatcher := range s.stopWatchers {
-		stopWatcher <- normal
+	if s.conn != nil {
+		if err := s.conn.Close(); err != nil {
+			log.Error("Failed to close server socket: %v", err)
+		}
+		s.conn = nil
 	}
+
+	// leave eg & ctx around so we can inspect them after stopping
+	// s.eg = nil
+	// s.ctx = nil
 }
 
 // Close stops the server and closes all resources
 func (s *LinkServer) Close() {
-	if s.closed {
-		return
-	}
 	s.Stop()
 	s.stateAccess.Lock()
 	defer s.stateAccess.Unlock()
-	s.ctrl.Close()
-	s.ctrl = nil
-	s.closed = true
+	if s.ctrl != nil {
+		s.ctrl.Close()
+		s.ctrl = nil
+	}
+
+	if s.eg != nil {
+		err := s.eg.Wait()
+		if err == nil {
+			log.Info("Server closed gracefully")
+		} else {
+			log.Error("Server exiting after failure")
+		}
+		s.eg = nil
+	}
+	s.ctx = nil
 }
 
-// OnStopped creates and returns a channel that will emit a single bool when the server is stopped
-// it will emit `true` if the server stopped by normal request, or `false` if it failed with an error
-func (s *LinkServer) OnStopped() <-chan bool {
-	c := make(chan bool, 1)
-	s.stateAccess.Lock()
-	s.stopWatchers = append(s.stopWatchers, c)
-	s.stateAccess.Unlock()
-	return c
+// Wait waits for a running server to end, returning any error if it ended prematurely
+func (s *LinkServer) Wait() error {
+	err := s.eg.Wait()
+	if err != nil {
+		return err
+	}
+	// we could check s.ctx.Err(), but it won't have anything useful in it
+	return nil
 }
 
 // Address returns the local IP address on which the server listens
@@ -244,4 +266,27 @@ func (s *LinkServer) Address() net.IP {
 // Port returns the local UDP port on which the server listens and sends
 func (s *LinkServer) Port() int {
 	return s.addr.Port
+}
+
+// Describe returns a textual summary of the server
+func (s *LinkServer) Describe() string {
+	nodeTypeDesc := "leaf"
+	if s.config.IsRouterNow {
+		nodeTypeDesc = "router"
+	}
+	if s.config.AutoDetectRouter {
+		nodeTypeDesc += " (auto)"
+	}
+	nodeModeDesc := "quiet"
+	if s.config.Chatty {
+		nodeModeDesc = "chatty"
+	}
+	return fmt.Sprintf("Version %s on {%s} [%v]:%v (%s, %s)",
+		internal.Version,
+		s.config.Iface,
+		s.addr.IP,
+		s.addr.Port,
+		nodeTypeDesc,
+		nodeModeDesc,
+	)
 }
