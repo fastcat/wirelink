@@ -1,7 +1,6 @@
 package server
 
 import (
-	"sync"
 	"time"
 
 	"github.com/fastcat/wirelink/apply"
@@ -10,6 +9,7 @@ import (
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/trust"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -40,7 +40,8 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) error {
 		localPeers := make(map[wgtypes.Key]bool)
 		removePeer := make(map[wgtypes.Key]bool)
 
-		wg := new(sync.WaitGroup)
+		// don't need the group members to cancel when one of them fails
+		var eg errgroup.Group
 
 		// we don't allow peers to be deconfigured until we've been running for longer than the fact ttl
 		// so that we don't remove config until we have a reasonable shot at having received everything
@@ -68,13 +69,12 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) error {
 				return
 			}
 			ps, _ := s.peerConfig.Get(peer.PublicKey)
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				// TODO: inspect returned error? it has already been logged at this point so not much to do with it
-				newState, _ := s.configurePeer(ps, &dev.PublicKey, peer, fg, allowDeconfigure, allowAdd)
+			eg.Go(func() error {
+				newState, err := s.configurePeer(ps, &dev.PublicKey, peer, fg, allowDeconfigure, allowAdd)
+				// `configurePeer` always returns the new state, even if it also returns an error
 				s.peerConfig.Set(peer.PublicKey, newState)
-			}()
+				return err
+			})
 		}
 		for i := range dev.Peers {
 			peer := &dev.Peers[i]
@@ -100,11 +100,11 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) error {
 		}
 
 		if allowDeconfigure {
-			wg.Add(1)
-			go s.deletePeers(wg, dev, removePeer)
+			eg.Go(func() error { return s.deletePeers(dev, removePeer) })
 		}
 
-		wg.Wait()
+		// we don't actually care if any of the routines failed, just need to wait for all of them
+		eg.Wait()
 
 		s.printFactsIfRequested(dev, newFacts)
 	}
@@ -113,12 +113,9 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) error {
 }
 
 func (s *LinkServer) deletePeers(
-	wg *sync.WaitGroup,
 	dev *wgtypes.Device,
 	removePeer map[wgtypes.Key]bool,
 ) (err error) {
-	defer wg.Done()
-
 	// only run peer deletion if we have a peer with DelPeer trust online
 	// and it has been online for longer than the fact TTL so that we are
 	// reasonably sure we have all the data from it ... and we are not a router

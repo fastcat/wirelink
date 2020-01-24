@@ -3,12 +3,11 @@ package server
 import (
 	"net"
 	"os"
-	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
 
 	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/fastcat/wirelink/apply"
 	"github.com/fastcat/wirelink/autopeer"
@@ -108,8 +107,7 @@ func (s *LinkServer) shouldSendTo(p *wgtypes.Peer, factsByPeer map[wgtypes.Key][
 // broadcastFacts tries to send every fact to every peer
 // it returns the number of sends performed
 func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, facts []*fact.Fact, timeout time.Duration) (int, []error) {
-	var counter int32
-	var wg sync.WaitGroup
+	var sg errgroup.Group
 
 	s.conn.SetWriteDeadline(time.Now().Add(timeout))
 
@@ -190,29 +188,43 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 		}
 
 		for j := range signedGroupFacts {
-			wg.Add(1)
-			// have to use &arr[idx] here because we don't want to bind the loop var
-			go s.sendFact(&peers[i], &signedGroupFacts[j], &wg, &counter, errs)
+			sg.Go(func() error {
+				err := s.sendFact(&peers[i], &signedGroupFacts[j])
+				errs <- err
+				return err
+			})
 		}
 	}
 
-	go func() { wg.Wait(); close(errs) }()
+	var wg errgroup.Group
+	var counter int32
 	var errlist []error
-	for err := range errs {
-		errlist = append(errlist, err)
-	}
+	// two goroutines: one to accumulate results from the senders,
+	// the other to close the channel when the sending group finishes so that
+	// the first goroutine will end
+	wg.Go(func() error {
+		for err := range errs {
+			if err != nil {
+				errlist = append(errlist, err)
+			} else {
+				counter++
+			}
+		}
+		return nil
+	})
+	wg.Go(func() error { sg.Wait(); close(errs); return nil })
+	wg.Wait()
+
 	if len(errlist) != 0 {
 		return int(counter), errlist
 	}
 	return int(counter), nil
 }
 
-func (s *LinkServer) sendFact(peer *wgtypes.Peer, f *fact.Fact, wg *sync.WaitGroup, counter *int32, errs chan<- error) {
-	defer wg.Done()
+func (s *LinkServer) sendFact(peer *wgtypes.Peer, f *fact.Fact) error {
 	wpb, err := f.MarshalBinary()
 	if err != nil {
-		errs <- err
-		return
+		return err
 	}
 	addr := net.UDPAddr{
 		IP:   autopeer.AutoAddress(peer.PublicKey),
@@ -227,14 +239,11 @@ func (s *LinkServer) sendFact(peer *wgtypes.Peer, f *fact.Fact, wg *sync.WaitGro
 			// this is expected, ignore it
 			err = nil
 		} else {
-			errs <- errors.Wrapf(err, "Failed to send to peer %s", s.peerName(peer.PublicKey))
-			return
+			return errors.Wrapf(err, "Failed to send to peer %s", s.peerName(peer.PublicKey))
 		}
 	} else if sent != len(wpb) {
-		errs <- errors.Errorf("Sent %d instead of %d", sent, len(wpb))
-		return
+		return errors.Errorf("Sent %d instead of %d", sent, len(wpb))
 	}
 
-	// else/fall-through: sent OK
-	atomic.AddInt32(counter, 1)
+	return nil
 }
