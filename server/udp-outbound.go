@@ -22,13 +22,16 @@ import (
 )
 
 func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) error {
-	// TODO: should we fire this off into a goroutine when we call it?
-	broadcast := func(newFacts []*fact.Fact) (int, []error) {
+	// TODO: naming here is confusing with the `newFacts` channel
+	for newFacts := range factsRefreshed {
 		dev, err := s.deviceState()
 		if err != nil {
-			return 0, []error{err}
+			// this probably means the interface is down
+			// the log message will be printed by the main app as it exits
+			return errors.Wrap(err, "Unable to load device state, giving up")
 		}
-		count, errs := s.broadcastFacts(dev.PublicKey, dev.Peers, newFacts, ChunkPeriod-time.Second)
+
+		_, errs := s.broadcastFacts(dev.PublicKey, dev.Peers, newFacts, ChunkPeriod-time.Second)
 		if errs != nil {
 			// don't print more than a handful of errors
 			if len(errs) > 5 {
@@ -37,16 +40,6 @@ func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) er
 				log.Error("Failed to send some facts: %v", errs)
 			}
 		}
-		return count, errs
-	}
-
-	// broadcast local facts once at startup
-	broadcast(nil)
-
-	// TODO: naming here is confusing with the `newFacts` channel
-	for newFacts := range factsRefreshed {
-		// error printing is handled inside `broadcast`, so we ignore the return
-		broadcast(newFacts)
 	}
 
 	return nil

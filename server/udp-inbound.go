@@ -22,6 +22,7 @@ func (s *LinkServer) readPackets(packets chan<- *ReceivedFact) error {
 	for {
 		select {
 		case <-s.ctx.Done():
+			// deferred close(packets) will wake up downstream
 			return nil
 		default:
 			// make sure we wake up often enough to check for the end signal,

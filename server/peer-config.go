@@ -20,6 +20,8 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) error {
 	startTime := time.Now()
 
 	for newFacts := range factsRefreshed {
+		log.Debug("Got a new fact set of length %d", len(newFacts))
+
 		dev, err := s.deviceState()
 		if err != nil {
 			// this probably means the interface is down
