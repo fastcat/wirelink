@@ -19,7 +19,7 @@
     add AIPs if it didn't already.
 * Intelligent prioritization of peer EPs to try
   * EPs that are on a local subnet, then EPs on the internet, then everything else?
-  * Mechansim? LRU penalty / bonus? I.e. add N ms to actual LU stamp for
+  * Mechanism? LRU penalty / bonus? I.e. add N ms to actual LU stamp for
     internet EPs, and M>n for non-matching LAN IPs?
 * Dynamic change of auto-detected "am I a router" state
   * Re-check for other routers, update flag/behavior if it changes
@@ -42,7 +42,7 @@
 * Use packet capture to detect when we are actually trying to talk to a peer
   * Use this to only do peer setup when we need it
 * Delete peers that are offline
-  * E.g. by not broadcasting facts about if if it's unhealty
+  * E.g. by not broadcasting facts about if if it's unhealthy
 
 ### Chatter Management
 
