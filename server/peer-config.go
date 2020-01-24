@@ -13,9 +13,7 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
-	defer s.wait.Done()
-
+func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) error {
 	// avoid deconfiguring peers until we've been running long enough
 	// for everyone we're connected to to tell us everything
 	startTime := time.Now()
@@ -107,6 +105,8 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) {
 
 		s.printFactsIfRequested(dev, newFacts)
 	}
+
+	return nil
 }
 
 func (s *LinkServer) deletePeers(

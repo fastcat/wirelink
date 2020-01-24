@@ -15,15 +15,14 @@ import (
 	"github.com/fastcat/wirelink/trust"
 )
 
-func (s *LinkServer) readPackets(endReader <-chan bool, packets chan<- *ReceivedFact) {
-	defer s.wait.Done()
+func (s *LinkServer) readPackets(endReader <-chan bool, packets chan<- *ReceivedFact) error {
 	defer close(packets)
 
 	var buffer [fact.UDPMaxSafePayload * 2]byte
 	for {
 		select {
 		case <-endReader:
-			return
+			return nil
 		default:
 			// make sure we wake up often enough to check for the end signal,
 			// and to send the "nothing happened" signal to the next goroutine downstream from us,
@@ -101,8 +100,7 @@ func (s *LinkServer) receivePackets(
 	newFacts chan<- []*ReceivedFact,
 	maxChunk int,
 	chunkPeriod time.Duration,
-) {
-	defer s.wait.Done()
+) error {
 	defer close(newFacts)
 
 	var buffer []*ReceivedFact
@@ -143,6 +141,8 @@ func (s *LinkServer) receivePackets(
 			buffer = nil
 		}
 	}
+
+	return nil
 }
 
 // pruneRemovedLocalFacts finds the difference between lastLocal and newLocal,
@@ -169,8 +169,7 @@ func pruneRemovedLocalFacts(chunk, lastLocal, newLocal []*fact.Fact) []*fact.Fac
 func (s *LinkServer) processChunks(
 	newFacts <-chan []*ReceivedFact,
 	factsRefreshed chan<- []*fact.Fact,
-) {
-	defer s.wait.Done()
+) error {
 	defer close(factsRefreshed)
 
 	var currentFacts []*fact.Fact
@@ -236,4 +235,6 @@ func (s *LinkServer) processChunks(
 
 		factsRefreshed <- uniqueFacts
 	}
+
+	return nil
 }

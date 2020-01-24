@@ -1,12 +1,14 @@
 package server
 
 import (
+	"context"
 	"net"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/fastcat/wirelink/apply"
 	"github.com/fastcat/wirelink/autopeer"
@@ -29,7 +31,10 @@ type LinkServer struct {
 	conn        *net.UDPConn
 	addr        net.UDPAddr
 	ctrl        *wgctrl.Client
-	wait        *sync.WaitGroup
+
+	eg    *errgroup.Group
+	egCtx context.Context
+
 	// sending on endReader will stop the packet reader goroutine
 	endReader chan bool
 	// closed tracks if we already ran `Close()`
@@ -79,6 +84,8 @@ func Create(ctrl *wgctrl.Client, config *config.Server) (*LinkServer, error) {
 		Zone: device.Name,
 	}
 
+	eg, ctx := errgroup.WithContext(context.Background())
+
 	ret := &LinkServer{
 		bootID:          uuid.Must(uuid.NewRandom()),
 		config:          config,
@@ -87,7 +94,8 @@ func Create(ctrl *wgctrl.Client, config *config.Server) (*LinkServer, error) {
 		addr:            addr,
 		ctrl:            ctrl,
 		stateAccess:     new(sync.Mutex),
-		wait:            new(sync.WaitGroup),
+		eg:              eg,
+		egCtx:           ctx,
 		endReader:       make(chan bool),
 		peerKnowledge:   newPKS(),
 		peerConfig:      newPeerConfigSet(),
@@ -139,28 +147,24 @@ func (s *LinkServer) Start() (err error) {
 	// ok, network resources are initialized, start all the goroutines!
 
 	packets := make(chan *ReceivedFact, MaxChunk)
-	s.wait.Add(1)
-	go s.readPackets(s.endReader, packets)
+	s.eg.Go(func() error { return s.readPackets(s.endReader, packets) })
 
 	newFacts := make(chan []*ReceivedFact, 1)
-	s.wait.Add(1)
-	go s.receivePackets(packets, newFacts, MaxChunk, ChunkPeriod)
+	s.eg.Go(func() error { return s.receivePackets(packets, newFacts, MaxChunk, ChunkPeriod) })
 
 	factsRefreshed := make(chan []*fact.Fact, 1)
 	factsRefreshedForBroadcast := make(chan []*fact.Fact, 1)
 	factsRefreshedForConfig := make(chan []*fact.Fact, 1)
 
-	s.wait.Add(1)
-	go s.processChunks(newFacts, factsRefreshed)
+	s.eg.Go(func() error { return s.processChunks(newFacts, factsRefreshed) })
 
-	s.wait.Add(1)
-	go multiplexFactChunks(s.wait, factsRefreshed, factsRefreshedForBroadcast, factsRefreshedForConfig)
+	s.eg.Go(func() error {
+		return multiplexFactChunks(factsRefreshed, factsRefreshedForBroadcast, factsRefreshedForConfig)
+	})
 
-	s.wait.Add(1)
-	go s.broadcastFactUpdates(factsRefreshedForBroadcast)
+	s.eg.Go(func() error { return s.broadcastFactUpdates(factsRefreshedForBroadcast) })
 
-	s.wait.Add(1)
-	go s.configurePeers(factsRefreshedForConfig)
+	s.eg.Go(func() error { return s.configurePeers(factsRefreshedForConfig) })
 
 	return nil
 }
@@ -172,8 +176,7 @@ func (s *LinkServer) RequestPrint() {
 
 // multiplexFactChunks copies values from input to each output. It will only
 // work smoothly if the outputs are buffered so that it doesn't block much
-func multiplexFactChunks(wg *sync.WaitGroup, input <-chan []*fact.Fact, outputs ...chan<- []*fact.Fact) {
-	defer wg.Done()
+func multiplexFactChunks(input <-chan []*fact.Fact, outputs ...chan<- []*fact.Fact) error {
 	for _, output := range outputs {
 		defer close(output)
 	}
@@ -183,6 +186,8 @@ func multiplexFactChunks(wg *sync.WaitGroup, input <-chan []*fact.Fact, outputs 
 			output <- chunk
 		}
 	}
+
+	return nil
 }
 
 // Stop halts the background goroutines and releases resources associated with
@@ -201,11 +206,12 @@ func (s *LinkServer) stop(normal bool) {
 		return
 	}
 	s.endReader <- true
-	s.wait.Wait()
+	s.eg.Wait()
 	s.conn.Close()
 
 	s.conn = nil
-	s.wait = nil
+	s.eg = nil
+	s.egCtx = nil
 	s.endReader = nil
 
 	for _, stopWatcher := range s.stopWatchers {

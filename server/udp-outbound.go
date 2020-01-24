@@ -21,9 +21,7 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) {
-	defer s.wait.Done()
-
+func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) error {
 	// TODO: should we fire this off into a goroutine when we call it?
 	broadcast := func(newFacts []*fact.Fact) (int, []error) {
 		dev, err := s.deviceState()
@@ -50,6 +48,8 @@ func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) {
 		// error printing is handled inside `broadcast`, so we ignore the return
 		broadcast(newFacts)
 	}
+
+	return nil
 }
 
 type sendLevel int
