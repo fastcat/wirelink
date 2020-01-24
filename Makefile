@@ -31,13 +31,9 @@ wirelink: generate
 	go build -v .
 vet: generate
 	go vet ./...
-lint: lint-golint lint-gopls
+lint: lint-golint
 lint-golint: generate
 	golint -set_exit_status ./...
-lint-gopls: generate
-# need to group files to gopls check by directory it seems
-# unclear if this does anything useful at all
-	find -type f -name \*.go -print0 | xargs -0 dirname -z | sort -uz | xargs -P0 -0 -n1 sh -c 'set -x ; gopls check "$$1"/*.go' --
 test: vet lint test-go test-go-race
 test-go: generate
 	go test ./...
@@ -97,7 +93,7 @@ clean: checkinstall-clean
 #TODO: any way to clean the go cache for just this package?
 
 .PHONY: all info fmt generate compile run install everything clean
-.PHONY: vet lint lint-golint lint-gopls test test-go cover htmlcover
+.PHONY: vet lint lint-golint test test-go cover htmlcover
 .PHONY: checkinstall checkinstall-prep checkinstall-clean
 # wirelink isn't actually phony, but we can't compute deps for it, so pretend
 .PHONY: wirelink
