@@ -197,6 +197,7 @@ func multiplexFactChunks(input <-chan []*fact.Fact, outputs ...chan<- []*fact.Fa
 	return nil
 }
 
+// RequestStop asks the server to stop, but does not wait for this process to complete
 func (s *LinkServer) RequestStop() {
 	if s.cancel != nil {
 		s.cancel()
