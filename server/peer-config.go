@@ -9,6 +9,7 @@ import (
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/trust"
+	"github.com/pkg/errors"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -22,8 +23,8 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) error {
 		dev, err := s.deviceState()
 		if err != nil {
 			// this probably means the interface is down
-			log.Error("Unable to load device state, giving up: %v", err)
-			s.onError(err)
+			// the log message will be printed by the main app as it exits
+			return errors.Wrap(err, "Unable to load device state, giving up")
 		}
 
 		factsByPeer := groupFactsByPeer(newFacts)

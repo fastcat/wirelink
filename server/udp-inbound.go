@@ -15,13 +15,13 @@ import (
 	"github.com/fastcat/wirelink/trust"
 )
 
-func (s *LinkServer) readPackets(endReader <-chan bool, packets chan<- *ReceivedFact) error {
+func (s *LinkServer) readPackets(packets chan<- *ReceivedFact) error {
 	defer close(packets)
 
 	var buffer [fact.UDPMaxSafePayload * 2]byte
 	for {
 		select {
-		case <-endReader:
+		case <-s.ctx.Done():
 			return nil
 		default:
 			// make sure we wake up often enough to check for the end signal,
@@ -35,9 +35,7 @@ func (s *LinkServer) readPackets(endReader <-chan bool, packets chan<- *Received
 					packets <- nil
 					continue
 				}
-				log.Error("Failed to read from socket, giving up: %v", err)
-				s.onError(err)
-				break
+				return errors.Wrap(err, "Failed to read from UDP socket, giving up")
 			}
 			pp := &fact.Fact{}
 			err = pp.DecodeFrom(n, bytes.NewBuffer(buffer[:n]))
@@ -187,9 +185,9 @@ func (s *LinkServer) processChunks(
 		}
 		dev, err := s.deviceState()
 		if err != nil {
-			log.Error("Unable to load device info to evaluate trust, giving up: %v", err)
-			s.onError(err)
-			continue
+			// this probably means the interface is down
+			// the log message will be printed by the main app as it exits
+			return errors.Wrap(err, "Unable to load device info to evaluate trust, giving up")
 		}
 		s.UpdateRouterState(dev, true)
 

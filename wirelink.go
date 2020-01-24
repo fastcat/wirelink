@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
@@ -83,34 +84,25 @@ func realMain() error {
 		nodeModeDesc,
 	)
 
-	signals := make(chan os.Signal, 5)
-	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
-
-	onStopped := server.OnStopped()
-
-DONE:
-	for {
-		select {
-		case sig := <-signals:
-			if sig == syscall.SIGUSR1 {
-				server.RequestPrint()
-			} else {
-				log.Info("Received signal %v, stopping", sig)
-				// request stop in the background, we'll catch the channel message when it's complete
-				go server.Stop()
+	server.AddHandler(func(ctx context.Context) error {
+		signals := make(chan os.Signal, 5)
+		signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
+		for {
+			select {
+			case sig := <-signals:
+				if sig == syscall.SIGUSR1 {
+					server.RequestPrint()
+				} else {
+					log.Info("Received signal %v, stopping", sig)
+					// request stop in the background, we'll catch the channel message when it's complete
+					go server.Stop()
+				}
+			case <-ctx.Done():
+				return nil
 			}
-		case exitOk := <-onStopped:
-			if !exitOk {
-				log.Error("Server hit an error")
-				defer os.Exit(1)
-			} else {
-				log.Info("Server stopped")
-				server.RequestPrint()
-			}
-			break DONE
 		}
-	}
+	})
 
 	// server.Close is handled by defer above
-	return nil
+	return server.Wait()
 }
