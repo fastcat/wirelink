@@ -3,7 +3,6 @@ package util
 import (
 	"bytes"
 	"encoding"
-	"fmt"
 	"io"
 
 	"github.com/pkg/errors"
@@ -25,7 +24,7 @@ func DecodeFrom(value encoding.BinaryUnmarshaler, readLen int, reader io.Reader)
 	case *bytes.Buffer:
 		data = r.Next(readLen)
 		if len(data) != readLen {
-			return fmt.Errorf("Unable to read %T: only %d of %d bytes available", value, readLen, len(data))
+			return errors.Errorf("Unable to read %T: only %d of %d bytes available", value, readLen, len(data))
 		}
 	default:
 		data = make([]byte, readLen)

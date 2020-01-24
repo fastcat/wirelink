@@ -3,7 +3,6 @@ package fact
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"io"
 	"math"
 	"net"
@@ -18,7 +17,7 @@ func (f *Fact) DecodeFrom(lengthHint int, reader io.Reader) error {
 	var buf *bytes.Buffer
 	var ok bool
 	if buf, ok = reader.(*bytes.Buffer); !ok {
-		return fmt.Errorf("Reading Fact is only supported from a Buffer, not a %T", reader)
+		return errors.Errorf("Reading Fact is only supported from a Buffer, not a %T", reader)
 	}
 	var err error
 
@@ -43,14 +42,14 @@ func (f *Fact) DecodeFrom(lengthHint int, reader io.Reader) error {
 	switch f.Attribute {
 	// AttributeUnknown used to be used for ping packets, this has been removed
 	case AttributeUnknown:
-		return fmt.Errorf("Legacy AttributeUnknown ping packet not supported")
+		return errors.Errorf("Legacy AttributeUnknown ping packet not supported")
 	// 	// Legacy ping packet
 	// 	subject, err = ParsePeerSubject(p.subject)
 	// 	if err != nil {
 	// 		return
 	// 	}
 	// 	if len(p.value) != 0 {
-	// 		return nil, fmt.Errorf("No-attribute packets must have empty value, not %d", len(p.value))
+	// 		return nil, errors.Errorf("No-attribute packets must have empty value, not %d", len(p.value))
 	// 	}
 	// 	value = EmptyValue{}
 
@@ -81,7 +80,7 @@ func (f *Fact) DecodeFrom(lengthHint int, reader io.Reader) error {
 		f.Value = &SignedGroupValue{}
 
 	default:
-		return fmt.Errorf("Unrecognized attribute 0x%02x", byte(f.Attribute))
+		return errors.Errorf("Unrecognized attribute 0x%02x", byte(f.Attribute))
 	}
 
 	err = f.Subject.DecodeFrom(0, buf)

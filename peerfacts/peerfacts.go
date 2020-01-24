@@ -1,11 +1,11 @@
 package peerfacts
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/fastcat/wirelink/apply"
 	"github.com/fastcat/wirelink/fact"
+	"github.com/pkg/errors"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -13,7 +13,7 @@ import (
 // LocalFacts gets all the known facts about a local peer
 func LocalFacts(peer *wgtypes.Peer, ttl time.Duration, trustLocalAIPs bool) (ret []*fact.Fact, err error) {
 	if ttl.Seconds() < 0 || ttl.Seconds() > 255 {
-		return nil, fmt.Errorf("ttl out of range")
+		return nil, errors.Errorf("ttl out of range")
 	}
 
 	expiration := time.Now().Add(ttl)

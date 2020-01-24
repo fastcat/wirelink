@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"net"
 	"os"
 	"sync"
@@ -232,7 +231,7 @@ func (s *LinkServer) sendFact(peer *wgtypes.Peer, f *fact.Fact, wg *sync.WaitGro
 			return
 		}
 	} else if sent != len(wpb) {
-		errs <- fmt.Errorf("Sent %d instead of %d", sent, len(wpb))
+		errs <- errors.Errorf("Sent %d instead of %d", sent, len(wpb))
 		return
 	}
 

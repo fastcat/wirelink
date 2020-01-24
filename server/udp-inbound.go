@@ -2,7 +2,6 @@ package server
 
 import (
 	"bytes"
-	"fmt"
 	"net"
 	"time"
 
@@ -63,15 +62,15 @@ func (s *LinkServer) readPackets(packets chan<- *ReceivedFact) error {
 func (s *LinkServer) processGroup(f *fact.Fact, source *net.UDPAddr, packets chan<- *ReceivedFact) error {
 	ps, ok := f.Subject.(*fact.PeerSubject)
 	if !ok {
-		return fmt.Errorf("SignedGroup has non-PeerSubject: %T", f.Subject)
+		return errors.Errorf("SignedGroup has non-PeerSubject: %T", f.Subject)
 	}
 	pv, ok := f.Value.(*fact.SignedGroupValue)
 	if !ok {
-		return fmt.Errorf("SignedGroup has non-SigendGroupValue: %T", f.Value)
+		return errors.Errorf("SignedGroup has non-SigendGroupValue: %T", f.Value)
 	}
 
 	if !autopeer.AutoAddress(ps.Key).Equal(source.IP) {
-		return fmt.Errorf("SignedGroup source %v does not match key %v", source.IP, ps.Key)
+		return errors.Errorf("SignedGroup source %v does not match key %v", source.IP, ps.Key)
 	}
 	// TODO: check the key is locally known/trusted
 	// for now we have a weak indirect version of that based on the trust model checking the source IP
@@ -81,7 +80,7 @@ func (s *LinkServer) processGroup(f *fact.Fact, source *net.UDPAddr, packets cha
 		return errors.Wrapf(err, "Failed to validate SignedGroup signature from %s", s.peerName(ps.Key))
 	} else if !valid {
 		// should never get here, verification errors should always make an error
-		return fmt.Errorf("Unknown error validating SignedGroup")
+		return errors.Errorf("Unknown error validating SignedGroup")
 	}
 
 	inner, err := pv.ParseInner()
