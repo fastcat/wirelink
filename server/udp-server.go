@@ -197,19 +197,26 @@ func multiplexFactChunks(input <-chan []*fact.Fact, outputs ...chan<- []*fact.Fa
 	return nil
 }
 
-// Stop halts the background goroutines and releases resources associated with
-// them, but leaves open some resources associated with the local device so that
-// final state can be inspected
-func (s *LinkServer) Stop() {
+func (s *LinkServer) RequestStop() {
 	if s.cancel != nil {
 		s.cancel()
 		s.cancel = nil
 	}
+}
+
+// Stop halts the background goroutines and releases resources associated with
+// them, but leaves open some resources associated with the local device so that
+// final state can be inspected
+func (s *LinkServer) Stop() {
+	s.RequestStop()
 	if s.eg != nil {
 		s.eg.Wait()
 	}
+
 	if s.conn != nil {
-		s.conn.Close()
+		if err := s.conn.Close(); err != nil {
+			log.Error("Failed to close server socket: %v", err)
+		}
 		s.conn = nil
 	}
 
@@ -225,10 +232,18 @@ func (s *LinkServer) Close() {
 	defer s.stateAccess.Unlock()
 	if s.ctrl != nil {
 		s.ctrl.Close()
+		s.ctrl = nil
 	}
 
-	// now we can really fully free these objects
-	s.eg = nil
+	if s.eg != nil {
+		err := s.eg.Wait()
+		if err == nil {
+			log.Info("Server closed gracefully")
+		} else {
+			log.Error("Server exiting after failure")
+		}
+		s.eg = nil
+	}
 	s.ctx = nil
 }
 

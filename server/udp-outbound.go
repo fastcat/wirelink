@@ -121,8 +121,11 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 
 	factsByPeer := groupFactsByPeer(facts)
 
-	for i, p := range peers {
-		sendLevel := s.shouldSendTo(&p, factsByPeer)
+	for i := range peers {
+		// avoid closure binding problems
+		p := &peers[i]
+
+		sendLevel := s.shouldSendTo(p, factsByPeer)
 		if sendLevel == sendNothing {
 			continue
 		}
@@ -140,7 +143,7 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 					continue
 				}
 				// don't tell peers other things they already know
-				if !s.peerKnowledge.peerNeeds(&p, f, ChunkPeriod+time.Second) {
+				if !s.peerKnowledge.peerNeeds(p, f, ChunkPeriod+time.Second) {
 					continue
 				}
 				err := ga.AddFact(f)
@@ -150,7 +153,7 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 					log.Debug("Peer %s needs %v", s.peerName(p.PublicKey), f)
 					// assume we will successfully send and peer will accept the info
 					// if these assumptions are wrong, re-sending more often is unlikely to help
-					s.peerKnowledge.upsertSent(&p, f)
+					s.peerKnowledge.upsertSent(p, f)
 				}
 			}
 		}
@@ -160,7 +163,7 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 		// we want alive facts to live for the normal FactTTL, but we want to send them every AlivePeriod
 		// so the "forgetting window" is the difference between those
 		// we don't need to add the extra ChunkPeriod+1 buffer in this case
-		if s.peerKnowledge.peerNeeds(&p, pingFact, FactTTL-AlivePeriod) {
+		if s.peerKnowledge.peerNeeds(p, pingFact, FactTTL-AlivePeriod) {
 			log.Debug("Peer %s needs ping", s.peerName(p.PublicKey))
 			addPingErr = ga.AddFact(pingFact)
 			addedPing = true
@@ -178,7 +181,7 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 		} else if addedPing {
 			// assume we will successfully send and peer will accept the info
 			// if these assumptions are wrong, re-sending more often is unlikely to help
-			s.peerKnowledge.upsertSent(&p, pingFact)
+			s.peerKnowledge.upsertSent(p, pingFact)
 		}
 
 		signedGroupFacts, err := ga.MakeSignedGroups(s.signer, &p.PublicKey)
@@ -189,7 +192,7 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 
 		for j := range signedGroupFacts {
 			sg.Go(func() error {
-				err := s.sendFact(&peers[i], &signedGroupFacts[j])
+				err := s.sendFact(p, &signedGroupFacts[j])
 				errs <- err
 				return err
 			})

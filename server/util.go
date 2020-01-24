@@ -70,14 +70,16 @@ func groupFactsByPeer(facts []*fact.Fact) map[wgtypes.Key][]*fact.Fact {
 func (s *LinkServer) UpdateRouterState(dev *wgtypes.Device, logChanges bool) error {
 	if s.config.AutoDetectRouter {
 		newValue := detect.IsDeviceRouter(dev)
-		if logChanges && newValue != s.config.IsRouterNow {
-			newState := "leaf"
-			if newValue {
-				newState = "router"
+		if newValue != s.config.IsRouterNow {
+			if logChanges {
+				newState := "leaf"
+				if newValue {
+					newState = "router"
+				}
+				log.Info("Detected we are now a %s", newState)
 			}
-			log.Info("Detected we are now a %s", newState)
+			s.config.IsRouterNow = newValue
 		}
-		s.config.IsRouterNow = newValue
 	}
 
 	return nil

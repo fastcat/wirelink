@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"net"
+	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
@@ -126,7 +127,7 @@ func (s *LinkServer) receivePackets(
 			}
 			// push the buffer through if state report is requested so that it happens quickly
 			// don't need to use the atomic load here, as the worst case is a delay in printing
-			if *s.printsRequested != 0 {
+			if atomic.LoadInt32(s.printsRequested) != 0 {
 				sendBuffer = true
 			}
 		case <-chunkTicker.C:

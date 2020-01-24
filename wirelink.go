@@ -21,7 +21,7 @@ func main() {
 	err := realMain()
 	// don't print on error just because help was requested
 	if err != nil && err != pflag.ErrHelp {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintf(os.Stderr, "Fatal error: %v", err)
 		defer os.Exit(1)
 	}
 }
@@ -75,8 +75,8 @@ func realMain() error {
 					server.RequestPrint()
 				} else {
 					log.Info("Received signal %v, stopping", sig)
-					// request stop in the background, we'll catch the channel message when it's complete
-					go server.Stop()
+					// this will just initiate the shutdown, not block waiting for it
+					server.RequestStop()
 				}
 			case <-ctx.Done():
 				return nil
