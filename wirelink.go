@@ -11,7 +11,6 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/fastcat/wirelink/config"
-	"github.com/fastcat/wirelink/internal"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/server"
 
@@ -64,25 +63,7 @@ func realMain() error {
 		return errors.Wrapf(err, "Unable to start server for interface %s", serverConfig.Iface)
 	}
 
-	nodeTypeDesc := "leaf"
-	if serverConfig.IsRouterNow {
-		nodeTypeDesc = "router"
-	}
-	if serverConfig.AutoDetectRouter {
-		nodeTypeDesc += " (auto)"
-	}
-	nodeModeDesc := "quiet"
-	if serverConfig.Chatty {
-		nodeModeDesc = "chatty"
-	}
-	log.Info("Server version %s running on {%s} [%v]:%v (%s, %s)",
-		internal.Version,
-		serverConfig.Iface,
-		server.Address(),
-		server.Port(),
-		nodeTypeDesc,
-		nodeModeDesc,
-	)
+	log.Info("Server running: %s", server.Describe())
 
 	server.AddHandler(func(ctx context.Context) error {
 		signals := make(chan os.Signal, 5)

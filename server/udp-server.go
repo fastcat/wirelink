@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -15,6 +16,7 @@ import (
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/config"
 	"github.com/fastcat/wirelink/fact"
+	"github.com/fastcat/wirelink/internal"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/signing"
 
@@ -248,4 +250,27 @@ func (s *LinkServer) Address() net.IP {
 // Port returns the local UDP port on which the server listens and sends
 func (s *LinkServer) Port() int {
 	return s.addr.Port
+}
+
+// Describe returns a textual summary of the server
+func (s *LinkServer) Describe() string {
+	nodeTypeDesc := "leaf"
+	if s.config.IsRouterNow {
+		nodeTypeDesc = "router"
+	}
+	if s.config.AutoDetectRouter {
+		nodeTypeDesc += " (auto)"
+	}
+	nodeModeDesc := "quiet"
+	if s.config.Chatty {
+		nodeModeDesc = "chatty"
+	}
+	return fmt.Sprintf("Version %s on {%s} [%v]:%v (%s, %s)",
+		internal.Version,
+		s.config.Iface,
+		s.addr.IP,
+		s.addr.Port,
+		nodeTypeDesc,
+		nodeModeDesc,
+	)
 }

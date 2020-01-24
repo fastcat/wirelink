@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"strings"
 	"sync/atomic"
 
 	"github.com/fastcat/wirelink/apply"
@@ -28,7 +29,8 @@ func (s *LinkServer) printFactsIfRequested(
 
 	// not safe safe to mutate the shared facts we received
 	facts = fact.SortedCopy(facts)
-	str := "Current facts"
+	var str strings.Builder
+	str.WriteString("Current facts:")
 	peerNamer := func(fs fact.Subject) string {
 		if ps, ok := fs.(*fact.PeerSubject); ok {
 			return s.peerName(ps.Key)
@@ -36,14 +38,16 @@ func (s *LinkServer) printFactsIfRequested(
 		return fs.String()
 	}
 	for _, fact := range facts {
-		str += "\n"
-		str += fact.FancyString(peerNamer)
+		str.WriteRune('\n')
+		str.WriteString(fact.FancyString(peerNamer))
 	}
-	str += "\nCurrent peers"
+	str.WriteString("\nCurrent peers:")
 	s.peerConfig.ForEach(func(k wgtypes.Key, pcs *apply.PeerConfigState) {
-		str += fmt.Sprintf("\nPeer %s is %s", s.peerName(k), pcs.Describe())
+		fmt.Fprintf(&str, "\nPeer %s is %s", s.peerName(k), pcs.Describe())
 	})
-	log.Info("%s", str)
+	str.WriteString("\nSelf: ")
+	str.WriteString(s.Describe())
+	log.Info("%s", str.String())
 }
 
 func groupFactsByPeer(facts []*fact.Fact) map[wgtypes.Key][]*fact.Fact {
