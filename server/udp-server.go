@@ -36,8 +36,6 @@ type LinkServer struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	// closed tracks if we already ran `Close()`
-	closed bool
 	// peerKnowledgeSet tracks what is known by each peer to avoid sending them
 	// redundant information
 	peerKnowledge *peerKnowledgeSet
@@ -219,20 +217,16 @@ func (s *LinkServer) Stop() {
 
 // Close stops the server and closes all resources
 func (s *LinkServer) Close() {
-	if s.closed {
-		return
-	}
 	s.Stop()
 	s.stateAccess.Lock()
 	defer s.stateAccess.Unlock()
-	s.ctrl.Close()
-	s.ctrl = nil
+	if s.ctrl != nil {
+		s.ctrl.Close()
+	}
 
 	// now we can really fully free these objects
 	s.eg = nil
 	s.ctx = nil
-
-	s.closed = true
 }
 
 // Wait waits for a running server to end, returning any error if it ended prematurely
