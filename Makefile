@@ -38,9 +38,11 @@ lint-gopls: generate
 # need to group files to gopls check by directory it seems
 # unclear if this does anything useful at all
 	find -type f -name \*.go -print0 | xargs -0 dirname -z | sort -uz | xargs -P0 -0 -n1 sh -c 'set -x ; gopls check "$$1"/*.go' --
-test: vet lint test-go
+test: vet lint test-go test-go-race
 test-go: generate
 	go test ./...
+test-go-race: generate
+	go test -race ./...
 coverage.out: test-go
 	go test -coverpkg=./... -coverprofile=coverage.out ./...
 cover: coverage.out

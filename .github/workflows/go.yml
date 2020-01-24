@@ -46,8 +46,11 @@ jobs:
     - name: Lint
       run: make vet lint
 
-    - name: Test
-      run: make test-go coverage.html
+    - name: Test with coverage
+      # building the coverage output runs the tests
+      run: make coverage.html
+    - name: Test with race detector
+      run: make test-go-race
 
     - name: Upload coverage (artifact)
       uses: actions/upload-artifact@v1.0.0
