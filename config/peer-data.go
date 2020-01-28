@@ -61,9 +61,10 @@ func (p *PeerData) Parse() (key wgtypes.Key, peer Peer, err error) {
 			if _, ok := err.(*net.DNSError); ok {
 				// ignore DNS errors ... which actually ends up as basically everything except for a
 				// parse error for giving the empty string
+				err = nil
 			} else {
+				// this branch is very hard, if not impossible, to reach in a test or in the real world
 				err = errors.Wrapf(err, "Bad endpoint host in '%s' for '%s'='%s'", ep, p.PublicKey, p.Name)
-				// FIXME: ignore DNS errors
 				return
 			}
 		}
@@ -85,11 +86,9 @@ func (p *PeerData) Parse() (key wgtypes.Key, peer Peer, err error) {
 			err = errors.Wrapf(err, "Bad AllowedIP '%s' for '%s'='%s'", aip, p.PublicKey, p.Name)
 			return
 		}
-		// allow config to contain ip details in the AllowedIPs that are outside the mask for now
-		// useful as "notes", may be useful for other things in the future such as interface config
-		// if we don't do this, it will confuse things since wireguard will do this when we send it down,
-		// making it look like the entry never is accepted
-		ipn.IP = ipn.IP.Mask(ipn.Mask)
+		//NOTE: we don't need to run ipn.IP through ipn.Mask, as ParseCIDR does that for us
+		// we want to do that so config can contain minor harmless mistakes, or also use the
+		// masked-out bits as documentation for the peer's own/primary IP within that network
 		// ipn is returned by reference, should never be returned nil
 		peer.AllowedIPs = append(peer.AllowedIPs, *ipn)
 	}
