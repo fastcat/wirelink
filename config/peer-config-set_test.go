@@ -7,6 +7,7 @@ import (
 
 	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/fastcat/wirelink/trust"
+	"github.com/stretchr/testify/assert"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -197,9 +198,8 @@ func TestPeers_Endpoints(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.p.Endpoints(tt.args.peer); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Peers.Endpoints() = %v, want %v", got, tt.want)
-			}
+			got := tt.p.Endpoints(tt.args.peer)
+			assert.Equal(t, tt.want, got, "Peers.Endpoints()")
 		})
 	}
 }

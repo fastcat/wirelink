@@ -2,12 +2,12 @@ package config
 
 import (
 	"net"
-	"reflect"
 	"testing"
 
 	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/fastcat/wirelink/trust"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -269,16 +269,15 @@ func TestPeerData_Parse(t *testing.T) {
 				Basic:         tt.fields.Basic,
 			}
 			gotKey, gotPeer, err := p.Parse()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("PeerData.Parse() error = %v, wantErr %v", err, tt.wantErr)
-				return
+
+			if tt.wantErr {
+				require.NotNil(t, err, "PeerData.Parse() error")
+			} else {
+				require.Nil(t, err, "PeerData.Parse() error")
 			}
-			if !reflect.DeepEqual(gotKey, tt.wantKey) {
-				t.Errorf("PeerData.Parse() gotKey = %v, want %v", gotKey, tt.wantKey)
-			}
-			if !reflect.DeepEqual(gotPeer, tt.wantPeer) {
-				t.Errorf("PeerData.Parse() gotPeer = %v, want %v", gotPeer, tt.wantPeer)
-			}
+
+			assert.Equal(t, tt.wantKey, gotKey)
+			assert.Equal(t, tt.wantPeer, gotPeer)
 		})
 	}
 }
