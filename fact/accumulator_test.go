@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -63,4 +64,46 @@ func TestAccumulatorSigning(t *testing.T) {
 			require.FailNow(t, "WAT?!")
 		}
 	}
+}
+
+func TestGroupAccumulator_AddFactIfRoom_OneByteTooSmall(t *testing.T) {
+	f := &Fact{
+		Attribute: AttributeAlive,
+		Subject:   &PeerSubject{testutils.MustKey(t)},
+		Value:     &UUIDValue{uuid.Must(uuid.NewRandom())},
+		Expires:   time.Now(),
+	}
+	b, err := f.MarshalBinary()
+	require.Nil(t, err)
+	ga := NewAccumulator(len(b)*3 - 1)
+
+	err = ga.AddFact(f)
+	require.Nil(t, err)
+
+	added, err := ga.AddFactIfRoom(f)
+	require.Nil(t, err)
+	assert.True(t, added)
+
+	added, err = ga.AddFactIfRoom(f)
+	require.Nil(t, err)
+	assert.False(t, added)
+}
+
+func TestGroupAccumulator_AddFactIfRoom_JustRight(t *testing.T) {
+	f := &Fact{
+		Attribute: AttributeAlive,
+		Subject:   &PeerSubject{testutils.MustKey(t)},
+		Value:     &UUIDValue{uuid.Must(uuid.NewRandom())},
+		Expires:   time.Now(),
+	}
+	b, err := f.MarshalBinary()
+	require.Nil(t, err)
+	ga := NewAccumulator(len(b) * 2)
+
+	err = ga.AddFact(f)
+	require.Nil(t, err)
+
+	added, err := ga.AddFactIfRoom(f)
+	require.Nil(t, err)
+	assert.True(t, added)
 }
