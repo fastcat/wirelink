@@ -24,6 +24,7 @@ func (s *LinkServer) deviceState() (dev *wgtypes.Device, err error) {
 }
 
 func (s *LinkServer) shouldReportIface(name string) bool {
+	//TODO: report any broken globs found here _once_ (startup checks can't detect all broken globs)
 	// MUST NOT match any excludes
 	for _, glob := range s.config.HideIfaces {
 		if matched, err := filepath.Match(glob, name); matched && err == nil {

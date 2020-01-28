@@ -6,9 +6,11 @@ import (
 
 	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/fastcat/wirelink/trust"
+
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 // mostly for experimenting with what errors the `net` package provides
@@ -23,10 +25,6 @@ func Test_DnsErrors(t *testing.T) {
 
 func TestPeerData_Parse(t *testing.T) {
 	k := testutils.MustKey(t)
-
-	trustPtr := func(level trust.Level) *trust.Level {
-		return &level
-	}
 
 	type fields struct {
 		PublicKey     string

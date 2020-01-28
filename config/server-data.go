@@ -43,18 +43,23 @@ func (s *ServerData) Parse(vcfg *viper.Viper, wgc *wgctrl.Client) (ret *Server, 
 	log.SetDebug(s.Debug)
 
 	ret = new(Server)
+	//TODO: validate Iface is not empty
 	ret.Iface = s.Iface
 	ret.Port = s.Port
 	ret.Chatty = s.Chatty
 
 	// validate all the globs
+	// have to pass a non-empty candidate string to actually get error checking
+	// even that is dodgy as a failed match before the bad part of the pattern
+	// will prevent the error from being reported
+	// passing the glob to itself works for many common cases
 	for _, glob := range s.ReportIfaces {
-		if _, err = filepath.Match(glob, ""); err != nil {
+		if _, err = filepath.Match(glob, glob); err != nil {
 			return nil, errors.Wrapf(err, "Bad glob in ReportIfaces config: '%s'", glob)
 		}
 	}
 	for _, glob := range s.HideIfaces {
-		if _, err = filepath.Match(glob, ""); err != nil {
+		if _, err = filepath.Match(glob, glob); err != nil {
 			return nil, errors.Wrapf(err, "Bad glob in HideIfaces config: '%s'", glob)
 		}
 	}
