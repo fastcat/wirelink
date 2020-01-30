@@ -5,14 +5,17 @@ import (
 	"math/rand"
 	"net"
 	"reflect"
+
+	"github.com/pkg/errors"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"testing"
 
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/internal/mocks"
 	"github.com/fastcat/wirelink/internal/testutils"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 

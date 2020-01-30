@@ -1,9 +1,12 @@
 package testutils
 
 import (
+	"math/rand"
 	"net"
 	"sort"
 	"strings"
+
+	"testing"
 )
 
 // MakeIPv6 helps build IPv6 values in a similar method to how the "::" marker
@@ -29,6 +32,15 @@ func MakeIPv4Net(a, b, c, d byte, ones int) net.IPNet {
 	return net.IPNet{
 		IP:   net.IPv4(a, b, c, d).To4(),
 		Mask: net.CIDRMask(ones, 8*net.IPv4len),
+	}
+}
+
+// MakeUDPAddr generates a random remote address for a received UDP packet,
+// for test purposes.
+func MakeUDPAddr(t *testing.T) *net.UDPAddr {
+	return &net.UDPAddr{
+		IP:   MustRandBytes(t, make([]byte, net.IPv4len)),
+		Port: rand.Intn(65535),
 	}
 }
 

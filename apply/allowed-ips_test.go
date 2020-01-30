@@ -3,9 +3,9 @@ package apply
 import (
 	"math/rand"
 	"net"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"testing"
 
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/fact"

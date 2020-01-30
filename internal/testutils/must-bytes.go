@@ -1,10 +1,10 @@
 package testutils
 
 import (
-	"crypto/rand"
-	"testing"
+	"math/rand"
 
 	"github.com/stretchr/testify/require"
+	"testing"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
