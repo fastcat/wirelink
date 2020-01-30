@@ -17,6 +17,9 @@ jobs:
 
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
+    - name: Get tags to make version.go
+      uses: actions/checkout@v2
+      run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
 
     # https://github.com/actions/setup-go/issues/14
     - name: Add GOPATH/bin to path
@@ -30,9 +33,7 @@ jobs:
       # cd /tmp: this has to run from outside GOPATH to work
       run: |
         cd /tmp
-        go get golang.org/x/tools/cmd/goimports
-        go get golang.org/x/lint/golint
-        go get github.com/vektra/mockery/.../
+        go get golang.org/x/tools/cmd/goimports golang.org/x/lint/golint github.com/vektra/mockery/.../
 
     - name: Build
       #run: go build -v .
