@@ -2,6 +2,7 @@
 Description=Wirelink for %I (tied to wg-quick)
 After=wg-quick@%i.service
 Requires=wg-quick@%i.service
+PartOf=wg-quick@%i.service
 
 [Service]
 Type=simple
@@ -26,3 +27,4 @@ SecureBits=noroot-locked
 
 [Install]
 WantedBy=multi-user.target
+WantedBy=wg-quick@%i.service
