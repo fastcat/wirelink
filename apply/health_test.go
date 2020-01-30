@@ -4,8 +4,9 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/fastcat/wirelink/internal/testutils"
 

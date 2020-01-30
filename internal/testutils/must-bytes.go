@@ -3,8 +3,9 @@ package testutils
 import (
 	"math/rand"
 
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )

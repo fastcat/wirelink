@@ -8,9 +8,10 @@ import (
 
 	"github.com/pkg/errors"
 
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
 
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/internal/mocks"

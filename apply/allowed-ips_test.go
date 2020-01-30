@@ -4,8 +4,9 @@ import (
 	"math/rand"
 	"net"
 
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/fact"

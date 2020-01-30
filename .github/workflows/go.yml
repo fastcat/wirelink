@@ -18,7 +18,12 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
     - name: Get tags to make version.go
-      run: git fetch --deepen=20 origin +refs/tags/*:refs/tags/*
+      run: |
+        d=0
+        while ! make info ; do
+          d=$((d+10))
+          git fetch --deepen=$d origin +refs/tags/*:refs/tags/*
+        done
 
     # https://github.com/actions/setup-go/issues/14
     - name: Add GOPATH/bin to path
