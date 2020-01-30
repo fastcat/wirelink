@@ -1,6 +1,10 @@
 package testutils
 
-import "net"
+import (
+	"net"
+	"sort"
+	"strings"
+)
 
 // MakeIPv6 helps build IPv6 values in a similar method to how the "::" marker
 // in an IPv6 literal works
@@ -26,4 +30,12 @@ func MakeIPv4Net(a, b, c, d byte, ones int) net.IPNet {
 		IP:   net.IPv4(a, b, c, d).To4(),
 		Mask: net.CIDRMask(ones, 8*net.IPv4len),
 	}
+}
+
+// SortIPNetSlice sorts a slice of IPNets by their string value.
+// OMG want generics.
+func SortIPNetSlice(slice []net.IPNet) {
+	sort.Slice(slice, func(i, j int) bool {
+		return strings.Compare(slice[i].String(), slice[j].String()) < 0
+	})
 }

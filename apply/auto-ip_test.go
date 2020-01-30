@@ -164,7 +164,7 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 }
 
 func TestEnsurePeerAutoIP(t *testing.T) {
-	p1 := makePeer(t)
+	p1 := &wgtypes.Peer{PublicKey: testutils.MustKey(t)}
 	aip1 := autopeer.AutoAddressNet(p1.PublicKey)
 	p1.AllowedIPs = append(p1.AllowedIPs, aip1)
 
