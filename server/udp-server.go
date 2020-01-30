@@ -20,7 +20,6 @@ import (
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/signing"
 
-	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 

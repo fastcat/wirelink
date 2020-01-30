@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"reflect"
 	"testing"
 
 	"github.com/fastcat/wirelink/autopeer"
@@ -14,23 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
-
-func Test_EnsurePeerAutoIP_Rebuild(t *testing.T) {
-	peer := makePeer(t)
-	autoaddr := autopeer.AutoAddressNet(peer.PublicKey)
-	peer.AllowedIPs = append(peer.AllowedIPs, autoaddr)
-
-	pcfg := &wgtypes.PeerConfig{
-		PublicKey:         peer.PublicKey,
-		ReplaceAllowedIPs: true,
-	}
-
-	pcfg, added := EnsurePeerAutoIP(peer, pcfg)
-
-	// re-adding shouldn't be logged
-	assert.False(t, added)
-	assert.Contains(t, pcfg.AllowedIPs, autoaddr)
-}
 
 func TestEnsurePeersAutoIP(t *testing.T) {
 	k1 := testutils.MustKey(t)
@@ -52,7 +36,6 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		setup   func(args)
 		want    int
 		wantErr bool
 	}{
@@ -62,14 +45,23 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 				ctrl: nil,
 				dev:  &wgtypes.Device{},
 			},
-			nil,
 			0,
 			false,
 		},
 		{
 			"one peer to configure",
 			args{
-				ctrl: &mocks.WgClient{},
+				ctrl: mocks.SetupClient(func(ctrl *mocks.WgClient) {
+					ctrl.On("ConfigureDevice", iface, wgtypes.Config{
+						Peers: []wgtypes.PeerConfig{
+							wgtypes.PeerConfig{
+								PublicKey:         k1,
+								ReplaceAllowedIPs: false,
+								AllowedIPs:        []net.IPNet{k1aip},
+							},
+						},
+					}).Return(nil)
+				}),
 				dev: &wgtypes.Device{
 					Name: iface,
 					Peers: []wgtypes.Peer{
@@ -79,25 +71,23 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 					},
 				},
 			},
-			func(a args) {
-				// setup the mock expectations
-				a.ctrl.On("ConfigureDevice", iface, wgtypes.Config{
-					Peers: []wgtypes.PeerConfig{
-						wgtypes.PeerConfig{
-							PublicKey:         k1,
-							ReplaceAllowedIPs: false,
-							AllowedIPs:        []net.IPNet{k1aip},
-						},
-					},
-				}).Return(nil)
-			},
 			1,
 			false,
 		},
 		{
 			"two peers, one to configure",
 			args{
-				ctrl: &mocks.WgClient{},
+				ctrl: mocks.SetupClient(func(ctrl *mocks.WgClient) {
+					ctrl.On("ConfigureDevice", iface, wgtypes.Config{
+						Peers: []wgtypes.PeerConfig{
+							wgtypes.PeerConfig{
+								PublicKey:         k2,
+								ReplaceAllowedIPs: false,
+								AllowedIPs:        []net.IPNet{k2aip},
+							},
+						},
+					}).Return(nil)
+				}),
 				dev: &wgtypes.Device{
 					Name: iface,
 					Peers: []wgtypes.Peer{
@@ -110,18 +100,6 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 						},
 					},
 				},
-			},
-			func(a args) {
-				// setup the mock expectations
-				a.ctrl.On("ConfigureDevice", iface, wgtypes.Config{
-					Peers: []wgtypes.PeerConfig{
-						wgtypes.PeerConfig{
-							PublicKey:         k2,
-							ReplaceAllowedIPs: false,
-							AllowedIPs:        []net.IPNet{k2aip},
-						},
-					},
-				}).Return(nil)
 			},
 			1,
 			false,
@@ -139,14 +117,23 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 					},
 				},
 			},
-			nil,
 			0,
 			false,
 		},
 		{
 			"configuration failure",
 			args{
-				ctrl: &mocks.WgClient{},
+				ctrl: mocks.SetupClient(func(ctrl *mocks.WgClient) {
+					ctrl.On("ConfigureDevice", iface, wgtypes.Config{
+						Peers: []wgtypes.PeerConfig{
+							wgtypes.PeerConfig{
+								PublicKey:         k1,
+								ReplaceAllowedIPs: false,
+								AllowedIPs:        []net.IPNet{k1aip},
+							},
+						},
+					}).Return(errors.New("mocked device error"))
+				}),
 				dev: &wgtypes.Device{
 					Name: iface,
 					Peers: []wgtypes.Peer{
@@ -156,26 +143,12 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 					},
 				},
 			},
-			func(a args) {
-				a.ctrl.On("ConfigureDevice", iface, wgtypes.Config{
-					Peers: []wgtypes.PeerConfig{
-						wgtypes.PeerConfig{
-							PublicKey:         k1,
-							ReplaceAllowedIPs: false,
-							AllowedIPs:        []net.IPNet{k1aip},
-						},
-					},
-				}).Return(errors.New("mocked device error"))
-			},
 			0,
 			true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.setup != nil {
-				tt.setup(tt.args)
-			}
 			got, err := EnsurePeersAutoIP(tt.args.ctrl, tt.args.dev)
 			if tt.args.ctrl != nil {
 				tt.args.ctrl.AssertExpectations(t)
@@ -186,6 +159,142 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 				require.Nil(t, err, "EnsurePeersAutoIP() error")
 			}
 			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestEnsurePeerAutoIP(t *testing.T) {
+	p1 := makePeer(t)
+	aip1 := autopeer.AutoAddressNet(p1.PublicKey)
+	p1.AllowedIPs = append(p1.AllowedIPs, aip1)
+
+	type args struct {
+		peer *wgtypes.Peer
+		cfg  *wgtypes.PeerConfig
+	}
+	tests := []struct {
+		name  string
+		args  args
+		want  *wgtypes.PeerConfig
+		want1 bool
+	}{
+		{
+			"rebuild",
+			args{
+				peer: p1,
+				cfg: &wgtypes.PeerConfig{
+					PublicKey:         p1.PublicKey,
+					ReplaceAllowedIPs: true,
+				},
+			},
+			&wgtypes.PeerConfig{
+				PublicKey:         p1.PublicKey,
+				ReplaceAllowedIPs: true,
+				AllowedIPs:        []net.IPNet{aip1},
+			},
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1 := EnsurePeerAutoIP(tt.args.peer, tt.args.cfg)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("EnsurePeerAutoIP() got = %v, want %v", got, tt.want)
+			}
+			if got1 != tt.want1 {
+				t.Errorf("EnsurePeerAutoIP() got1 = %v, want %v", got1, tt.want1)
+			}
+		})
+	}
+}
+
+func TestOnlyAutoIP(t *testing.T) {
+	k1 := testutils.MustKey(t)
+	type args struct {
+		peer *wgtypes.Peer
+		cfg  *wgtypes.PeerConfig
+	}
+	tests := []struct {
+		name string
+		args args
+		want *wgtypes.PeerConfig
+	}{
+		{
+			"new peer",
+			args{
+				peer: &wgtypes.Peer{PublicKey: k1},
+				cfg:  nil,
+			},
+			&wgtypes.PeerConfig{
+				PublicKey:         k1,
+				ReplaceAllowedIPs: true,
+				AllowedIPs:        []net.IPNet{autopeer.AutoAddressNet(k1)},
+			},
+		},
+		{
+			"already being configured",
+			args{
+				peer: &wgtypes.Peer{PublicKey: k1},
+				cfg: &wgtypes.PeerConfig{
+					PublicKey:  k1,
+					AllowedIPs: []net.IPNet{autopeer.AutoAddressNet(k1)},
+				},
+			},
+			&wgtypes.PeerConfig{
+				PublicKey:         k1,
+				ReplaceAllowedIPs: true,
+				AllowedIPs:        []net.IPNet{autopeer.AutoAddressNet(k1)},
+			},
+		},
+		{
+			"already configured, no changes",
+			args{
+				peer: &wgtypes.Peer{
+					PublicKey:  k1,
+					AllowedIPs: []net.IPNet{autopeer.AutoAddressNet(k1)},
+				},
+				cfg: nil,
+			},
+			nil,
+		},
+		{
+			// this behavior is a bit dodgy, and dependent on the method under test
+			// only being called from a specific point in the processing chain
+			"already configured, no-op change planned",
+			args{
+				peer: &wgtypes.Peer{
+					PublicKey:  k1,
+					AllowedIPs: []net.IPNet{autopeer.AutoAddressNet(k1)},
+				},
+				cfg: &wgtypes.PeerConfig{
+					PublicKey: k1,
+				},
+			},
+			&wgtypes.PeerConfig{
+				PublicKey: k1,
+			},
+		},
+		{
+			"needs rebuild",
+			args{
+				peer: &wgtypes.Peer{
+					PublicKey:  k1,
+					AllowedIPs: []net.IPNet{makeIPNet(t)},
+				},
+				cfg: nil,
+			},
+			&wgtypes.PeerConfig{
+				PublicKey:         k1,
+				AllowedIPs:        []net.IPNet{autopeer.AutoAddressNet(k1)},
+				ReplaceAllowedIPs: true,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := OnlyAutoIP(tt.args.peer, tt.args.cfg); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("OnlyAutoIP() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }
