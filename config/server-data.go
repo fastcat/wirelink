@@ -9,9 +9,8 @@ import (
 
 	"github.com/spf13/viper"
 
+	"github.com/fastcat/wirelink/internal"
 	"github.com/fastcat/wirelink/log"
-
-	"golang.zx2c4.com/wireguard/wgctrl"
 )
 
 // ServerData represents the raw data from the config for the server,
@@ -38,7 +37,7 @@ type ServerData struct {
 }
 
 // Parse converts the raw configuration data into a ready to use server config.
-func (s *ServerData) Parse(vcfg *viper.Viper, wgc *wgctrl.Client) (ret *Server, err error) {
+func (s *ServerData) Parse(vcfg *viper.Viper, wgc internal.WgClient) (ret *Server, err error) {
 	// apply this right away
 	log.SetDebug(s.Debug)
 

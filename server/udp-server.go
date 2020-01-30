@@ -33,7 +33,7 @@ type LinkServer struct {
 	mgr         *apply.Manager
 	conn        *net.UDPConn
 	addr        net.UDPAddr
-	ctrl        *wgctrl.Client
+	ctrl        internal.WgClient
 
 	eg     *errgroup.Group
 	ctx    context.Context
@@ -66,7 +66,7 @@ const FactTTL = 255 * time.Second
 // Have to take a deviceFactory instead of a Device since you can't refresh a device.
 // Will take ownership of the wg client and close it when the server is closed
 // If port <= 0, will use the wireguard device's listen port plus one
-func Create(ctrl *wgctrl.Client, config *config.Server) (*LinkServer, error) {
+func Create(ctrl internal.WgClient, config *config.Server) (*LinkServer, error) {
 	device, err := ctrl.Device(config.Iface)
 	if err != nil {
 		return nil, err

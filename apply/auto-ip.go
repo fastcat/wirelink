@@ -6,15 +6,15 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/fastcat/wirelink/autopeer"
+	"github.com/fastcat/wirelink/internal"
 
-	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 // EnsurePeersAutoIP updates the config of the device, if needed, to ensure all
 // peers have their IPv6-LL IP listed in their AllowedIPs.
 // It returns the number of peers modified and any error that happens
-func EnsurePeersAutoIP(ctrl *wgctrl.Client, dev *wgtypes.Device) (int, error) {
+func EnsurePeersAutoIP(ctrl internal.WgClient, dev *wgtypes.Device) (int, error) {
 	var cfg wgtypes.Config
 	for _, peer := range dev.Peers {
 		pcfg, _ := EnsurePeerAutoIP(&peer, nil)

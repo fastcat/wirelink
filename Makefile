@@ -16,10 +16,13 @@ info:
 	@echo PKGVER=$(PKGVER)
 	@echo PKGREL=$(PKGREL)
 
-generate: internal/version.go
+generate: internal/version.go internal/mocks/WgClient.go
 internal/version.go: internal/version.go.in .git/HEAD .git/index
 	cat $< | sed -e "s/__GIT_VERSION__/$(PKGVERREL)/" > $@.tmp
 	mv -f $@.tmp $@
+internal/mocks/%.go: internal/%.go
+# this assumes mockery is available in the (GO)PATH
+	mockery -dir internal/ -output internal/mocks/ -name $*
 
 fmt: generate
 	go fmt ./...

@@ -6,12 +6,11 @@ import (
 	"net"
 	"testing"
 
+	"github.com/fastcat/wirelink/internal"
 	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/fastcat/wirelink/trust"
 
 	"github.com/spf13/viper"
-
-	"golang.zx2c4.com/wireguard/wgctrl"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,7 +43,7 @@ func TestServerData_Parse(t *testing.T) {
 	}
 	type args struct {
 		vcfg *viper.Viper
-		wgc  *wgctrl.Client
+		wgc  internal.WgClient
 	}
 	tests := []struct {
 		name    string
