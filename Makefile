@@ -17,7 +17,8 @@ info:
 	@echo PKGVER=$(PKGVER)
 	@echo PKGREL=$(PKGREL)
 
-generate: internal/version.go internal/mocks/WgClient.go
+GENERATED_SOURCES:=internal/version.go internal/mocks/WgClient.go
+generate: $(GENERATED_SOURCES)
 internal/version.go: internal/version.go.in .git/HEAD .git/index
 	cat $< | sed -e "s/__GIT_VERSION__/$(PKGVERREL)/" > $@.tmp
 	mv -f $@.tmp $@
@@ -93,7 +94,7 @@ checkinstall: checkinstall-prep
 everything: fmt vet lint compile wirelink test
 
 clean: checkinstall-clean
-	rm -vf ./wirelink internal/version.go.tmp internal/version.go ./coverage.out ./coverage.html
+	rm -vf ./wirelink $(GENERATED_SOURCES) $(patsubst %,%.tmp,$(GENERATED_SOURCES)) ./coverage.out ./coverage.html
 #TODO: any way to clean the go cache for just this package?
 
 .PHONY: all info fmt generate compile run install everything clean
