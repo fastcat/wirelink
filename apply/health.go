@@ -39,8 +39,8 @@ func isHealthy(state *PeerConfigState, peer *wgtypes.Peer) bool {
 	if peer.LastHandshakeTime.Add(HandshakeValidity).After(time.Now()) {
 		return true
 	}
-	// if the peer handshake has moved since we last saw it, probably healthy
-	if state != nil && peer.LastHandshakeTime != state.lastHandshake {
+	// if the peer handshake has moved forwards since we last saw it, probably healthy
+	if state != nil && peer.LastHandshakeTime.After(state.lastHandshake) {
 		return true
 	}
 	return false

@@ -15,8 +15,9 @@ import (
 
 func Test_isHealthy(t *testing.T) {
 	now := time.Now()
-	then := now.Add(time.Duration(rand.Int63n(30)) * time.Second)
+	then := now.Add(time.Duration(-rand.Intn(30)) * time.Second)
 	longAgo := now.Add(-HandshakeValidity)
+	longLongAgo := then.Add(-HandshakeValidity)
 
 	type args struct {
 		state *PeerConfigState
@@ -45,14 +46,14 @@ func Test_isHealthy(t *testing.T) {
 			true,
 		},
 		{
-			"changed handshake",
+			"changed stale handshake",
 			args{
 				peer: &wgtypes.Peer{
 					Endpoint:          testutils.MakeUDPAddr(t),
-					LastHandshakeTime: now,
+					LastHandshakeTime: longAgo,
 				},
 				state: &PeerConfigState{
-					lastHandshake: then,
+					lastHandshake: longLongAgo,
 				},
 			},
 			true,
