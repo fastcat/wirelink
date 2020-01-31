@@ -2,7 +2,6 @@ package server
 
 import (
 	"net"
-	"path/filepath"
 	"time"
 
 	"github.com/fastcat/wirelink/config"
@@ -23,36 +22,12 @@ func (s *LinkServer) deviceState() (dev *wgtypes.Device, err error) {
 	return s.ctrl.Device(s.config.Iface)
 }
 
-func (s *LinkServer) shouldReportIface(name string) bool {
-	//TODO: report any broken globs found here _once_ (startup checks can't detect all broken globs)
-	// MUST NOT match any excludes
-	for _, glob := range s.config.HideIfaces {
-		if matched, err := filepath.Match(glob, name); matched && err == nil {
-			log.Debug("Hiding iface '%s' because it matches exclude '%s'\n", name, glob)
-			return false
-		}
-	}
-	if len(s.config.ReportIfaces) == 0 {
-		log.Debug("Including iface '%s' because no includes are configured", name)
-		return true
-	}
-	// if any includes are specified, name MUST match one of them
-	for _, glob := range s.config.ReportIfaces {
-		if matched, err := filepath.Match(glob, name); matched && err == nil {
-			log.Debug("Including iface '%s' because it matches include '%s'\n", name, glob)
-			return true
-		}
-	}
-	log.Debug("Hiding iface '%s' because it doesn't match any includes\n", name)
-	return false
-}
-
 func (s *LinkServer) collectFacts(dev *wgtypes.Device) (ret []*fact.Fact, err error) {
 	now := time.Now()
 	log.Debug("Collecting facts...")
 
 	// facts about the local node
-	ret, err = peerfacts.DeviceFacts(dev, FactTTL, s.shouldReportIface, s.config)
+	ret, err = peerfacts.DeviceFacts(dev, FactTTL, s.config.ShouldReportIface, s.config)
 	if err != nil {
 		return
 	}
