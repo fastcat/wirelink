@@ -7,10 +7,12 @@ import (
 
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/internal/testutils"
+
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 type mockEvaluator struct {
@@ -25,6 +27,14 @@ func newEvaluator(t *testing.T) *mockEvaluator {
 
 func asEvaluators(mocks ...*mockEvaluator) []Evaluator {
 	ret := make([]Evaluator, len(mocks))
+	for i, m := range mocks {
+		ret[i] = m
+	}
+	return ret
+}
+
+func asAny(mocks ...*mockEvaluator) []interface{} {
+	ret := make([]interface{}, len(mocks))
 	for i, m := range mocks {
 		ret[i] = m
 	}
@@ -67,7 +77,7 @@ func Test_composite_IsKnown(t *testing.T) {
 
 	type fields struct {
 		mode  CompositeMode
-		inner []Evaluator
+		inner []*mockEvaluator
 	}
 	type args struct {
 		subject fact.Subject
@@ -86,19 +96,19 @@ func Test_composite_IsKnown(t *testing.T) {
 		},
 		{
 			"one inner unknown",
-			fields{inner: []Evaluator{newEvaluator(t).knowsNot(k)}},
+			fields{inner: []*mockEvaluator{newEvaluator(t).knowsNot(k)}},
 			args{subject},
 			false,
 		},
 		{
 			"one inner known",
-			fields{inner: []Evaluator{newEvaluator(t).knows(k)}},
+			fields{inner: []*mockEvaluator{newEvaluator(t).knows(k)}},
 			args{subject},
 			true,
 		},
 		{
 			"two inner one known",
-			fields{inner: []Evaluator{
+			fields{inner: []*mockEvaluator{
 				newEvaluator(t).knowsNot(k),
 				newEvaluator(t).knows(k),
 			}},
@@ -108,19 +118,15 @@ func Test_composite_IsKnown(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			for _, e := range tt.fields.inner {
-				if m, ok := e.(*mockEvaluator); ok && e != nil {
-					m.Test(t)
-				}
+			for _, m := range tt.fields.inner {
+				m.Test(t)
 			}
 			c := &composite{
 				mode:  tt.fields.mode,
-				inner: tt.fields.inner,
+				inner: asEvaluators(tt.fields.inner...),
 			}
 			got := c.IsKnown(tt.args.subject)
-			for _, e := range tt.fields.inner {
-				mock.AssertExpectationsForObjects(t, e)
-			}
+			mock.AssertExpectationsForObjects(t, asAny(tt.fields.inner...)...)
 			assert.Equal(t, tt.want, got)
 		})
 	}
@@ -133,7 +139,7 @@ func Test_composite_TrustLevel(t *testing.T) {
 
 	type fields struct {
 		mode  CompositeMode
-		inner []Evaluator
+		inner []*mockEvaluator
 	}
 	type args struct {
 		fact   *fact.Fact
@@ -159,10 +165,7 @@ func Test_composite_TrustLevel(t *testing.T) {
 		}
 		return test{
 			fmt.Sprintf("%s (%v, %v,%v) => %v", name, mode, e1, e2, want),
-			fields{
-				mode,
-				asEvaluators(mocks...),
-			},
+			fields{mode, mocks},
 			args{nil, *source},
 			want,
 		}
@@ -195,16 +198,12 @@ func Test_composite_TrustLevel(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			for _, e := range tt.fields.inner {
-				if m, ok := e.(*mockEvaluator); ok && e != nil {
-					m.Test(t)
-				}
+			for _, m := range tt.fields.inner {
+				m.Test(t)
 			}
-			c := CreateComposite(tt.fields.mode, tt.fields.inner...)
+			c := CreateComposite(tt.fields.mode, asEvaluators(tt.fields.inner...)...)
 			gotRet := c.TrustLevel(tt.args.fact, tt.args.source)
-			for _, e := range tt.fields.inner {
-				mock.AssertExpectationsForObjects(t, e)
-			}
+			mock.AssertExpectationsForObjects(t, asAny(tt.fields.inner...)...)
 			if tt.wantRet == nil {
 				assert.Nil(t, gotRet)
 			} else {
