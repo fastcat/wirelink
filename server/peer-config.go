@@ -20,6 +20,7 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) error {
 	startTime := time.Now()
 
 	for newFacts := range factsRefreshed {
+		now := time.Now()
 		log.Debug("Got a new fact set of length %d", len(newFacts))
 
 		dev, err := s.deviceState()
@@ -46,7 +47,7 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) error {
 		// we don't allow peers to be deconfigured until we've been running for longer than the fact ttl
 		// so that we don't remove config until we have a reasonable shot at having received everything
 		// from the network
-		allowDeconfigure := time.Now().Sub(startTime) > FactTTL
+		allowDeconfigure := now.Sub(startTime) > FactTTL
 
 		// loop over the peers once to update their current state flags before we modify anything
 		// this is important for some race conditions where a trust source is going offline
@@ -57,7 +58,7 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) error {
 			// is still valid now
 			newAlive, bootID := s.peerKnowledge.peerAlive(peer.PublicKey, 0)
 			ps, _ := s.peerConfig.Get(peer.PublicKey)
-			ps = ps.Update(peer, s.peerName(peer.PublicKey), newAlive, bootID)
+			ps = ps.Update(peer, s.peerName(peer.PublicKey), newAlive, bootID, now)
 			s.peerConfig.Set(peer.PublicKey, ps)
 		}
 
@@ -181,6 +182,7 @@ func (s *LinkServer) configurePeer(
 	allowDeconfigure bool,
 	allowAdd bool,
 ) (state *apply.PeerConfigState, err error) {
+	now := time.Now()
 	peerName := s.peerName(peer.PublicKey)
 	state = inputState.EnsureNotNil()
 
@@ -242,7 +244,7 @@ func (s *LinkServer) configurePeer(
 		}
 
 		if state.TimeForNextEndpoint() {
-			nextEndpoint := state.NextEndpoint(facts)
+			nextEndpoint := state.NextEndpoint(facts, now)
 			if nextEndpoint != nil {
 				log.Info("Trying EP for %s: %v", peerName, nextEndpoint)
 				logged = true

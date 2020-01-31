@@ -45,6 +45,7 @@ func (pcs *PeerConfigState) Update(
 	name string,
 	newAlive bool,
 	bootID *uuid.UUID,
+	now time.Time,
 ) *PeerConfigState {
 	pcs = pcs.EnsureNotNil()
 	pcs.lastHandshake = peer.LastHandshakeTime
@@ -53,7 +54,7 @@ func (pcs *PeerConfigState) Update(
 	firstBoot := bootID != nil && pcs.lastBootID == nil
 	changed := newHealthy != pcs.lastHealthy || newAlive != pcs.lastAlive || bootChanged
 	if changed && newHealthy && newAlive {
-		pcs.aliveSince = time.Now()
+		pcs.aliveSince = now
 	}
 	pcs.lastHealthy = newHealthy
 	pcs.lastAlive = newAlive
@@ -144,10 +145,10 @@ func (pcs *PeerConfigState) TimeForNextEndpoint() bool {
 // if any, based on the available facts (assumed to all be about the peer!)
 // Note that this does _not_ embed the logic for whether a new endpoint _should_
 // be attempted (i.e. it doesn't call `TimeForNextEndpoint` internally).
-func (pcs *PeerConfigState) NextEndpoint(peerFacts []*fact.Fact) *net.UDPAddr {
+func (pcs *PeerConfigState) NextEndpoint(peerFacts []*fact.Fact, now time.Time) *net.UDPAddr {
 	var best *fact.Fact
 	// assume nothing is last used in the future
-	bestLastUsed := time.Now()
+	bestLastUsed := now
 
 	for _, pf := range peerFacts {
 		switch pf.Attribute {
@@ -155,6 +156,7 @@ func (pcs *PeerConfigState) NextEndpoint(peerFacts []*fact.Fact) *net.UDPAddr {
 			fallthrough
 		case fact.AttributeEndpointV6:
 			fvk := string(util.MustBytes(pf.Value.MarshalBinary()))
+			// this logic relies on the zero value of a Time being very far in the past
 			lu := pcs.endpointLastUsed[fvk]
 			if lu.Before(bestLastUsed) {
 				best = pf
@@ -167,7 +169,7 @@ func (pcs *PeerConfigState) NextEndpoint(peerFacts []*fact.Fact) *net.UDPAddr {
 		return nil
 	}
 
-	pcs.endpointLastUsed[string(util.MustBytes(best.Value.MarshalBinary()))] = time.Now()
+	pcs.endpointLastUsed[string(util.MustBytes(best.Value.MarshalBinary()))] = now
 	fv := best.Value.(*fact.IPPortValue)
 	return &net.UDPAddr{
 		IP:   fv.IP,

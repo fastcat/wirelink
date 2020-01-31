@@ -1,6 +1,8 @@
 package apply
 
 import (
+	"fmt"
+	"math/rand"
 	"net"
 	"testing"
 	"time"
@@ -10,6 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/fastcat/wirelink/fact"
+	"github.com/fastcat/wirelink/internal/testutils"
+	"github.com/fastcat/wirelink/util"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -32,7 +36,18 @@ func TestPeerConfigState_EnsureNotNil(t *testing.T) {
 }
 
 func TestPeerConfigState_Update(t *testing.T) {
+	name := fmt.Sprintf("p%d", rand.Int())
+
+	now := time.Now()
+	t1 := now.Add(time.Duration(-1-rand.Intn(60)) * time.Second)
+	t2 := t1.Add(time.Duration(-1-rand.Intn(60)) * time.Second)
+
+	u1 := uuid.Must(uuid.NewRandom())
+	u2 := uuid.Must(uuid.NewRandom())
+
 	type fields struct {
+		nil bool
+
 		lastHandshake    time.Time
 		lastHealthy      bool
 		lastAlive        bool
@@ -45,6 +60,7 @@ func TestPeerConfigState_Update(t *testing.T) {
 		name     string
 		newAlive bool
 		bootID   *uuid.UUID
+		now      time.Time
 	}
 	tests := []struct {
 		name   string
@@ -52,7 +68,115 @@ func TestPeerConfigState_Update(t *testing.T) {
 		args   args
 		want   *PeerConfigState
 	}{
-		// TODO: Add test cases.
+		{
+			"initialize healthy peer",
+			fields{nil: true},
+			args{
+				peer: &wgtypes.Peer{
+					LastHandshakeTime: t1,
+					Endpoint:          testutils.MakeUDPAddr(t),
+				},
+				name:     name,
+				newAlive: true,
+				bootID:   &u1,
+				now:      now,
+			},
+			&PeerConfigState{
+				lastHandshake:    t1,
+				lastHealthy:      true,
+				lastAlive:        true,
+				lastBootID:       &u1,
+				aliveSince:       now,
+				endpointLastUsed: map[string]time.Time{},
+			},
+		},
+		{
+			"update healthy peer",
+			fields{
+				lastHandshake:    t2,
+				lastHealthy:      true,
+				lastAlive:        true,
+				lastBootID:       &u1,
+				aliveSince:       t2,
+				endpointLastUsed: map[string]time.Time{},
+			},
+			args{
+				peer: &wgtypes.Peer{
+					LastHandshakeTime: t1,
+					Endpoint:          testutils.MakeUDPAddr(t),
+				},
+				name:     name,
+				newAlive: true,
+				bootID:   &u1,
+				now:      now,
+			},
+			&PeerConfigState{
+				lastHandshake:    t1,
+				lastHealthy:      true,
+				lastAlive:        true,
+				lastBootID:       &u1,
+				aliveSince:       t2,
+				endpointLastUsed: map[string]time.Time{},
+			},
+		},
+		{
+			"reboot healthy peer",
+			fields{
+				lastHandshake:    t2,
+				lastHealthy:      true,
+				lastAlive:        true,
+				lastBootID:       &u1,
+				aliveSince:       t2,
+				endpointLastUsed: map[string]time.Time{},
+			},
+			args{
+				peer: &wgtypes.Peer{
+					LastHandshakeTime: t1,
+					Endpoint:          testutils.MakeUDPAddr(t),
+				},
+				name:     name,
+				newAlive: true,
+				bootID:   &u2,
+				now:      now,
+			},
+			&PeerConfigState{
+				lastHandshake:    t1,
+				lastHealthy:      true,
+				lastAlive:        true,
+				lastBootID:       &u2,
+				aliveSince:       now,
+				endpointLastUsed: map[string]time.Time{},
+			},
+		},
+		{
+			"unhealthy peer comes alive",
+			fields{
+				lastHandshake:    t2,
+				lastHealthy:      false,
+				lastAlive:        false,
+				lastBootID:       &u1,
+				aliveSince:       t2,
+				endpointLastUsed: map[string]time.Time{},
+			},
+			args{
+				peer: &wgtypes.Peer{
+					LastHandshakeTime: t1,
+					Endpoint:          testutils.MakeUDPAddr(t),
+				},
+				name:     name,
+				newAlive: true,
+				bootID:   &u1,
+				now:      now,
+			},
+			&PeerConfigState{
+				lastHandshake:    t1,
+				lastHealthy:      true,
+				lastAlive:        true,
+				lastBootID:       &u1,
+				aliveSince:       now,
+				endpointLastUsed: map[string]time.Time{},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -64,7 +188,10 @@ func TestPeerConfigState_Update(t *testing.T) {
 				aliveSince:       tt.fields.aliveSince,
 				endpointLastUsed: tt.fields.endpointLastUsed,
 			}
-			got := pcs.Update(tt.args.peer, tt.args.name, tt.args.newAlive, tt.args.bootID)
+			if tt.fields.nil {
+				pcs = nil
+			}
+			got := pcs.Update(tt.args.peer, tt.args.name, tt.args.newAlive, tt.args.bootID, tt.args.now)
 			assert.Equal(t, tt.want, got)
 		})
 	}
@@ -144,7 +271,34 @@ func TestPeerConfigState_Describe(t *testing.T) {
 	}
 }
 
+func endpointValue(ep *net.UDPAddr) *fact.IPPortValue {
+	return &fact.IPPortValue{
+		IP:   ep.IP,
+		Port: ep.Port,
+	}
+}
+
+func endpointFact(ep *net.UDPAddr) *fact.Fact {
+	return &fact.Fact{
+		Attribute: fact.AttributeEndpointV4,
+		Value:     endpointValue(ep),
+	}
+}
+
 func TestPeerConfigState_TimeForNextEndpoint(t *testing.T) {
+	now := time.Now()
+	// t1 is before now, but not too far
+	t1 := now.Add(time.Duration(-1-rand.Intn(15)) * time.Second)
+	// t2 is far enough before now it should be expired
+	t2 := t1.Add(time.Duration(-15-rand.Intn(60)) * time.Second)
+	// t3 is similarly far behind t2
+	t3 := t2.Add(time.Duration(-15-rand.Intn(60)) * time.Second)
+
+	e1 := testutils.MakeUDPAddr(t)
+	e2 := testutils.MakeUDPAddr(t)
+	e1fk := string(util.MustBytes(endpointValue(e1).MarshalBinary()))
+	e2fk := string(util.MustBytes(endpointValue(e2).MarshalBinary()))
+
 	type fields struct {
 		nil bool
 
@@ -163,7 +317,38 @@ func TestPeerConfigState_TimeForNextEndpoint(t *testing.T) {
 		{"nil", fields{nil: true}, true},
 		{"healthy", fields{lastHealthy: true}, false},
 		{"no endpoints", fields{}, false},
-		// TODO: Add test cases.
+		{
+			"freshly used endpoint",
+			fields{
+				lastHealthy: false,
+				endpointLastUsed: map[string]time.Time{
+					e1fk: now,
+				},
+			},
+			false,
+		},
+		{
+			"one recent one old",
+			fields{
+				lastHealthy: false,
+				endpointLastUsed: map[string]time.Time{
+					e1fk: t1,
+					e2fk: t2,
+				},
+			},
+			false,
+		},
+		{
+			"two old",
+			fields{
+				lastHealthy: false,
+				endpointLastUsed: map[string]time.Time{
+					e1fk: t2,
+					e2fk: t3,
+				},
+			},
+			true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -185,6 +370,21 @@ func TestPeerConfigState_TimeForNextEndpoint(t *testing.T) {
 }
 
 func TestPeerConfigState_NextEndpoint(t *testing.T) {
+	now := time.Now()
+	// t1 is before now, but not too far
+	t1 := now.Add(time.Duration(-1-rand.Intn(15)) * time.Second)
+	// t2 is far enough before now it should be expired
+	t2 := t1.Add(time.Duration(-15-rand.Intn(60)) * time.Second)
+	// t3 is similarly far behind t2
+	// t3 := t2.Add(time.Duration(-15-rand.Intn(60)) * time.Second)
+
+	e1 := testutils.MakeUDPAddr(t)
+	e2 := testutils.MakeUDPAddr(t)
+	e3 := testutils.MakeUDPAddr(t)
+	e1fk := string(util.MustBytes(endpointValue(e1).MarshalBinary()))
+	e2fk := string(util.MustBytes(endpointValue(e2).MarshalBinary()))
+	// e3fk := string(util.MustBytes(endpointValue(e3).MarshalBinary()))
+
 	type fields struct {
 		// NextEndpoint doesn't allow a nil receiver
 		// nil bool
@@ -206,7 +406,86 @@ func TestPeerConfigState_NextEndpoint(t *testing.T) {
 		want   *net.UDPAddr
 	}{
 		{"nil facts", fields{}, args{}, nil},
-		// TODO: Add test cases.
+		{
+			"lost facts",
+			fields{
+				lastHealthy: false,
+				endpointLastUsed: map[string]time.Time{
+					e1fk: now,
+				},
+			},
+			args{
+				peerFacts: []*fact.Fact{},
+			},
+			nil,
+		},
+		{
+			"only one choice",
+			fields{
+				lastHealthy: false,
+				endpointLastUsed: map[string]time.Time{
+					e1fk: t1,
+				},
+			},
+			args{
+				peerFacts: []*fact.Fact{
+					endpointFact(e1),
+				},
+			},
+			e1,
+		},
+		{
+			"two equal choices",
+			fields{
+				lastHealthy: false,
+				endpointLastUsed: map[string]time.Time{
+					e1fk: t1,
+					e2fk: t1,
+				},
+			},
+			args{
+				peerFacts: []*fact.Fact{
+					// order matters here for the result
+					endpointFact(e2),
+					endpointFact(e1),
+				},
+			},
+			e2,
+		},
+		{
+			"two ordered choices",
+			fields{
+				lastHealthy: false,
+				endpointLastUsed: map[string]time.Time{
+					e1fk: t1,
+					e2fk: t2,
+				},
+			},
+			args{
+				peerFacts: []*fact.Fact{
+					endpointFact(e2),
+					endpointFact(e1),
+				},
+			},
+			e2,
+		},
+		{
+			"new and old",
+			fields{
+				lastHealthy: false,
+				endpointLastUsed: map[string]time.Time{
+					e1fk: t1,
+					e2fk: t2,
+				},
+			},
+			args{
+				peerFacts: []*fact.Fact{
+					endpointFact(e2),
+					endpointFact(e3),
+				},
+			},
+			e3,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -221,8 +500,16 @@ func TestPeerConfigState_NextEndpoint(t *testing.T) {
 			// if tt.fields.nil {
 			// 	pcs = nil
 			// }
-			got := pcs.NextEndpoint(tt.args.peerFacts)
+			got := pcs.NextEndpoint(tt.args.peerFacts, now)
 			assert.Equal(t, tt.want, got)
+			if tt.want != nil {
+				wantMap := make(map[string]time.Time, len(tt.fields.endpointLastUsed))
+				for k, v := range tt.fields.endpointLastUsed {
+					wantMap[k] = v
+				}
+				wantMap[string(util.MustBytes(endpointValue(tt.want).MarshalBinary()))] = now
+				assert.Equal(t, wantMap, pcs.endpointLastUsed)
+			}
 		})
 	}
 }
