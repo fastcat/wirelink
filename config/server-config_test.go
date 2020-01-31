@@ -1,12 +1,12 @@
 package config
 
-import "testing"
+import (
+	"fmt"
+	"math/rand"
+	"testing"
 
-import "github.com/stretchr/testify/assert"
-
-import "fmt"
-
-import "math/rand"
+	"github.com/stretchr/testify/assert"
+)
 
 func TestServer_ShouldReportIface(t *testing.T) {
 	ifName := func(prefix string) string {
