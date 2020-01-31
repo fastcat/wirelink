@@ -15,7 +15,7 @@ import (
 
 func Test_isHealthy(t *testing.T) {
 	now := time.Now()
-	then := now.Add(time.Duration(-rand.Intn(30)) * time.Second)
+	then := now.Add(time.Duration(-1-rand.Intn(30)) * time.Second)
 	longAgo := now.Add(-HandshakeValidity)
 	longLongAgo := then.Add(-HandshakeValidity)
 
@@ -75,6 +75,7 @@ func Test_isHealthy(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := isHealthy(tt.args.state, tt.args.peer)
+			t.Logf("deltas: %v, %v, %v", now.Sub(then), now.Sub(longAgo), now.Sub(longLongAgo))
 			assert.Equal(t, tt.want, got)
 		})
 	}

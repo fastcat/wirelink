@@ -275,11 +275,11 @@ func TestPeerConfigState_Describe(t *testing.T) {
 func TestPeerConfigState_TimeForNextEndpoint(t *testing.T) {
 	now := time.Now()
 	// t1 is before now, but not too far
-	t1 := now.Add(time.Duration(-1-rand.Intn(15)) * time.Second)
+	t1 := now.Add(time.Duration(-1-rand.Intn(14)) * time.Second)
 	// t2 is far enough before now it should be expired
-	t2 := t1.Add(time.Duration(-15-rand.Intn(60)) * time.Second)
+	t2 := t1.Add(time.Duration(-16-rand.Intn(60)) * time.Second)
 	// t3 is similarly far behind t2
-	t3 := t2.Add(time.Duration(-15-rand.Intn(60)) * time.Second)
+	t3 := t2.Add(time.Duration(-16-rand.Intn(60)) * time.Second)
 
 	e1 := testutils.RandUDP4Addr(t)
 	e2 := testutils.RandUDP4Addr(t)
@@ -351,6 +351,7 @@ func TestPeerConfigState_TimeForNextEndpoint(t *testing.T) {
 				pcs = nil
 			}
 			got := pcs.TimeForNextEndpoint()
+			t.Logf("deltas: %v, %v, %v", now.Sub(t1), t1.Sub(t2), t2.Sub(t3))
 			assert.Equal(t, tt.want, got)
 		})
 	}
