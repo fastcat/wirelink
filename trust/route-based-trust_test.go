@@ -36,7 +36,8 @@ func Test_routeBasedTrust_TrustLevel(t *testing.T) {
 		ret := make([]wgtypes.Peer, len(ks))
 		for i, k := range ks {
 			ret[i] = wgtypes.Peer{PublicKey: k, AllowedIPs: []net.IPNet{
-				testutils.RandIPNet(t, net.IPv4len, nil, nil, 1+rand.Intn(15)),
+				// make sure the top byte isn't something that will fail IsGlobalUnicast
+				testutils.RandIPNet(t, net.IPv4len, []byte{100}, nil, 1+rand.Intn(31)),
 			}}
 		}
 		return ret

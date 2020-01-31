@@ -47,6 +47,11 @@ test-go: generate
 	go test ./...
 test-go-race: generate
 	go test -race ./...
+test-stress: test-stress-go test-stress-race
+test-stress-go:
+	go test -count=1000 ./...
+test-stress-race:
+	go test -race -count=1000 ./...
 coverage.out: generate
 	go test -coverpkg=./... -coverprofile=coverage.out ./...
 cover: coverage.out
@@ -101,7 +106,8 @@ clean: checkinstall-clean
 #TODO: any way to clean the go cache for just this package?
 
 .PHONY: all info fmt generate compile run install everything clean
-.PHONY: vet lint lint-golint test test-go cover htmlcover
+.PHONY: vet lint lint-golint test cover htmlcover
+.PHONY: test-go test-go-race test-stress test-stress-go test-stress-race
 .PHONY: checkinstall checkinstall-prep checkinstall-clean
 # wirelink isn't actually phony, but we can't compute deps for it, so pretend
 .PHONY: wirelink
