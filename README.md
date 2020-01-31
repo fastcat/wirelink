@@ -30,7 +30,7 @@ wireguard by:
 Two systemd template units are provided:
 
 `wl-quick@.service`, when enabled for an interface, will bind tightly to
-`wg-quick@.service`.  If you are using `wg-quick`, this is the recommended
+`wg-quick@.service`. If you are using `wg-quick`, this is the recommended
 method. If you have `wg-quick@wg0` enabled, then to activate the wirelink pair,
 run `systemctl enable wl-quick@wg0 && systemctl start wl-quick@wg0`. In the
 future, the `wirelink` instance will automatically start & stop along with the
@@ -38,15 +38,15 @@ future, the `wirelink` instance will automatically start & stop along with the
 
 `wirelink@.service` is provided for more manual configurations, such as if you
 configure your wireguard interface in `/etc/network/interfaces`. Enable and
-start it with e.g. `systemctl enable wirelink@wg0 && systemctl start wirelink@wg0`
-similar to how `wl-quick@` works. If the wireguard interface goes down, the
-service will fail, but it is configured to auto-restart periodically until the
-link comes back up.
+start it with e.g. `systemctl enable wirelink@wg0 && systemctl start
+wirelink@wg0` similar to how `wl-quick@` works. If the wireguard interface goes
+down, the service will fail, but it is configured to auto-restart periodically
+until the link comes back up.
 
 ## How It Works
 
-Peers produce a list of local "facts" based on information from the
-wireguard device and the local network interfaces.  Facts have:
+Peers produce a list of local "facts" based on information from the wireguard
+device and the local network interfaces. Facts have:
 
 * A subject
   * Who is the fact about
@@ -57,11 +57,11 @@ wireguard device and the local network interfaces.  Facts have:
 * A TTL
   * For how long should this fact be considered valid
 
-For now subjects are always a peer's public key. Attributes are the peer's
-allowed ip value(s) and possible endpoints. Peers share endpoints of other
-peers if they have a live connection to that peer. Peers also share all their
-local IP addresses and their listening port in case they are on a public IP or
-other peers are on the same LAN.
+For now subjects are always a peer's public key. Attributes are commonly the
+peer's allowed ip value(s) and possible endpoints. Peers share endpoints of
+other peers if they have a live connection to that peer. Peers also share all
+their local IP addresses and their listening port in case they are on a public
+IP or other peers are on the same LAN.
 
 Peers periodically send all their locally known facts to all the other peers,
 along with a generic placeholder "I'm here" fact that is used to detect link
@@ -70,33 +70,36 @@ the other peer already knows and is not going to forget before the next send
 time comes around.
 
 Peers receive facts from other peers as they arrive, but filter them based on a
-trust model. For now trust is simple:
+trust model. For now the default trust configuration is simple:
 
 * Peers are trusted to provide possible endpoints for themselves
 * Peers are trusted to provide possible endpoints for other peers
 * Peers that have an allowed ip value that implies they route packets for the
   network are trusted to provide AllowedIP values for other peers
-* Currently nobody is trusted to provide information on new peers, i.e. all
+* Nobody is trusted by default to provide information on new peers, i.e. all
   peers must have an externally configured list of the other peer public keys
   with which they are willing to communicate.
-  * There are hooks in place to add this trust level in the future, but they
-    are not yet implemented
+* Peers may have their default trust level overridden in the config file,
+  including marking peers that are trusted to tell us about new peers to add to
+  the local interface (`AddPeer`), and peers that form a required set, where if
+  none of them says we should have the peer, we remove it from the local
+  interface (`DelPeer`).
 
 Received facts are removed as they expire based on the given TTL value, or
 renewed as fresh versions come in from trusted sources.
 
 ## Connecting two peers
 
-To connect two peers that aren't directly connected, each end
-(independently) configures the remote peer in the local wireguard interface
-with that peer's automatic link local address.  It then cycles through the
-known endpoints and attempts to contact the peer.  This should work with
-simple NAT configurations, but may fail for more complex ones where a full
-STUN/ICE system would succeed, esp.  since there is no coordination on which
-endpoints are being tried when.
+To connect two peers that aren't directly connected, each end (independently)
+configures the remote peer in the local wireguard interface with that peer's
+automatic link local address. It then cycles through the known endpoints and
+attempts to contact the peer. This should work with simple NAT configurations,
+but may fail for more complex ones where a full STUN/ICE system would succeed,
+esp. since there is no coordination on which endpoints are being tried when.
 
-If contact is successful, then the peers other allowed IPs are added and
-traffic can start to flow directly.
+If contact is successful, then the peer's other allowed IPs are added and
+traffic can start to flow directly (at least it can once both peers have
+reciprocated on this).
 
 Once a live connection is established, it is monitored to see if it stays
 alive. If it goes down, and the local peer is not a router, then the allowed
