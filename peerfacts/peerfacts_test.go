@@ -8,6 +8,7 @@ import (
 
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/internal/testutils"
+	factutils "github.com/fastcat/wirelink/internal/testutils/facts"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
@@ -80,7 +81,7 @@ func TestLocalFacts(t *testing.T) {
 				now,
 			},
 			[]*fact.Fact{
-				testutils.EndpointFactFull(u1, &k1, expires),
+				factutils.EndpointFactFull(u1, &k1, expires),
 			},
 			false,
 		},
@@ -97,7 +98,7 @@ func TestLocalFacts(t *testing.T) {
 				now,
 			},
 			[]*fact.Fact{
-				testutils.EndpointFactFull(u2, &k1, expires),
+				factutils.EndpointFactFull(u2, &k1, expires),
 			},
 			false,
 		},
@@ -114,8 +115,8 @@ func TestLocalFacts(t *testing.T) {
 				now,
 			},
 			[]*fact.Fact{
-				testutils.AllowedIPFactFull(n1, &k1, expires),
-				testutils.AllowedIPFactFull(n2, &k1, expires),
+				factutils.AllowedIPFactFull(n1, &k1, expires),
+				factutils.AllowedIPFactFull(n2, &k1, expires),
 			},
 			false,
 		},
@@ -133,9 +134,9 @@ func TestLocalFacts(t *testing.T) {
 				now,
 			},
 			[]*fact.Fact{
-				testutils.EndpointFactFull(u1, &k1, expires),
-				testutils.AllowedIPFactFull(n1, &k1, expires),
-				testutils.AllowedIPFactFull(n2, &k1, expires),
+				factutils.EndpointFactFull(u1, &k1, expires),
+				factutils.AllowedIPFactFull(n1, &k1, expires),
+				factutils.AllowedIPFactFull(n2, &k1, expires),
 			},
 			false,
 		},

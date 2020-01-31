@@ -13,6 +13,7 @@ import (
 
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/internal/testutils"
+	factutils "github.com/fastcat/wirelink/internal/testutils/facts"
 	"github.com/fastcat/wirelink/util"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -282,8 +283,8 @@ func TestPeerConfigState_TimeForNextEndpoint(t *testing.T) {
 
 	e1 := testutils.RandUDP4Addr(t)
 	e2 := testutils.RandUDP4Addr(t)
-	e1fk := string(util.MustBytes(testutils.EndpointValue(e1).MarshalBinary()))
-	e2fk := string(util.MustBytes(testutils.EndpointValue(e2).MarshalBinary()))
+	e1fk := string(util.MustBytes(factutils.EndpointValue(e1).MarshalBinary()))
+	e2fk := string(util.MustBytes(factutils.EndpointValue(e2).MarshalBinary()))
 
 	type fields struct {
 		nil bool
@@ -367,9 +368,9 @@ func TestPeerConfigState_NextEndpoint(t *testing.T) {
 	e1 := testutils.RandUDP4Addr(t)
 	e2 := testutils.RandUDP4Addr(t)
 	e3 := testutils.RandUDP4Addr(t)
-	e1fk := string(util.MustBytes(testutils.EndpointValue(e1).MarshalBinary()))
-	e2fk := string(util.MustBytes(testutils.EndpointValue(e2).MarshalBinary()))
-	// e3fk := string(util.MustBytes(testutils.EndpointValue(e3).MarshalBinary()))
+	e1fk := string(util.MustBytes(factutils.EndpointValue(e1).MarshalBinary()))
+	e2fk := string(util.MustBytes(factutils.EndpointValue(e2).MarshalBinary()))
+	// e3fk := string(util.MustBytes(factutils.EndpointValue(e3).MarshalBinary()))
 
 	type fields struct {
 		// NextEndpoint doesn't allow a nil receiver
@@ -415,7 +416,7 @@ func TestPeerConfigState_NextEndpoint(t *testing.T) {
 			},
 			args{
 				peerFacts: []*fact.Fact{
-					testutils.EndpointFact(e1),
+					factutils.EndpointFact(e1),
 				},
 			},
 			e1,
@@ -432,8 +433,8 @@ func TestPeerConfigState_NextEndpoint(t *testing.T) {
 			args{
 				peerFacts: []*fact.Fact{
 					// order matters here for the result
-					testutils.EndpointFact(e2),
-					testutils.EndpointFact(e1),
+					factutils.EndpointFact(e2),
+					factutils.EndpointFact(e1),
 				},
 			},
 			e2,
@@ -449,8 +450,8 @@ func TestPeerConfigState_NextEndpoint(t *testing.T) {
 			},
 			args{
 				peerFacts: []*fact.Fact{
-					testutils.EndpointFact(e2),
-					testutils.EndpointFact(e1),
+					factutils.EndpointFact(e2),
+					factutils.EndpointFact(e1),
 				},
 			},
 			e2,
@@ -466,8 +467,8 @@ func TestPeerConfigState_NextEndpoint(t *testing.T) {
 			},
 			args{
 				peerFacts: []*fact.Fact{
-					testutils.EndpointFact(e2),
-					testutils.EndpointFact(e3),
+					factutils.EndpointFact(e2),
+					factutils.EndpointFact(e3),
 				},
 			},
 			e3,
@@ -493,7 +494,7 @@ func TestPeerConfigState_NextEndpoint(t *testing.T) {
 				for k, v := range tt.fields.endpointLastUsed {
 					wantMap[k] = v
 				}
-				wantMap[string(util.MustBytes(testutils.EndpointValue(tt.want).MarshalBinary()))] = now
+				wantMap[string(util.MustBytes(factutils.EndpointValue(tt.want).MarshalBinary()))] = now
 				assert.Equal(t, wantMap, pcs.endpointLastUsed)
 			}
 		})
