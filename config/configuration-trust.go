@@ -41,6 +41,9 @@ func (c *configEvaluator) IsKnown(subject fact.Subject) bool {
 	return false
 }
 
+// TrustLevel looks up the fact's source IP in the list of known peers'
+// IPv6-LL addresses, and returns the configured trust level for that peer,
+// if found and configured
 func (c *configEvaluator) TrustLevel(f *fact.Fact, source net.UDPAddr) *trust.Level {
 	// we evaluate the trust level based on the _source_, not the _subject_
 	// source port evaluation is left to route-based-trust
@@ -54,5 +57,10 @@ func (c *configEvaluator) TrustLevel(f *fact.Fact, source net.UDPAddr) *trust.Le
 		log.Error("WAT: no configuration for recognized source %v = %v", source, pk)
 		return nil
 	}
-	return pc.Trust
+	if pc.Trust == nil {
+		return nil
+	}
+	// make a copy so caller can't modify it
+	ret := *pc.Trust
+	return &ret
 }
