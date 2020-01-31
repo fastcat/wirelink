@@ -74,7 +74,7 @@ func TestPeerConfigState_Update(t *testing.T) {
 			args{
 				peer: &wgtypes.Peer{
 					LastHandshakeTime: t1,
-					Endpoint:          testutils.MakeUDPAddr(t),
+					Endpoint:          testutils.RandUDP4Addr(t),
 				},
 				name:     name,
 				newAlive: true,
@@ -103,7 +103,7 @@ func TestPeerConfigState_Update(t *testing.T) {
 			args{
 				peer: &wgtypes.Peer{
 					LastHandshakeTime: t1,
-					Endpoint:          testutils.MakeUDPAddr(t),
+					Endpoint:          testutils.RandUDP4Addr(t),
 				},
 				name:     name,
 				newAlive: true,
@@ -132,7 +132,7 @@ func TestPeerConfigState_Update(t *testing.T) {
 			args{
 				peer: &wgtypes.Peer{
 					LastHandshakeTime: t1,
-					Endpoint:          testutils.MakeUDPAddr(t),
+					Endpoint:          testutils.RandUDP4Addr(t),
 				},
 				name:     name,
 				newAlive: true,
@@ -161,7 +161,7 @@ func TestPeerConfigState_Update(t *testing.T) {
 			args{
 				peer: &wgtypes.Peer{
 					LastHandshakeTime: t1,
-					Endpoint:          testutils.MakeUDPAddr(t),
+					Endpoint:          testutils.RandUDP4Addr(t),
 				},
 				name:     name,
 				newAlive: true,
@@ -271,20 +271,6 @@ func TestPeerConfigState_Describe(t *testing.T) {
 	}
 }
 
-func endpointValue(ep *net.UDPAddr) *fact.IPPortValue {
-	return &fact.IPPortValue{
-		IP:   ep.IP,
-		Port: ep.Port,
-	}
-}
-
-func endpointFact(ep *net.UDPAddr) *fact.Fact {
-	return &fact.Fact{
-		Attribute: fact.AttributeEndpointV4,
-		Value:     endpointValue(ep),
-	}
-}
-
 func TestPeerConfigState_TimeForNextEndpoint(t *testing.T) {
 	now := time.Now()
 	// t1 is before now, but not too far
@@ -294,10 +280,10 @@ func TestPeerConfigState_TimeForNextEndpoint(t *testing.T) {
 	// t3 is similarly far behind t2
 	t3 := t2.Add(time.Duration(-15-rand.Intn(60)) * time.Second)
 
-	e1 := testutils.MakeUDPAddr(t)
-	e2 := testutils.MakeUDPAddr(t)
-	e1fk := string(util.MustBytes(endpointValue(e1).MarshalBinary()))
-	e2fk := string(util.MustBytes(endpointValue(e2).MarshalBinary()))
+	e1 := testutils.RandUDP4Addr(t)
+	e2 := testutils.RandUDP4Addr(t)
+	e1fk := string(util.MustBytes(testutils.EndpointValue(e1).MarshalBinary()))
+	e2fk := string(util.MustBytes(testutils.EndpointValue(e2).MarshalBinary()))
 
 	type fields struct {
 		nil bool
@@ -378,12 +364,12 @@ func TestPeerConfigState_NextEndpoint(t *testing.T) {
 	// t3 is similarly far behind t2
 	// t3 := t2.Add(time.Duration(-15-rand.Intn(60)) * time.Second)
 
-	e1 := testutils.MakeUDPAddr(t)
-	e2 := testutils.MakeUDPAddr(t)
-	e3 := testutils.MakeUDPAddr(t)
-	e1fk := string(util.MustBytes(endpointValue(e1).MarshalBinary()))
-	e2fk := string(util.MustBytes(endpointValue(e2).MarshalBinary()))
-	// e3fk := string(util.MustBytes(endpointValue(e3).MarshalBinary()))
+	e1 := testutils.RandUDP4Addr(t)
+	e2 := testutils.RandUDP4Addr(t)
+	e3 := testutils.RandUDP4Addr(t)
+	e1fk := string(util.MustBytes(testutils.EndpointValue(e1).MarshalBinary()))
+	e2fk := string(util.MustBytes(testutils.EndpointValue(e2).MarshalBinary()))
+	// e3fk := string(util.MustBytes(testutils.EndpointValue(e3).MarshalBinary()))
 
 	type fields struct {
 		// NextEndpoint doesn't allow a nil receiver
@@ -429,7 +415,7 @@ func TestPeerConfigState_NextEndpoint(t *testing.T) {
 			},
 			args{
 				peerFacts: []*fact.Fact{
-					endpointFact(e1),
+					testutils.EndpointFact(e1),
 				},
 			},
 			e1,
@@ -446,8 +432,8 @@ func TestPeerConfigState_NextEndpoint(t *testing.T) {
 			args{
 				peerFacts: []*fact.Fact{
 					// order matters here for the result
-					endpointFact(e2),
-					endpointFact(e1),
+					testutils.EndpointFact(e2),
+					testutils.EndpointFact(e1),
 				},
 			},
 			e2,
@@ -463,8 +449,8 @@ func TestPeerConfigState_NextEndpoint(t *testing.T) {
 			},
 			args{
 				peerFacts: []*fact.Fact{
-					endpointFact(e2),
-					endpointFact(e1),
+					testutils.EndpointFact(e2),
+					testutils.EndpointFact(e1),
 				},
 			},
 			e2,
@@ -480,8 +466,8 @@ func TestPeerConfigState_NextEndpoint(t *testing.T) {
 			},
 			args{
 				peerFacts: []*fact.Fact{
-					endpointFact(e2),
-					endpointFact(e3),
+					testutils.EndpointFact(e2),
+					testutils.EndpointFact(e3),
 				},
 			},
 			e3,
@@ -507,7 +493,7 @@ func TestPeerConfigState_NextEndpoint(t *testing.T) {
 				for k, v := range tt.fields.endpointLastUsed {
 					wantMap[k] = v
 				}
-				wantMap[string(util.MustBytes(endpointValue(tt.want).MarshalBinary()))] = now
+				wantMap[string(util.MustBytes(testutils.EndpointValue(tt.want).MarshalBinary()))] = now
 				assert.Equal(t, wantMap, pcs.endpointLastUsed)
 			}
 		})

@@ -17,7 +17,7 @@ func Test_configEvaluator_TrustLevel(t *testing.T) {
 	k2 := testutils.MustKey(t)
 	k1u := &net.UDPAddr{IP: autopeer.AutoAddress(k1)}
 
-	u1 := testutils.MakeUDPAddr(t)
+	u1 := testutils.RandUDP4Addr(t)
 
 	// type fields struct {
 	// 	Peers    Peers

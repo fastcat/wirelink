@@ -48,6 +48,7 @@ func (s *LinkServer) shouldReportIface(name string) bool {
 }
 
 func (s *LinkServer) collectFacts(dev *wgtypes.Device) (ret []*fact.Fact, err error) {
+	now := time.Now()
 	log.Debug("Collecting facts...")
 
 	// facts about the local node
@@ -62,7 +63,7 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device) (ret []*fact.Fact, err er
 	log.Debug("Using local AIP facts: %v", useLocalAIPs)
 	for _, peer := range dev.Peers {
 		var pf []*fact.Fact
-		pf, err = peerfacts.LocalFacts(&peer, FactTTL, useLocalAIPs)
+		pf, err = peerfacts.LocalFacts(&peer, FactTTL, useLocalAIPs, now)
 		if err != nil {
 			return
 		}

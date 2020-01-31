@@ -39,7 +39,7 @@ func Test_isHealthy(t *testing.T) {
 			"fresh handshake",
 			args{
 				peer: &wgtypes.Peer{
-					Endpoint:          testutils.MakeUDPAddr(t),
+					Endpoint:          testutils.RandUDP4Addr(t),
 					LastHandshakeTime: now,
 				},
 			},
@@ -49,7 +49,7 @@ func Test_isHealthy(t *testing.T) {
 			"changed stale handshake",
 			args{
 				peer: &wgtypes.Peer{
-					Endpoint:          testutils.MakeUDPAddr(t),
+					Endpoint:          testutils.RandUDP4Addr(t),
 					LastHandshakeTime: longAgo,
 				},
 				state: &PeerConfigState{
@@ -62,7 +62,7 @@ func Test_isHealthy(t *testing.T) {
 			"stable stale handshake",
 			args{
 				peer: &wgtypes.Peer{
-					Endpoint:          testutils.MakeUDPAddr(t),
+					Endpoint:          testutils.RandUDP4Addr(t),
 					LastHandshakeTime: longAgo,
 				},
 				state: &PeerConfigState{

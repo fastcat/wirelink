@@ -11,12 +11,14 @@ import (
 )
 
 // LocalFacts gets all the known facts about a local peer
-func LocalFacts(peer *wgtypes.Peer, ttl time.Duration, trustLocalAIPs bool) (ret []*fact.Fact, err error) {
+func LocalFacts(peer *wgtypes.Peer, ttl time.Duration, trustLocalAIPs bool, now time.Time) (ret []*fact.Fact, err error) {
+	//NOTE: we can represent more than 255 seconds at the protocol level now,
+	// but longer than that is probably a bad idea for the time being
 	if ttl.Seconds() < 0 || ttl.Seconds() > 255 {
 		return nil, errors.Errorf("ttl out of range")
 	}
 
-	expiration := time.Now().Add(ttl)
+	expiration := now.Add(ttl)
 
 	addAttr := func(attr fact.Attribute, value fact.Value) {
 		ret = append(ret, &fact.Fact{
@@ -28,7 +30,7 @@ func LocalFacts(peer *wgtypes.Peer, ttl time.Duration, trustLocalAIPs bool) (ret
 	}
 
 	// the endpoint is trustable if the last handshake age is less than the TTL
-	if peer.Endpoint != nil && peer.LastHandshakeTime.After(time.Now().Add(-apply.HandshakeValidity)) {
+	if peer.Endpoint != nil && peer.LastHandshakeTime.After(now.Add(-apply.HandshakeValidity)) {
 		if peer.Endpoint.IP.To4() != nil {
 			addAttr(fact.AttributeEndpointV4, &fact.IPPortValue{IP: peer.Endpoint.IP, Port: peer.Endpoint.Port})
 		} else if peer.Endpoint.IP.To16() != nil {
@@ -41,7 +43,6 @@ func LocalFacts(peer *wgtypes.Peer, ttl time.Duration, trustLocalAIPs bool) (ret
 
 	if trustLocalAIPs {
 		for _, peerIP := range peer.AllowedIPs {
-			// TODO: ignore the auto-generated v6 address
 			if peerIP.IP.To4() != nil {
 				addAttr(fact.AttributeAllowedCidrV4, &fact.IPNetValue{IPNet: peerIP})
 			} else if peerIP.IP.To16() != nil {

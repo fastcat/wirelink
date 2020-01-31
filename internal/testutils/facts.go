@@ -1,0 +1,61 @@
+package testutils
+
+import (
+	"net"
+	"time"
+
+	"github.com/fastcat/wirelink/fact"
+	"github.com/fastcat/wirelink/util"
+
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+)
+
+// EndpointValue wraps a UDPAddr in an IPPortValue
+func EndpointValue(ep *net.UDPAddr) *fact.IPPortValue {
+	return &fact.IPPortValue{
+		IP:   util.NormalizeIP(ep.IP),
+		Port: ep.Port,
+	}
+}
+
+// EndpointFact wraps a UDPAddr in a Fact, with just the Attribute and Value filled
+func EndpointFact(ep *net.UDPAddr) *fact.Fact {
+	value := EndpointValue(ep)
+	ret := &fact.Fact{
+		Attribute: fact.AttributeEndpointV4,
+		Value:     value,
+	}
+	if len(value.IP) == net.IPv6len {
+		ret.Attribute = fact.AttributeEndpointV6
+	}
+	return ret
+}
+
+// EndpointFactFull wraps a UDPAddr in a Fact, with all fields filled
+func EndpointFactFull(ep *net.UDPAddr, peer *wgtypes.Key, expires time.Time) *fact.Fact {
+	value := EndpointValue(ep)
+	ret := &fact.Fact{
+		Attribute: fact.AttributeEndpointV4,
+		Subject:   &fact.PeerSubject{Key: *peer},
+		Expires:   expires,
+		Value:     value,
+	}
+	if len(value.IP) == net.IPv6len {
+		ret.Attribute = fact.AttributeEndpointV6
+	}
+	return ret
+}
+
+// AllowedIPFactFull wraps an IPNet in a Fact, with all fields filled
+func AllowedIPFactFull(aip net.IPNet, peer *wgtypes.Key, expires time.Time) *fact.Fact {
+	ret := &fact.Fact{
+		Attribute: fact.AttributeAllowedCidrV4,
+		Subject:   &fact.PeerSubject{Key: *peer},
+		Expires:   expires,
+		Value:     &fact.IPNetValue{IPNet: aip},
+	}
+	if len(aip.IP) == net.IPv6len {
+		ret.Attribute = fact.AttributeAllowedCidrV6
+	}
+	return ret
+}
