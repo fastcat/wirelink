@@ -50,7 +50,7 @@ func hasAutoIP(autoaddr net.IP, aips []net.IPNet) bool {
 
 // EnsurePeerAutoIP ensures that the config (if any) for the given peer key includes
 // its automatic IPv6-LL address.
-func EnsurePeerAutoIP(peer *wgtypes.Peer, cfg *wgtypes.PeerConfig) (*wgtypes.PeerConfig, bool) {
+func EnsurePeerAutoIP(peer *wgtypes.Peer, cfg *wgtypes.PeerConfig) (peerConfig *wgtypes.PeerConfig, added bool) {
 	autoaddr := autopeer.AutoAddress(peer.PublicKey)
 	hasNow := hasAutoIP(autoaddr, peer.AllowedIPs)
 	var alreadyAdding bool

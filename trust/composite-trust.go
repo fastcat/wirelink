@@ -1,6 +1,7 @@
 package trust
 
 import (
+	"fmt"
 	"net"
 
 	"github.com/fastcat/wirelink/fact"
@@ -21,6 +22,19 @@ const (
 	// that known the subject
 	MostPermission
 )
+
+func (cm CompositeMode) String() string {
+	switch cm {
+	case FirstOnly:
+		return "FirstOnly"
+	case LeastPermission:
+		return "LeastPermission"
+	case MostPermission:
+		return "MostPermission"
+	default:
+		return fmt.Sprintf("UNKNOWN(%d)", cm)
+	}
+}
 
 // CreateComposite generates an evaluator which combines the results of others
 // using the specified mode

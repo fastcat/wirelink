@@ -17,14 +17,17 @@ info:
 	@echo PKGVER=$(PKGVER)
 	@echo PKGREL=$(PKGREL)
 
-GENERATED_SOURCES:=internal/version.go internal/mocks/WgClient.go
+GENERATED_SOURCES:=internal/version.go internal/mocks/WgClient.go trust/mock_Evaluator_test.go
 generate: $(GENERATED_SOURCES)
+#TODO: use go generate for this stuff
 internal/version.go: internal/version.go.in .git/HEAD .git/index
 	cat $< | sed -e "s/__GIT_VERSION__/$(PKGVERREL)/" > $@.tmp
 	mv -f $@.tmp $@
 internal/mocks/%.go: internal/%.go
 # this assumes mockery is available in the (GO)PATH
 	mockery -dir internal/ -output internal/mocks/ -name $*
+trust/mock_Evaluator_test.go: trust/trust.go
+	mockery -dir trust/ -testonly -inpkg -name Evaluator
 
 fmt: generate
 	go fmt ./...

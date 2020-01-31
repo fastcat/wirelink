@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
-	"reflect"
 
 	"github.com/pkg/errors"
 
@@ -55,7 +54,7 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 		{
 			"one peer to configure",
 			args{
-				ctrl: mocks.SetupClient(func(ctrl *mocks.WgClient) {
+				ctrl: mocks.SetupClient(t, func(ctrl *mocks.WgClient) {
 					ctrl.On("ConfigureDevice", iface, wgtypes.Config{
 						Peers: []wgtypes.PeerConfig{
 							wgtypes.PeerConfig{
@@ -81,7 +80,7 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 		{
 			"two peers, one to configure",
 			args{
-				ctrl: mocks.SetupClient(func(ctrl *mocks.WgClient) {
+				ctrl: mocks.SetupClient(t, func(ctrl *mocks.WgClient) {
 					ctrl.On("ConfigureDevice", iface, wgtypes.Config{
 						Peers: []wgtypes.PeerConfig{
 							wgtypes.PeerConfig{
@@ -127,7 +126,7 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 		{
 			"configuration failure",
 			args{
-				ctrl: mocks.SetupClient(func(ctrl *mocks.WgClient) {
+				ctrl: mocks.SetupClient(t, func(ctrl *mocks.WgClient) {
 					ctrl.On("ConfigureDevice", iface, wgtypes.Config{
 						Peers: []wgtypes.PeerConfig{
 							wgtypes.PeerConfig{
@@ -153,6 +152,9 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.args.ctrl != nil {
+				tt.args.ctrl.Test(t)
+			}
 			got, err := EnsurePeersAutoIP(tt.args.ctrl, tt.args.dev)
 			if tt.args.ctrl != nil {
 				tt.args.ctrl.AssertExpectations(t)
@@ -177,10 +179,10 @@ func TestEnsurePeerAutoIP(t *testing.T) {
 		cfg  *wgtypes.PeerConfig
 	}
 	tests := []struct {
-		name  string
-		args  args
-		want  *wgtypes.PeerConfig
-		want1 bool
+		name           string
+		args           args
+		wantPeerConfig *wgtypes.PeerConfig
+		wantAdded      bool
 	}{
 		{
 			"rebuild",
@@ -201,13 +203,9 @@ func TestEnsurePeerAutoIP(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := EnsurePeerAutoIP(tt.args.peer, tt.args.cfg)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("EnsurePeerAutoIP() got = %v, want %v", got, tt.want)
-			}
-			if got1 != tt.want1 {
-				t.Errorf("EnsurePeerAutoIP() got1 = %v, want %v", got1, tt.want1)
-			}
+			gotPeerConfig, gotAdded := EnsurePeerAutoIP(tt.args.peer, tt.args.cfg)
+			assert.Equal(t, tt.wantPeerConfig, gotPeerConfig, "EnsurePeerAutoIP() peerConfig")
+			assert.Equal(t, tt.wantAdded, gotAdded, "EnsurePeerAutoIP() added")
 		})
 	}
 }
@@ -296,9 +294,8 @@ func TestOnlyAutoIP(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := OnlyAutoIP(tt.args.peer, tt.args.cfg); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("OnlyAutoIP() = %v, want %v", got, tt.want)
-			}
+			got := OnlyAutoIP(tt.args.peer, tt.args.cfg)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }
