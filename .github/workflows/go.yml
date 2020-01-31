@@ -55,6 +55,14 @@ jobs:
     - name: Test with coverage
       # building the coverage output runs the tests
       run: make coverage.html
+
+    # upload to codecov as soon as we can to view reports
+    - name: Upload coverage (codecov)
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: ./coverage.out
+
     - name: Test with race detector
       run: make test-go-race
 
@@ -63,9 +71,3 @@ jobs:
       with:
         name: coverage.html
         path: ./coverage.html
-
-    - name: Upload coverage (codecov)
-      uses: codecov/codecov-action@v1
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./coverage.out
