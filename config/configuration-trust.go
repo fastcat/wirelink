@@ -12,37 +12,33 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-// CreateTrustEvaluator maps a peer config map into an evaluator that returns the
-// configured trust levels
-func CreateTrustEvaluator(peers Peers) trust.Evaluator {
-	ret := &configEvaluator{
-		Peers:    peers,
-		peerIPs:  make(map[wgtypes.Key]net.IP),
-		ipToPeer: make(map[[net.IPv6len]byte]wgtypes.Key),
-	}
-	ret.updatePeerMaps()
-	return ret
-}
-
 type configEvaluator struct {
 	Peers
-	peerIPs  map[wgtypes.Key]net.IP
+	// peerIPs  map[wgtypes.Key]net.IP
 	ipToPeer map[[net.IPv6len]byte]wgtypes.Key
 }
 
 var _ trust.Evaluator = &configEvaluator{}
 
+// CreateTrustEvaluator maps a peer config map into an evaluator that returns the
+// configured trust levels
+func CreateTrustEvaluator(peers Peers) trust.Evaluator {
+	ret := &configEvaluator{
+		Peers:    peers,
+		ipToPeer: make(map[[net.IPv6len]byte]wgtypes.Key, len(peers)),
+		// peerIPs:  make(map[wgtypes.Key]net.IP, len(peers)),
+	}
+	for peer := range peers {
+		pip := autopeer.AutoAddress(peer)
+		ret.ipToPeer[util.IPToBytes(pip)] = peer
+		// ret.peerIPs[peer] = pip
+	}
+	return ret
+}
+
 func (c *configEvaluator) IsKnown(subject fact.Subject) bool {
 	// peers are never known to the config evaluator, only trusted
 	return false
-}
-
-func (c *configEvaluator) updatePeerMaps() {
-	for peer := range c.Peers {
-		pip := autopeer.AutoAddress(peer)
-		c.peerIPs[peer] = pip
-		c.ipToPeer[util.IPToBytes(pip)] = peer
-	}
 }
 
 func (c *configEvaluator) TrustLevel(f *fact.Fact, source net.UDPAddr) *trust.Level {
