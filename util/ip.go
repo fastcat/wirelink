@@ -1,7 +1,6 @@
 package util
 
 import (
-	"bytes"
 	"net"
 )
 
@@ -25,7 +24,7 @@ func IsIPv6LLMatch(expected net.IP, actual *net.IPNet, local bool) bool {
 		expectedOnes = 4 * net.IPv6len
 	}
 	ones, bits := actual.Mask.Size()
-	return ones == expectedOnes && bits == 8*net.IPv6len && bytes.Equal(expected, actual.IP)
+	return ones == expectedOnes && bits == 8*net.IPv6len && expected.Equal(actual.IP)
 }
 
 // IPToBytes returns the given IP normalized to a 16 byte array,

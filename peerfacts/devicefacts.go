@@ -17,7 +17,6 @@ import (
 func DeviceFacts(
 	dev *wgtypes.Device,
 	ttl time.Duration,
-	ifaceFilter func(name string) bool,
 	config *config.Server,
 ) (
 	ret []*fact.Fact,
@@ -75,7 +74,7 @@ func DeviceFacts(
 			continue
 		}
 
-		if !ifaceFilter(iface.Name) {
+		if !config.ShouldReportIface(iface.Name) {
 			log.Debug("Excluding local iface '%s'\n", iface.Name)
 			continue
 		}
