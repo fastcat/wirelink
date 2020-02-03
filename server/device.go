@@ -22,12 +22,11 @@ func (s *LinkServer) deviceState() (dev *wgtypes.Device, err error) {
 	return s.ctrl.Device(s.config.Iface)
 }
 
-func (s *LinkServer) collectFacts(dev *wgtypes.Device) (ret []*fact.Fact, err error) {
-	now := time.Now()
+func (s *LinkServer) collectFacts(dev *wgtypes.Device, now time.Time) (ret []*fact.Fact, err error) {
 	log.Debug("Collecting facts...")
 
 	// facts about the local node
-	ret, err = peerfacts.DeviceFacts(dev, time.Now(), FactTTL, s.config, s.net)
+	ret, err = peerfacts.DeviceFacts(dev, now, FactTTL, s.config, s.net)
 	if err != nil {
 		return
 	}
@@ -45,7 +44,7 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device) (ret []*fact.Fact, err er
 		ret = append(ret, pf...)
 	}
 
-	expires := time.Now().Add(FactTTL)
+	expires := now.Add(FactTTL)
 
 	// static facts from the config
 	// these may duplicate other known facts, higher layers will dedupe
