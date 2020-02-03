@@ -29,7 +29,9 @@ func TestLinkServer_collectFacts(t *testing.T) {
 	ipn1 := testutils.RandIPNet(t, net.IPv4len, []byte{100}, nil, 24)
 	ipn2 := testutils.RandIPNet(t, net.IPv4len, []byte{100}, nil, 24)
 	ipn3 := testutils.RandIPNet(t, net.IPv4len, []byte{100}, nil, 24)
+	ipn4 := testutils.RandIPNet(t, net.IPv6len, []byte{0x20}, nil, 64)
 	ep1 := testutils.RandUDP4Addr(t)
+	ep2 := testutils.RandUDP6Addr(t)
 	p1 := rand.Intn(65535)
 
 	type fields struct {
@@ -128,6 +130,68 @@ func TestLinkServer_collectFacts(t *testing.T) {
 					// we don't mask this one because we expect wg to have done it already
 					Value:   &fact.IPNetValue{IPNet: ipn3},
 					Expires: now.Add(FactTTL),
+				},
+			},
+			false,
+		},
+		{
+			"static facts",
+			fields{
+				&config.Server{
+					Peers: config.Peers{
+						k1: &config.Peer{
+							Endpoints: []config.PeerEndpoint{
+								config.PeerEndpoint{
+									Host: ep1.IP.String(),
+									Port: ep1.Port,
+								},
+								config.PeerEndpoint{
+									Host: ep2.IP.String(),
+									Port: ep2.Port,
+								},
+							},
+							AllowedIPs: []net.IPNet{ipn1, ipn4},
+						},
+					},
+				},
+				func(t *testing.T) *mocks.Environment {
+					ret := &mocks.Environment{}
+					return ret
+				},
+				&peerConfigSet{
+					psm: &sync.Mutex{},
+					peerStates: map[wgtypes.Key]*apply.PeerConfigState{
+						k1: &apply.PeerConfigState{},
+					},
+				},
+			},
+			args{&wgtypes.Device{}},
+			[]*fact.Fact{
+				// ipv4 and ipv6 endpoints
+				&fact.Fact{
+					Attribute: fact.AttributeEndpointV4,
+					Subject:   &fact.PeerSubject{Key: k1},
+					Value:     &fact.IPPortValue{IP: ep1.IP, Port: ep1.Port},
+					Expires:   now.Add(FactTTL),
+				},
+				&fact.Fact{
+					Attribute: fact.AttributeEndpointV6,
+					Subject:   &fact.PeerSubject{Key: k1},
+					Value:     &fact.IPPortValue{IP: ep2.IP, Port: ep2.Port},
+					Expires:   now.Add(FactTTL),
+				},
+				// ipv4 and ipv6 aips
+				&fact.Fact{
+					Attribute: fact.AttributeAllowedCidrV4,
+					Subject:   &fact.PeerSubject{Key: k1},
+					Value:     &fact.IPNetValue{IPNet: ipn1},
+					Expires:   now.Add(FactTTL),
+				},
+				&fact.Fact{
+					Attribute: fact.AttributeAllowedCidrV6,
+					Subject:   &fact.PeerSubject{Key: k1},
+					Value:     &fact.IPNetValue{IPNet: ipn4},
+					Expires:   now.Add(FactTTL),
 				},
 			},
 			false,

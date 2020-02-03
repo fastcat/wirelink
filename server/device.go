@@ -134,7 +134,7 @@ func (s *LinkServer) handlePeerConfigEndpoints(
 				Attribute: attr,
 				Subject:   &fact.PeerSubject{Key: pk},
 				Expires:   expires,
-				Value:     &fact.IPPortValue{IP: ip, Port: ep.Port},
+				Value:     &fact.IPPortValue{IP: nip, Port: ep.Port},
 			}
 			log.Debug("Tracking static fact: %v", staticFact)
 			facts = append(facts, staticFact)
