@@ -31,7 +31,9 @@ func TestLinkServer_collectFacts(t *testing.T) {
 	ipn3 := testutils.RandIPNet(t, net.IPv4len, []byte{100}, nil, 24)
 	ipn4 := testutils.RandIPNet(t, net.IPv6len, []byte{0x20}, nil, 64)
 	ep1 := testutils.RandUDP4Addr(t)
+	ep1.IP[0] = 100
 	ep2 := testutils.RandUDP6Addr(t)
+	ep2.IP[0] = 0x20
 	p1 := rand.Intn(65535)
 
 	type fields struct {
