@@ -45,7 +45,7 @@ func (m *Environment) WithKnownInterfaces() {
 
 // WithAddrs mocks the interface to return the given address list
 func (i *Interface) WithAddrs(addrs []net.IPNet) {
-	i.On("Addrs", addrs, nil)
+	i.On("Addrs").Return(addrs, nil)
 }
 
 // WithSimpleInterfaces sets up a simple map of interface name to ip address
@@ -65,6 +65,17 @@ func (m *Environment) Test(t *testing.T) {
 	if m.TestData().Has(tdInterfaces) {
 		for _, iface := range m.TestData().Get(tdInterfaces).MustInterSlice() {
 			iface.(*Interface).Test(t)
+		}
+	}
+}
+
+// AssertExpectations calls the method on the Environment mock and on all its
+// registered Interface mocks
+func (m *Environment) AssertExpectations(t *testing.T) {
+	m.Mock.AssertExpectations(t)
+	if m.TestData().Has(tdInterfaces) {
+		for _, iface := range m.TestData().Get(tdInterfaces).MustInterSlice() {
+			iface.(*Interface).AssertExpectations(t)
 		}
 	}
 }
