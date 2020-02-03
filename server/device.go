@@ -27,7 +27,7 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device) (ret []*fact.Fact, err er
 	log.Debug("Collecting facts...")
 
 	// facts about the local node
-	ret, err = peerfacts.DeviceFacts(dev, FactTTL, s.config)
+	ret, err = peerfacts.DeviceFacts(dev, time.Now(), FactTTL, s.config, s.net)
 	if err != nil {
 		return
 	}

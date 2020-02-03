@@ -18,7 +18,9 @@ func (m *Environment) WithInterface(name string) *Interface {
 	} else {
 		td.Set(tdInterfaces, []interface{}{iface})
 	}
-	m.On("InterfaceByName", name).Return(iface, nil)
+	m.On("InterfaceByName", name).Return(iface, nil).Maybe()
+	iface.On("Name").Return(name).Maybe()
+	iface.On("IsUp").Return(true).Maybe()
 	return iface
 }
 
@@ -45,7 +47,7 @@ func (m *Environment) WithKnownInterfaces() {
 
 // WithAddrs mocks the interface to return the given address list
 func (i *Interface) WithAddrs(addrs []net.IPNet) {
-	i.On("Addrs").Return(addrs, nil)
+	i.On("Addrs").Return(addrs, nil).Maybe()
 }
 
 // WithSimpleInterfaces sets up a simple map of interface name to ip address

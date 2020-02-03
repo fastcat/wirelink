@@ -9,8 +9,10 @@ import (
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/internal/networking/mocks"
 	"github.com/fastcat/wirelink/internal/testutils"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -19,7 +21,7 @@ func TestEnsureLocalAutoIP(t *testing.T) {
 	k1 := testutils.MustKey(t)
 
 	type args struct {
-		env *mocks.Environment
+		env func(*testing.T) *mocks.Environment
 		dev *wgtypes.Device
 	}
 	tests := []struct {
@@ -31,7 +33,7 @@ func TestEnsureLocalAutoIP(t *testing.T) {
 		{
 			"already configured",
 			args{
-				env: func() *mocks.Environment {
+				env: func(t *testing.T) *mocks.Environment {
 					ret := &mocks.Environment{}
 					ret.WithSimpleInterfaces(map[string]net.IPNet{
 						in1: net.IPNet{
@@ -40,7 +42,7 @@ func TestEnsureLocalAutoIP(t *testing.T) {
 						},
 					})
 					return ret
-				}(),
+				},
 				dev: &wgtypes.Device{
 					Name:      in1,
 					PublicKey: k1,
@@ -52,7 +54,7 @@ func TestEnsureLocalAutoIP(t *testing.T) {
 		{
 			"do configure",
 			args{
-				env: func() *mocks.Environment {
+				env: func(t *testing.T) *mocks.Environment {
 					ret := &mocks.Environment{}
 					ii := ret.WithSimpleInterfaces(map[string]net.IPNet{
 						in1: testutils.RandIPNet(t, net.IPv4len, nil, nil, 24),
@@ -62,7 +64,7 @@ func TestEnsureLocalAutoIP(t *testing.T) {
 						Mask: net.CIDRMask(64, 128),
 					}).Return(nil)
 					return ret
-				}(),
+				},
 				dev: &wgtypes.Device{
 					Name:      in1,
 					PublicKey: k1,
@@ -74,15 +76,16 @@ func TestEnsureLocalAutoIP(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.args.env.Test(t)
-			got, err := EnsureLocalAutoIP(tt.args.env, tt.args.dev)
+			env := tt.args.env(t)
+			env.Test(t)
+			got, err := EnsureLocalAutoIP(env, tt.args.dev)
 			if tt.wantErr {
 				require.NotNil(t, err)
 			} else {
 				require.Nil(t, err)
 			}
 			assert.Equal(t, tt.want, got)
-			tt.args.env.AssertExpectations(t)
+			env.AssertExpectations(t)
 		})
 	}
 }

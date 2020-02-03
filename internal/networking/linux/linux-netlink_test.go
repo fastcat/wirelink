@@ -3,11 +3,13 @@ package linux
 import (
 	"testing"
 
+	"github.com/vishvananda/netlink"
+
 	"github.com/fastcat/wirelink/internal/networking"
 	"github.com/fastcat/wirelink/internal/networking/native"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vishvananda/netlink"
 )
 
 func containsIface(ifaces []networking.Interface, predicate func(networking.Interface) bool) bool {
