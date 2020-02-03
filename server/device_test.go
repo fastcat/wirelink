@@ -24,8 +24,8 @@ func TestLinkServer_collectFacts(t *testing.T) {
 	now := time.Now()
 	k1 := testutils.MustKey(t)
 	k2 := testutils.MustKey(t)
-	ifwg := fmt.Sprintf("wg%d", rand.Int())
-	ifeth := fmt.Sprintf("eth%d", rand.Int())
+	ifWg := fmt.Sprintf("wg%d", rand.Int())
+	ifEth := fmt.Sprintf("eth%d", rand.Int())
 	ipn1 := testutils.RandIPNet(t, net.IPv4len, []byte{100}, nil, 24)
 	ipn2 := testutils.RandIPNet(t, net.IPv4len, []byte{100}, nil, 24)
 	ipn3 := testutils.RandIPNet(t, net.IPv4len, []byte{100}, nil, 24)
@@ -65,14 +65,14 @@ func TestLinkServer_collectFacts(t *testing.T) {
 			"simple point-to-point (router)",
 			fields{
 				&config.Server{
-					Iface:       ifwg,
+					Iface:       ifWg,
 					IsRouterNow: true,
 				},
 				func(t *testing.T) *mocks.Environment {
 					ret := &mocks.Environment{}
 					ret.WithSimpleInterfaces(map[string]net.IPNet{
-						ifwg:  ipn1,
-						ifeth: ipn2,
+						ifWg:  ipn1,
+						ifEth: ipn2,
 					})
 					return ret
 				},
@@ -84,7 +84,7 @@ func TestLinkServer_collectFacts(t *testing.T) {
 				},
 			},
 			args{&wgtypes.Device{
-				Name:       ifwg,
+				Name:       ifWg,
 				PublicKey:  k1,
 				ListenPort: p1,
 				Peers: []wgtypes.Peer{
