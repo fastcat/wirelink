@@ -24,7 +24,7 @@ func TestDeviceFacts(t *testing.T) {
 	n2 := fmt.Sprintf("eth%d", rand.Int31())
 	n3 := fmt.Sprintf("veth%d", rand.Int31())
 	k1 := testutils.MustKey(t)
-	ipn1 := testutils.RandIPNet(t, net.IPv4len, nil, nil, 24)
+	ipn1 := testutils.RandIPNet(t, net.IPv4len, []byte{100}, nil, 24)
 	ipn2 := testutils.RandIPNet(t, net.IPv6len, []byte{0x20}, nil, 64)
 	p1 := rand.Intn(65535)
 
