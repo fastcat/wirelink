@@ -19,8 +19,8 @@ jobs:
       uses: actions/checkout@v2
     - name: Get tags to make version.go
       run: |
-        git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-        d=10
+        git fetch --deepen=10 origin +refs/tags/*:refs/tags/*
+        d=20
         while ! make info ; do
           git fetch --deepen=$d origin +refs/tags/*:refs/tags/*
           d=$((d+10))

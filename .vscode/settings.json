@@ -1,4 +1,5 @@
 {
+	"cSpell.allowCompoundWords": true,
 	"cSpell.words": [
 		"Cidr",
 		"Decodable",
@@ -39,6 +40,7 @@
 		"unmarshalling",
 		"uuid",
 		"vcfg",
+		"veth",
 		"vishvananda",
 		"wgctrl",
 		"wgtypes",

@@ -17,7 +17,13 @@ info:
 	@echo PKGVER=$(PKGVER)
 	@echo PKGREL=$(PKGREL)
 
-GENERATED_SOURCES:=internal/version.go internal/mocks/WgClient.go trust/mock_Evaluator_test.go
+GENERATED_SOURCES:=\
+	internal/version.go \
+	internal/mocks/WgClient.go \
+	trust/mock_Evaluator_test.go \
+	internal/networking/mocks/Environment.go \
+	internal/networking/mocks/Interface.go \
+	$(NULL)
 generate: $(GENERATED_SOURCES)
 #TODO: use go generate for this stuff
 internal/version.go: internal/version.go.in .git/HEAD .git/index
@@ -28,6 +34,8 @@ internal/mocks/%.go: internal/%.go
 	mockery -dir internal/ -output internal/mocks/ -name $*
 trust/mock_Evaluator_test.go: trust/trust.go
 	mockery -dir trust/ -testonly -inpkg -name Evaluator
+internal/networking/mocks/%.go: internal/networking/types.go
+	mockery -dir internal/networking/ -output internal/networking/mocks -name $*
 
 fmt: generate
 	go fmt ./...

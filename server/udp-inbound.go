@@ -192,7 +192,7 @@ func (s *LinkServer) processChunks(
 		}
 		s.UpdateRouterState(dev, true)
 
-		localFacts, err := s.collectFacts(dev)
+		localFacts, err := s.collectFacts(dev, now)
 		if err != nil {
 			log.Error("Unable to collect local facts: %v", err)
 		}

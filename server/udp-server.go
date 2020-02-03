@@ -17,6 +17,8 @@ import (
 	"github.com/fastcat/wirelink/config"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/internal"
+	"github.com/fastcat/wirelink/internal/networking"
+	"github.com/fastcat/wirelink/internal/networking/host"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/signing"
 
@@ -29,7 +31,7 @@ type LinkServer struct {
 	bootID      uuid.UUID
 	stateAccess *sync.Mutex
 	config      *config.Server
-	mgr         *apply.Manager
+	net         networking.Environment
 	conn        *net.UDPConn
 	addr        net.UDPAddr
 	ctrl        internal.WgClient
@@ -87,7 +89,7 @@ func Create(ctrl internal.WgClient, config *config.Server) (*LinkServer, error) 
 	ret := &LinkServer{
 		bootID:          uuid.Must(uuid.NewRandom()),
 		config:          config,
-		mgr:             nil, // this will be filled in by `Start()`
+		net:             nil, // this will be filled in by `Start()`
 		conn:            nil, // this will be filled in by `Start()`
 		addr:            addr,
 		ctrl:            ctrl,
@@ -114,12 +116,13 @@ func (s *LinkServer) Start() (err error) {
 	}
 
 	// have to make sure we have the local IPv6-LL address configured before we can use it
-	s.mgr, err = apply.NewManager()
-	if err != nil {
-		return err
+	if s.net == nil {
+		s.net, err = host.CreateHost()
+		if err != nil {
+			return err
+		}
 	}
-	defer s.mgr.Close()
-	if setLL, err := s.mgr.EnsureLocalAutoIP(device); err != nil {
+	if setLL, err := apply.EnsureLocalAutoIP(s.net, device); err != nil {
 		return err
 	} else if setLL {
 		log.Info("Configured IPv6-LL address on local interface")
@@ -233,6 +236,14 @@ func (s *LinkServer) Close() {
 	if s.ctrl != nil {
 		s.ctrl.Close()
 		s.ctrl = nil
+	}
+
+	if s.net != nil {
+		err := s.net.Close()
+		if err != nil {
+			log.Error("Unable to close network: %v", err)
+		}
+		s.net = nil
 	}
 
 	if s.eg != nil {
