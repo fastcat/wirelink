@@ -135,10 +135,14 @@ func (pcs *PeerConfigState) TimeForNextEndpoint() bool {
 		}
 	}
 
+	// if we've never tried any endpoints, definitely should try one now
+	if len(pcs.endpointLastUsed) == 0 {
+		return true
+	}
+
 	// if it's been REKEY_TIMEOUT + KEEPALIVE since the last time we tried a new
 	// ep (i.e. wireguard thinks it's time to retry the handshake), try another
-	return len(pcs.endpointLastUsed) > 0 &&
-		timeOfLastEp.Add(endpointInterval).Before(time.Now())
+	return timeOfLastEp.Add(endpointInterval).Before(time.Now())
 }
 
 // NextEndpoint recommends the next endpoint to try configuring on the peer,

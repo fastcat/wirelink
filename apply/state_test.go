@@ -302,8 +302,8 @@ func TestPeerConfigState_TimeForNextEndpoint(t *testing.T) {
 		want   bool
 	}{
 		{"nil", fields{nil: true}, true},
+		{"no history", fields{}, true},
 		{"healthy", fields{lastHealthy: true}, false},
-		{"no endpoints", fields{}, false},
 		{
 			"freshly used endpoint",
 			fields{

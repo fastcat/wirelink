@@ -255,6 +255,8 @@ func (s *LinkServer) configurePeer(
 				// make sure we try to send to the peer on the new endpoint, so that
 				// it gets tested and we can look for the health change on the next pass
 				s.peerKnowledge.forcePing(s.signer.PublicKey, peer.PublicKey)
+			} else {
+				log.Debug("Time for ne wEP for %s, but none found", peerName)
 			}
 		}
 	}
