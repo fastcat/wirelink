@@ -59,3 +59,13 @@ func AllowedIPFactFull(aip net.IPNet, peer *wgtypes.Key, expires time.Time) *fac
 	}
 	return ret
 }
+
+// MemberFactFull returns a membership fact for the given peer
+func MemberFactFull(peer *wgtypes.Key, expires time.Time) *fact.Fact {
+	return &fact.Fact{
+		Attribute: fact.AttributeMember,
+		Subject:   &fact.PeerSubject{Key: *peer},
+		Expires:   expires,
+		Value:     &fact.EmptyValue{},
+	}
+}

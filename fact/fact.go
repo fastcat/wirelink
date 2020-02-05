@@ -21,6 +21,7 @@ const (
 	AttributeEndpointV6    Attribute = 'E'
 	AttributeAllowedCidrV4 Attribute = 'a'
 	AttributeAllowedCidrV6 Attribute = 'A'
+	AttributeMember        Attribute = 'm'
 	// A signed group is a bit different from other facts
 	// in this case, the subject is actually the source,
 	// and the value is a signed aggregate of other facts.

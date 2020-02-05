@@ -52,7 +52,7 @@ func TestShouldAccept(t *testing.T) {
 		fact.AttributeAllowedCidrV4,
 		fact.AttributeAllowedCidrV6,
 	}
-	allLevels := []Level{Untrusted, Endpoint, AllowedIPs, AddPeer, DelPeer, SetTrust}
+	allLevels := []Level{Untrusted, Endpoint, AllowedIPs, Membership, DelegateTrust}
 
 	tests := []test{
 		{"nil trust", args{fact.AttributeAlive, true, nil}, false},
@@ -60,9 +60,9 @@ func TestShouldAccept(t *testing.T) {
 	tests = append(tests, matrix("gigo", invalidAttrs, false, allLevels, false)...)
 	tests = append(tests, matrix("gigo", invalidAttrs, true, allLevels, false)...)
 	tests = append(tests, matrix("new peer", validAttrs, false, []Level{Untrusted, Endpoint, AllowedIPs}, false)...)
-	tests = append(tests, matrix("new peer", validAttrs, false, []Level{AddPeer, DelPeer, SetTrust}, true)...)
+	tests = append(tests, matrix("new peer", validAttrs, false, []Level{Membership, DelegateTrust}, true)...)
 	tests = append(tests, matrix("aip", aipAttrs, true, []Level{Untrusted, Endpoint}, false)...)
-	tests = append(tests, matrix("aip", aipAttrs, true, []Level{AllowedIPs, AddPeer, DelPeer, SetTrust}, true)...)
+	tests = append(tests, matrix("aip", aipAttrs, true, []Level{AllowedIPs, Membership, DelegateTrust}, true)...)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

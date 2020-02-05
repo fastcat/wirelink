@@ -86,7 +86,7 @@ func Test_routeBasedTrust_TrustLevel(t *testing.T) {
 			"known router",
 			routerList(k1),
 			mkArgs(k2, k1),
-			Ptr(AllowedIPs),
+			Ptr(Membership),
 		},
 	}
 	for _, tt := range tests {

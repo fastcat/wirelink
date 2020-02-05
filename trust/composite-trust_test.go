@@ -176,21 +176,21 @@ func Test_composite_TrustLevel(t *testing.T) {
 		pattern("nobody knows", LeastPermission, nil, nil, nil),
 		pattern("nobody knows", MostPermission, nil, nil, nil),
 
-		fancyPattern("first knows", FirstOnly, Ptr(AddPeer), Ptr(SetTrust), Ptr(AddPeer), true, false),
-		pattern("first knows", LeastPermission, Ptr(AddPeer), Ptr(SetTrust), Ptr(AddPeer)),
-		pattern("first knows", MostPermission, Ptr(AddPeer), Ptr(SetTrust), Ptr(SetTrust)),
+		fancyPattern("first knows", FirstOnly, Ptr(Membership), Ptr(DelegateTrust), Ptr(Membership), true, false),
+		pattern("first knows", LeastPermission, Ptr(Membership), Ptr(DelegateTrust), Ptr(Membership)),
+		pattern("first knows", MostPermission, Ptr(Membership), Ptr(DelegateTrust), Ptr(DelegateTrust)),
 
 		// nil shouldn't count as "first"
-		pattern("second knows", FirstOnly, nil, Ptr(AddPeer), Ptr(AddPeer)),
-		pattern("second knows", LeastPermission, nil, Ptr(AddPeer), Ptr(AddPeer)),
-		pattern("second knows", MostPermission, nil, Ptr(AddPeer), Ptr(AddPeer)),
+		pattern("second knows", FirstOnly, nil, Ptr(Membership), Ptr(Membership)),
+		pattern("second knows", LeastPermission, nil, Ptr(Membership), Ptr(Membership)),
+		pattern("second knows", MostPermission, nil, Ptr(Membership), Ptr(Membership)),
 
-		fancyPattern("varying levels", FirstOnly, Ptr(Untrusted), Ptr(SetTrust), Ptr(Untrusted), true, false),
-		pattern("varying levels", LeastPermission, Ptr(Untrusted), Ptr(SetTrust), Ptr(Untrusted)),
-		pattern("varying levels", MostPermission, Ptr(Untrusted), Ptr(SetTrust), Ptr(SetTrust)),
+		fancyPattern("varying levels", FirstOnly, Ptr(Untrusted), Ptr(DelegateTrust), Ptr(Untrusted), true, false),
+		pattern("varying levels", LeastPermission, Ptr(Untrusted), Ptr(DelegateTrust), Ptr(Untrusted)),
+		pattern("varying levels", MostPermission, Ptr(Untrusted), Ptr(DelegateTrust), Ptr(DelegateTrust)),
 
-		pattern("decreasing levels", LeastPermission, Ptr(SetTrust), Ptr(Untrusted), Ptr(Untrusted)),
-		pattern("decreasing levels", MostPermission, Ptr(SetTrust), Ptr(Untrusted), Ptr(SetTrust)),
+		pattern("decreasing levels", LeastPermission, Ptr(DelegateTrust), Ptr(Untrusted), Ptr(Untrusted)),
+		pattern("decreasing levels", MostPermission, Ptr(DelegateTrust), Ptr(Untrusted), Ptr(DelegateTrust)),
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

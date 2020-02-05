@@ -70,7 +70,7 @@ func (rbt *routeBasedTrust) TrustLevel(f *fact.Fact, source net.UDPAddr) *Level 
 	// re-evaluating this each time instead of caching it once at startup is
 	// intentional as peer AIPs that drive this can change
 	if detect.IsPeerRouter(peer.peer) {
-		ret := AllowedIPs
+		ret := Membership
 		return &ret
 	}
 

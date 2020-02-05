@@ -40,6 +40,7 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) error {
 		// peers we shouldn't add
 		localPeers := make(map[wgtypes.Key]bool)
 		removePeer := make(map[wgtypes.Key]bool)
+		validPeers := make(map[wgtypes.Key]bool)
 
 		// don't need the group members to cancel when one of them fails
 		var eg errgroup.Group
@@ -52,11 +53,17 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) error {
 			!s.config.IsRouterNow &&
 			s.config.Peers.Trust(dev.PublicKey, trust.Untrusted) < trust.AllowedIPs
 
-		// loop over the peers once to update their current state flags before we modify anything
-		// this is important for some race conditions where a trust source is going offline
+		// loop over the local peers once to update their current state flags
+		// before we modify anything. this is important for some race conditions
+		// where a trust source is going offline.
 		for i := range dev.Peers {
 			peer := &dev.Peers[i]
 			localPeers[peer.PublicKey] = true
+			_, ok := factsByPeer[peer.PublicKey]
+			// if we have no info about a local peer, flag it for deletion
+			if !ok {
+				removePeer[peer.PublicKey] = true
+			}
 			// alive check uses 0 for the maxTTL, as we just care whether the alive fact
 			// is still valid now
 			newAlive, bootID := s.peerKnowledge.peerAlive(peer.PublicKey, 0)
@@ -65,14 +72,24 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) error {
 			s.peerConfig.Set(peer.PublicKey, ps)
 		}
 
+		// loop over the facts to identify valid and invalid peers from that list
+		for peer, factGroup := range factsByPeer {
+			if !fact.SliceHas(factGroup, func(f *fact.Fact) bool { return f.Attribute == fact.AttributeMember }) {
+				validPeers[peer] = true
+			} else {
+				removePeer[peer] = true
+			}
+		}
+
 		// do another loop to actually modify the peer configs
 		updatePeer := func(peer *wgtypes.Peer, allowAdd bool) {
 			factGroup, ok := factsByPeer[peer.PublicKey]
-			// if we have no info about a peer, flag it for deletion
 			if !ok {
-				removePeer[peer.PublicKey] = true
+				// should never get here
+				log.Error("BUG detected: updating unknown peer: %s", s.peerName(peer.PublicKey))
 				return
 			}
+
 			pcs, _ := s.peerConfig.Get(peer.PublicKey)
 			eg.Go(func() error {
 				newState, err := s.configurePeer(pcs, peer, factGroup, allowDeconfigure, allowAdd)
@@ -83,35 +100,52 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) error {
 		}
 		for i := range dev.Peers {
 			peer := &dev.Peers[i]
-			updatePeer(peer, false)
+			// if the peer is valid, update it (important we don't start updating a
+			// peer here that we will delete below)
+			if validPeers[peer.PublicKey] {
+				updatePeer(peer, false)
+			}
 		}
 
-		// add peers for which we have trusted facts but which are not present in
-		// the local device
+		// in the second pass, we add new peers where appropriate
 		for peer := range factsByPeer {
+			// don't add peers we already have
 			if localPeers[peer] {
 				continue
 			}
+			// don't try to configure the local device as its own peer
 			if peer == dev.PublicKey {
-				// don't try to configure the local device as its own peer
 				continue
 			}
-			// don't delete if if we're adding it
-			delete(removePeer, peer)
+			// don't add peers for which we don't have a Membership fact
+			if !validPeers[peer] {
+				continue
+			}
+			// should not be possible to have peer in valid and remove sets
+			if removePeer[peer] {
+				log.Error("BUG detected: have peer both valid and to-delete: %s", s.peerName(peer))
+				continue
+			}
+
 			log.Info("Adding new local peer %s", s.peerName(peer))
-			updatePeer(&wgtypes.Peer{
-				PublicKey: peer,
-			}, true)
+			updatePeer(&wgtypes.Peer{PublicKey: peer}, true)
 		}
 
-		// recalculate `allowDeconfigure` a bit more strictly: if we have trust to
-		// add AIPs but not add peers (WAT?), we may want to delete peers we didn't
-		// want to deconfigure above. this may never do anything, because we'll
-		// always have local facts about these peers.
+		// if we are a trusted source of Membership, then we shouldn't have any
+		// peers to remove
+		if s.config.IsRouterNow || s.config.Peers.Trust(dev.PublicKey, trust.Untrusted) >= trust.Membership {
+			for peer, r := range removePeer {
+				if r {
+					log.Error("BUG detected: trust source wants to remove peer: %s", s.peerName(peer))
+					allowDeconfigure = false
+				}
+			}
+		}
+
+		// we may want to delete peers that we didn't want to deconfigure above
 		allowDeconfigure = now.Sub(startTime) > FactTTL &&
 			!s.config.IsRouterNow &&
-			s.config.Peers.Trust(dev.PublicKey, trust.Untrusted) < trust.AddPeer
-
+			s.config.Peers.Trust(dev.PublicKey, trust.Untrusted) < trust.Membership
 		if allowDeconfigure {
 			eg.Go(func() error { return s.deletePeers(dev, removePeer) })
 		}
@@ -128,34 +162,49 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) error {
 
 // deletePeers takes a map (mostly a set) of candidate peers to delete, decides
 // whether any peer deletion should happen, and deletes the flagged peers that
-// are safe to delete. For peer deletion to happen, the local node must not be
-// a router, must not be configured with trust >= AddTrust, and there needs to
-// be a peer with DelPeer trust that has been online & healthy long enough to
-// believe we have all its facts. For an individual peer to be deleted, it
-// needs to be flagged for deletion, and must not be statically configured (as
-// it would just get immediately re-added in that case).
+// are safe to delete. For peer deletion to happen, there needs to be a peer
+// with Membership trust that has been online & healthy long enough to believe
+// we have all its facts. The caller is responsible for checking the local node
+// state for deletion safety, e.g. uptime and local trust mode. For an
+// individual peer to be deleted, it needs to be flagged for deletion, and must
+// not be statically configured (as it would just get immediately re-added in
+// that case).
 func (s *LinkServer) deletePeers(
 	dev *wgtypes.Device,
 	removePeer map[wgtypes.Key]bool,
 ) (err error) {
+	now := time.Now()
+
+	peerHealthyEnough := func(key wgtypes.Key) bool {
+		pcs, ok := s.peerConfig.Get(key)
+		if !ok {
+			return false
+		}
+		//FIXME: this can go wrong and cause us to delete peers, because facts
+		// are allowed to get very close to expiration before being renewed
+		if !pcs.IsHealthy() || now.Sub(pcs.AliveSince()) < FactTTL {
+			return false
+		}
+		return true
+	}
+
 	doDelPeers := false
-	if !s.config.IsRouterNow && s.config.Peers.Trust(dev.PublicKey, trust.Untrusted) < trust.AddPeer {
-		now := time.Now()
-		for pk, pc := range s.config.Peers {
-			if pc.Trust == nil || *pc.Trust < trust.DelPeer {
-				continue
-			}
-			pcs, ok := s.peerConfig.Get(pk)
-			if !ok {
-				continue
-			}
-			//FIXME: this can go wrong and cause us to delete peers, because facts
-			// are allowed to get very close to expiration before being renewed
-			if !pcs.IsHealthy() || now.Sub(pcs.AliveSince()) < FactTTL {
-				continue
-			}
+	for pk, pc := range s.config.Peers {
+		if pc.Trust == nil || *pc.Trust < trust.Membership {
+			continue
+		}
+		if peerHealthyEnough(pk) {
 			doDelPeers = true
 			break
+		}
+	}
+	if !doDelPeers && !s.config.Peers.AnyTrustedAt(trust.Membership) {
+		// if we're in full-auto mode, check for a router as a trust source
+		for _, peer := range dev.Peers {
+			if detect.IsPeerRouter(&peer) && peerHealthyEnough(peer.PublicKey) {
+				doDelPeers = true
+				break
+			}
 		}
 	}
 
@@ -168,12 +217,13 @@ func (s *LinkServer) deletePeers(
 		if !removePeer[peer.PublicKey] {
 			continue
 		}
-		// never delete routers, they have implicit trust
-		if detect.IsPeerRouter(&peer) {
-			continue
-		}
 		// don't delete statically configured peers, they'd just get re-added
 		if s.config.Peers.Has(peer.PublicKey) {
+			continue
+		}
+		// don't delete routers if we have no other sources of membership trust
+		// (i.e. we are in full-auto mode).
+		if detect.IsPeerRouter(&peer) && !s.config.Peers.AnyTrustedAt(trust.Membership) {
 			continue
 		}
 		log.Info("Removing peer: %s", s.peerName(peer.PublicKey))
@@ -232,9 +282,11 @@ func (s *LinkServer) configurePeer(
 			}
 		}
 	} else {
-		// we assume caller has set `allowDeconfigure` in awareness of whether we
-		// are a router, so we only need to check the individual peer
-		if allowDeconfigure && !detect.IsPeerRouter(peer) {
+		// we assume caller has set `allowDeconfigure` in awareness of any local
+		// node aspects. There should be no harm in deconfiguring a dead router,
+		// as it won't work to route packets while it's dead, and we'll reconfigure
+		// it as soon as it comes back online.
+		if allowDeconfigure {
 			pcfg = apply.OnlyAutoIP(peer, pcfg)
 			if pcfg != nil && pcfg.ReplaceAllowedIPs {
 				log.Info("Restricting peer to be IPv6-LL only: %s", peerName)

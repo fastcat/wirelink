@@ -11,7 +11,13 @@ import (
 )
 
 // LocalFacts gets all the known facts about a local peer
-func LocalFacts(peer *wgtypes.Peer, ttl time.Duration, trustLocalAIPs bool, now time.Time) (ret []*fact.Fact, err error) {
+func LocalFacts(
+	peer *wgtypes.Peer,
+	ttl time.Duration,
+	trustLocalAIPs bool,
+	trustLocalMembership bool,
+	now time.Time,
+) (ret []*fact.Fact, err error) {
 	//NOTE: we can represent more than 255 seconds at the protocol level now,
 	// but longer than that is probably a bad idea for the time being
 	if ttl.Seconds() < 0 || ttl.Seconds() > 255 {
@@ -53,6 +59,10 @@ func LocalFacts(peer *wgtypes.Peer, ttl time.Duration, trustLocalAIPs bool, now 
 				addAttr(fact.AttributeAllowedCidrV6, &fact.IPNetValue{IPNet: peerIP})
 			}
 		}
+	}
+
+	if trustLocalMembership {
+		addAttr(fact.AttributeMember, &fact.EmptyValue{})
 	}
 
 	return ret, nil

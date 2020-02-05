@@ -91,3 +91,14 @@ func SortedCopy(facts []*Fact) []*Fact {
 	})
 	return sorted
 }
+
+// SliceHas returns true if and only if predicate returns true for a fact in the
+// given slice
+func SliceHas(facts []*Fact, predicate func(*Fact) bool) bool {
+	for _, f := range facts {
+		if predicate(f) {
+			return true
+		}
+	}
+	return false
+}

@@ -20,36 +20,32 @@ const (
 	// AllowedIPs means we should trust it enough to add AllowedIPs to our local
 	// configuration for the peer, if we can make a direct connection to it
 	AllowedIPs
-	// AddPeer means we should trust it enough to add it as a new peer in the
-	// local configuration if we don't have it
-	AddPeer
-	// DelPeer means that that we trust it enough to remove any peers it doesn't
-	// tell us exist (assuming it's online, and no other AddPeer contradicts it)
-	DelPeer
-	// SetTrust means a peer is trusted to tell us the trust level of other peers
-	SetTrust
+	// Membership means that we trust it enough to determine which peers are part
+	// of the network, adding peers it tells us should be members, and removing
+	// those that no such trusted peer recognizes
+	Membership
+	// DelegateTrust means a peer is trusted to tell us the trust level of others
+	DelegateTrust
 )
 
 // Values is a handy map to ease parsing strings to trust levels.
 // FIXME: this is mutable, golang doesn't allow const/immutable maps
 var Values map[string]Level = map[string]Level{
-	"Untrusted":  Untrusted,
-	"Endpoint":   Endpoint,
-	"AllowedIPs": AllowedIPs,
-	"AddPeer":    AddPeer,
-	"DelPeer":    DelPeer,
-	"SetTrust":   SetTrust,
+	"Untrusted":     Untrusted,
+	"Endpoint":      Endpoint,
+	"AllowedIPs":    AllowedIPs,
+	"Membership":    Membership,
+	"DelegateTrust": DelegateTrust,
 }
 
 // Names is a handy map to ease stringifying trust levels.
 // FIXME: this is mutable, golang doesn't allow const/immutable maps
 var Names map[Level]string = map[Level]string{
-	Untrusted:  "Untrusted",
-	Endpoint:   "Endpoint",
-	AllowedIPs: "AllowedIPs",
-	AddPeer:    "AddPeer",
-	DelPeer:    "DelPeer",
-	SetTrust:   "SetTrust",
+	Untrusted:     "Untrusted",
+	Endpoint:      "Endpoint",
+	AllowedIPs:    "AllowedIPs",
+	Membership:    "Membership",
+	DelegateTrust: "DelegateTrust",
 }
 
 func (l Level) String() string {
@@ -82,7 +78,7 @@ func ShouldAccept(attr fact.Attribute, known bool, level *Level) bool {
 		return false
 	}
 	// default threshold is effectively infinite, to be safe
-	threshold := SetTrust
+	threshold := DelegateTrust
 	switch attr {
 	case fact.AttributeUnknown:
 		// these are just "ping" packets, we should never store or relay them
@@ -97,13 +93,17 @@ func ShouldAccept(attr fact.Attribute, known bool, level *Level) bool {
 		fallthrough
 	case fact.AttributeAllowedCidrV6:
 		threshold = AllowedIPs
+
+	case fact.AttributeMember:
+		threshold = Membership
+
 	default:
 		// unknown attribute
 		return false
 	}
 	// if the peer isn't known to us, then the threshold moves up
-	if !known && threshold < AddPeer {
-		threshold = AddPeer
+	if !known && threshold < Membership {
+		threshold = Membership
 	}
 	return *level >= threshold
 }

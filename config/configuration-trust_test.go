@@ -48,13 +48,13 @@ func Test_configEvaluator_TrustLevel(t *testing.T) {
 		},
 		{
 			"known peer configured",
-			Peers{k1: &Peer{Trust: trust.Ptr(trust.AddPeer)}},
+			Peers{k1: &Peer{Trust: trust.Ptr(trust.Membership)}},
 			args{source: *k1u},
-			trust.Ptr(trust.AddPeer),
+			trust.Ptr(trust.Membership),
 		},
 		{
 			"unknown peer",
-			Peers{k2: &Peer{Trust: trust.Ptr(trust.DelPeer)}},
+			Peers{k2: &Peer{Trust: trust.Ptr(trust.Membership)}},
 			args{source: *k1u},
 			nil,
 		},

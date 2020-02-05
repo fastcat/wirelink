@@ -57,16 +57,15 @@ func TestPeers_Trust(t *testing.T) {
 		want trust.Level
 	}{
 		{"nil peers, default trust", nil, args{k1, trust.Untrusted}, trust.Untrusted},
-		{"nil peers, high trust", nil, args{k1, trust.SetTrust}, trust.SetTrust},
-		{"other peer", Peers{k2: &Peer{Trust: nil}}, args{k1, trust.DelPeer}, trust.DelPeer},
-		{"has nil", Peers{k1: &Peer{Trust: nil}}, args{k1, trust.DelPeer}, trust.DelPeer},
-		{"has value", bothPeers(trust.SetTrust, trust.AddPeer), args{k1, trust.DelPeer}, trust.SetTrust},
+		{"nil peers, high trust", nil, args{k1, trust.DelegateTrust}, trust.DelegateTrust},
+		{"other peer", Peers{k2: &Peer{Trust: nil}}, args{k1, trust.Membership}, trust.Membership},
+		{"has nil", Peers{k1: &Peer{Trust: nil}}, args{k1, trust.Membership}, trust.Membership},
+		{"has value", bothPeers(trust.DelegateTrust, trust.Membership), args{k1, trust.Membership}, trust.DelegateTrust},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.p.Trust(tt.args.peer, tt.args.def); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Peers.Trust() = %v, want %v", got, tt.want)
-			}
+			got := tt.p.Trust(tt.args.peer, tt.args.def)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

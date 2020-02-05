@@ -75,6 +75,11 @@ func (f *Fact) DecodeFrom(lengthHint int, reader io.Reader) error {
 		f.Subject = &PeerSubject{}
 		f.Value = &IPNetValue{}
 
+	case AttributeMember:
+		// member attrs don't have a value
+		f.Subject = &PeerSubject{}
+		f.Value = &EmptyValue{}
+
 	case AttributeSignedGroup:
 		f.Subject = &PeerSubject{}
 		f.Value = &SignedGroupValue{}

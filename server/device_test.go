@@ -133,6 +133,13 @@ func TestLinkServer_collectFacts(t *testing.T) {
 					Value:   &fact.IPNetValue{IPNet: ipn3},
 					Expires: now.Add(FactTTL),
 				},
+				// should know the remote as a member
+				&fact.Fact{
+					Attribute: fact.AttributeMember,
+					Subject:   &fact.PeerSubject{Key: k2},
+					Value:     &fact.EmptyValue{},
+					Expires:   now.Add(FactTTL),
+				},
 			},
 			false,
 		},

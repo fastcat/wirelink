@@ -162,3 +162,25 @@ func TestParseCidrV6(t *testing.T) {
 		assert.Equal(t, ipn.Mask, f.Value.(*IPNetValue).Mask)
 	}
 }
+
+func TestParseMember(t *testing.T) {
+	key := testutils.MustKey(t)
+
+	f, p := mustSerialize(t, &Fact{
+		Attribute: AttributeMember,
+		Expires:   time.Time{},
+		Subject:   &PeerSubject{Key: key},
+		Value:     &EmptyValue{},
+	})
+	t.Logf("Member packet: %v", p)
+
+	f = mustDeserialize(t, p)
+
+	assert.Equal(t, AttributeMember, f.Attribute)
+
+	if assert.IsType(t, &PeerSubject{}, f.Subject) {
+		assert.Equal(t, key, f.Subject.(*PeerSubject).Key)
+	}
+
+	assert.IsType(t, &EmptyValue{}, f.Value)
+}

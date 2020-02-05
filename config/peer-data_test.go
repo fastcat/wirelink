@@ -64,12 +64,12 @@ func TestPeerData_Parse(t *testing.T) {
 			fields{
 				PublicKey: k.String(),
 				Name:      "xyzzy",
-				Trust:     trust.Names[trust.AddPeer],
+				Trust:     trust.Names[trust.Membership],
 			},
 			k,
 			Peer{
 				Name:       "xyzzy",
-				Trust:      trust.Ptr(trust.AddPeer),
+				Trust:      trust.Ptr(trust.Membership),
 				Endpoints:  []PeerEndpoint{},
 				AllowedIPs: []net.IPNet{},
 			},

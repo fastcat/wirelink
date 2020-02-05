@@ -94,11 +94,9 @@ func deviceWithPeerSimple(key wgtypes.Key) *wgtypes.Device {
 	}
 }
 
-func deviceWithPeer(peer wgtypes.Peer) *wgtypes.Device {
+func deviceWithPeers(peers ...wgtypes.Peer) *wgtypes.Device {
 	return &wgtypes.Device{
-		Peers: []wgtypes.Peer{
-			peer,
-		},
+		Peers: peers,
 	}
 }
 
@@ -128,7 +126,10 @@ func TestLinkServer_deletePeers(t *testing.T) {
 	wgIface := fmt.Sprintf("wg%d", rand.Int())
 	k1 := testutils.MustKey(t)
 	k2 := testutils.MustKey(t)
-	ipnRouter := testutils.RandIPNet(t, net.IPv4len, []byte{100}, nil, 24)
+	k3 := testutils.MustKey(t)
+	ipnRouter1 := testutils.RandIPNet(t, net.IPv4len, []byte{100}, nil, 24)
+	ipnRouter2 := testutils.RandIPNet(t, net.IPv4len, []byte{100}, nil, 24)
+	ipnHost := testutils.RandIPNet(t, net.IPv4len, []byte{100}, nil, 32)
 
 	type fields struct {
 		config     *config.Server
@@ -160,12 +161,12 @@ func TestLinkServer_deletePeers(t *testing.T) {
 		{
 			"delete one",
 			fields{
-				// need a peer that has DelTrust
+				// need a peer that has Membership
 				buildConfig(wgIface).withPeer(k1, &config.Peer{
-					Trust: trust.Ptr(trust.DelPeer),
+					Trust: trust.Ptr(trust.Membership),
 				}).Build(),
 				map[wgtypes.Key]*apply.PeerConfigState{
-					// k1 must be alive & healthy, for a while, for its DelPeer trust
+					// k1 must be alive & healthy, for a while, for its Membership trust
 					// to take effect
 					k1: makePCS(t, true, true, true),
 				},
@@ -192,27 +193,78 @@ func TestLinkServer_deletePeers(t *testing.T) {
 			false,
 		},
 		{
-			"don't delete remote routers",
+			"don't delete remote routers in full-auto mode",
 			fields{
-				// need a peer that has DelTrust
+				buildConfig(wgIface).Build(),
+				map[wgtypes.Key]*apply.PeerConfigState{
+					// need a live router to enable deletion in this mode
+					k3: makePCS(t, true, true, true),
+				},
+				func(t *testing.T) *mocks.WgClient {
+					// should only delete k1, not k2 or k3
+					ret := &mocks.WgClient{}
+					ret.On("ConfigureDevice", wgIface, wgtypes.Config{
+						Peers: []wgtypes.PeerConfig{
+							wgtypes.PeerConfig{
+								PublicKey: k1,
+								Remove:    true,
+							},
+						},
+					}).Return(nil)
+					return ret
+				},
+			},
+			args{
+				// we include a non-router that we do expect to be deleted to ensure that
+				// the router peer is not deleted for the right reasons, and a second
+				// healthy router that is required to enable deletion
+				deviceWithPeers(wgtypes.Peer{
+					PublicKey:  k1,
+					AllowedIPs: []net.IPNet{ipnHost},
+				}, wgtypes.Peer{
+					PublicKey:  k2,
+					AllowedIPs: []net.IPNet{ipnRouter1},
+				}, wgtypes.Peer{
+					PublicKey:  k3,
+					AllowedIPs: []net.IPNet{ipnRouter2},
+				}),
+				map[wgtypes.Key]bool{
+					k1: true,
+					k2: true,
+				},
+			},
+			false,
+		},
+		{
+			"do delete remote routers when there is another trust source",
+			fields{
+				// need a peer that has Membership
 				buildConfig(wgIface).withPeer(k1, &config.Peer{
-					Trust: trust.Ptr(trust.DelPeer),
+					Trust: trust.Ptr(trust.Membership),
 				}).Build(),
 				map[wgtypes.Key]*apply.PeerConfigState{
-					// k1 must be alive & healthy, for a while, for its DelPeer trust
+					// k1 must be alive & healthy, for a while, for its Membership trust
 					// to take effect
 					k1: makePCS(t, true, true, true),
 				},
 				func(t *testing.T) *mocks.WgClient {
-					// should not be called
-					return &mocks.WgClient{}
+					ret := &mocks.WgClient{}
+					ret.On("ConfigureDevice", wgIface, wgtypes.Config{
+						Peers: []wgtypes.PeerConfig{
+							wgtypes.PeerConfig{
+								PublicKey: k2,
+								Remove:    true,
+							},
+						},
+					}).Return(nil)
+					return ret
 				},
 			},
 			args{
 				// k2 must exist to delete it
-				deviceWithPeer(wgtypes.Peer{
+				deviceWithPeers(wgtypes.Peer{
 					PublicKey:  k2,
-					AllowedIPs: []net.IPNet{ipnRouter},
+					AllowedIPs: []net.IPNet{ipnRouter1},
 				}),
 				map[wgtypes.Key]bool{
 					k2: true,
