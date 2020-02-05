@@ -50,7 +50,11 @@
   * Add a separate Membership fact that we only accept from >= `AddPeer`?
   * Can avoid generating local Membership facts if we don't trust ourselves,
     akin to how we do for AllowedIPs
-  * What if local is AddPeer, but there's a DelPeer out there?
+  * What if local is `AddPeer`, but there's a `DelPeer` out there?
+    * What if the `DelPeer` is offline?
+  * Separation of `AddPeer` and `DelPeer` doesn't make sense, should probably
+    just flatten to `Membership`
+  * And rename `SetTrust` to `DelegateTrust`
 
 ## Fancy
 
