@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
 	"net"
 	"sync"
 	"testing"
@@ -15,8 +17,11 @@ import (
 	"github.com/fastcat/wirelink/config"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/internal"
+	"github.com/fastcat/wirelink/internal/mocks"
 	"github.com/fastcat/wirelink/internal/networking"
+	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/fastcat/wirelink/signing"
+	"github.com/fastcat/wirelink/trust"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -79,22 +84,56 @@ func TestLinkServer_configurePeers(t *testing.T) {
 	}
 }
 
+func deviceWithPeerSimple(key wgtypes.Key) *wgtypes.Device {
+	return &wgtypes.Device{
+		Peers: []wgtypes.Peer{
+			wgtypes.Peer{
+				PublicKey: key,
+			},
+		},
+	}
+}
+
+func deviceWithPeer(peer wgtypes.Peer) *wgtypes.Device {
+	return &wgtypes.Device{
+		Peers: []wgtypes.Peer{
+			peer,
+		},
+	}
+}
+
+type configBuilder config.Server
+
+func buildConfig(name string) *configBuilder {
+	ret := &configBuilder{}
+	ret.Iface = name
+	return ret
+}
+func (c *configBuilder) withPeer(key wgtypes.Key, peer *config.Peer) *configBuilder {
+	if c == nil {
+		c = &configBuilder{}
+	}
+	if c.Peers == nil {
+		c.Peers = make(config.Peers)
+	}
+	c.Peers[key] = peer
+	return c
+}
+
+func (c *configBuilder) Build() *config.Server {
+	return (*config.Server)(c)
+}
+
 func TestLinkServer_deletePeers(t *testing.T) {
+	wgIface := fmt.Sprintf("wg%d", rand.Int())
+	k1 := testutils.MustKey(t)
+	k2 := testutils.MustKey(t)
+	ipnRouter := testutils.RandIPNet(t, net.IPv4len, []byte{100}, nil, 24)
+
 	type fields struct {
-		bootID          uuid.UUID
-		stateAccess     *sync.Mutex
-		config          *config.Server
-		net             networking.Environment
-		conn            *net.UDPConn
-		addr            net.UDPAddr
-		ctrl            internal.WgClient
-		eg              *errgroup.Group
-		ctx             context.Context
-		cancel          context.CancelFunc
-		peerKnowledge   *peerKnowledgeSet
-		peerConfig      *peerConfigSet
-		signer          *signing.Signer
-		printsRequested *int32
+		config     *config.Server
+		peerStates map[wgtypes.Key]*apply.PeerConfigState
+		ctrl       func(*testing.T) *mocks.WgClient
 	}
 	type args struct {
 		dev        *wgtypes.Device
@@ -106,25 +145,125 @@ func TestLinkServer_deletePeers(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			"no-op",
+			fields{
+				&config.Server{},
+				nil,
+				func(t *testing.T) *mocks.WgClient {
+					return &mocks.WgClient{}
+				},
+			},
+			args{&wgtypes.Device{}, nil},
+			false,
+		},
+		{
+			"delete one",
+			fields{
+				// need a peer that has DelTrust
+				buildConfig(wgIface).withPeer(k1, &config.Peer{
+					Trust: trust.Ptr(trust.DelPeer),
+				}).Build(),
+				map[wgtypes.Key]*apply.PeerConfigState{
+					// k1 must be alive & healthy, for a while, for its DelPeer trust
+					// to take effect
+					k1: makePCS(t, true, true, true),
+				},
+				func(t *testing.T) *mocks.WgClient {
+					ret := &mocks.WgClient{}
+					ret.On("ConfigureDevice", wgIface, wgtypes.Config{
+						Peers: []wgtypes.PeerConfig{
+							wgtypes.PeerConfig{
+								PublicKey: k2,
+								Remove:    true,
+							},
+						},
+					}).Return(nil)
+					return ret
+				},
+			},
+			args{
+				// k2 must exist to delete it
+				deviceWithPeerSimple(k2),
+				map[wgtypes.Key]bool{
+					k2: true,
+				},
+			},
+			false,
+		},
+		{
+			"don't delete remote routers",
+			fields{
+				// need a peer that has DelTrust
+				buildConfig(wgIface).withPeer(k1, &config.Peer{
+					Trust: trust.Ptr(trust.DelPeer),
+				}).Build(),
+				map[wgtypes.Key]*apply.PeerConfigState{
+					// k1 must be alive & healthy, for a while, for its DelPeer trust
+					// to take effect
+					k1: makePCS(t, true, true, true),
+				},
+				func(t *testing.T) *mocks.WgClient {
+					// should not be called
+					return &mocks.WgClient{}
+				},
+			},
+			args{
+				// k2 must exist to delete it
+				deviceWithPeer(wgtypes.Peer{
+					PublicKey:  k2,
+					AllowedIPs: []net.IPNet{ipnRouter},
+				}),
+				map[wgtypes.Key]bool{
+					k2: true,
+				},
+			},
+			false,
+		},
+		{
+			"don't delete remote fact exchangers",
+			fields{
+				// need a peer that has DelTrust
+				buildConfig(wgIface).withPeer(k1, &config.Peer{
+					Trust: trust.Ptr(trust.DelPeer),
+				}).withPeer(k2, &config.Peer{
+					FactExchanger: true,
+				}).Build(),
+				map[wgtypes.Key]*apply.PeerConfigState{
+					// k1 must be alive & healthy, for a while, for its DelPeer trust
+					// to take effect
+					k1: makePCS(t, true, true, true),
+				},
+				func(t *testing.T) *mocks.WgClient {
+					// should not be called
+					return &mocks.WgClient{}
+				},
+			},
+			args{
+				// k2 must exist to delete it
+				deviceWithPeerSimple(k2),
+				map[wgtypes.Key]bool{
+					k2: true,
+				},
+			},
+			false,
+		},
+		// TODO: don't delete when local is router
+		// TODO: don't delete when local is fact exchanger
+		// TODO: don't delete when DelPeer is offline
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctrl := tt.fields.ctrl(t)
+			ctrl.Test(t)
 			s := &LinkServer{
-				bootID:          tt.fields.bootID,
-				stateAccess:     tt.fields.stateAccess,
-				config:          tt.fields.config,
-				net:             tt.fields.net,
-				conn:            tt.fields.conn,
-				addr:            tt.fields.addr,
-				ctrl:            tt.fields.ctrl,
-				eg:              tt.fields.eg,
-				ctx:             tt.fields.ctx,
-				cancel:          tt.fields.cancel,
-				peerKnowledge:   tt.fields.peerKnowledge,
-				peerConfig:      tt.fields.peerConfig,
-				signer:          tt.fields.signer,
-				printsRequested: tt.fields.printsRequested,
+				stateAccess: &sync.Mutex{},
+				config:      tt.fields.config,
+				ctrl:        ctrl,
+				peerConfig: &peerConfigSet{
+					peerStates: tt.fields.peerStates,
+					psm:        &sync.Mutex{},
+				},
 			}
 			err := s.deletePeers(tt.args.dev, tt.args.removePeer)
 			if tt.wantErr {
@@ -132,8 +271,9 @@ func TestLinkServer_deletePeers(t *testing.T) {
 			} else {
 				require.Nil(t, err)
 			}
-
-			// TODO: check mocks
+			// shouldn't change `peerConfig`, other than it having a different mutex
+			assert.Equal(t, tt.fields.peerStates, s.peerConfig.peerStates)
+			ctrl.AssertExpectations(t)
 		})
 	}
 }

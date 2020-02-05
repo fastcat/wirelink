@@ -105,3 +105,9 @@ func ShouldAccept(attr fact.Attribute, known bool, level *Level) bool {
 	}
 	return *level >= threshold
 }
+
+// Ptr is a helper, mostly for tests, to allow specifying a trust constant
+// in a place where a pointer is required.
+func Ptr(level Level) *Level {
+	return &level
+}

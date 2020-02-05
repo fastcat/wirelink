@@ -156,7 +156,7 @@ func TestServerData_Parse(t *testing.T) {
 				Peers: Peers{
 					k1: &Peer{
 						Name:          name,
-						Trust:         trustPtr(trust.DelPeer),
+						Trust:         trust.Ptr(trust.DelPeer),
 						FactExchanger: fe,
 						Basic:         basic,
 						Endpoints: []PeerEndpoint{
