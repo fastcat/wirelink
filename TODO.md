@@ -35,6 +35,16 @@
 * Improved trust models
   * E.g. require a majority of trust sources to agree before adding a peer
     (DelPeer in this mode gets a bit more complicated)
+* Revisit trust levels
+  * Having a DelPeer node in the network makes AddPeer largely meaningless,
+    except in the case where all the DelPeer nodes are offline
+  * Deleting peers may not work properly since leaves may have local facts from
+    an active endpoint for that peer
+  * Peer knowledge would help with this, but it doesn't track received vs. sent,
+    and if we send a peer something it won't send it back to us, so we don't
+    know if we haven't received info because it's duplicate, or ignored
+  * Conflating router status with trust levels at this point is just confusing,
+    at most should only do that if we have no configured trust levels
 
 ## Fancy
 

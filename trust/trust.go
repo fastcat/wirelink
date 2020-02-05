@@ -73,7 +73,9 @@ type Evaluator interface {
 	IsKnown(subject fact.Subject) bool
 }
 
-// ShouldAccept checks whether a fact Attribute should be accepted at a given trust level
+// ShouldAccept checks whether a fact Attribute should be accepted, given the
+// trust level of the source, and whether the peer is already locally
+// configured
 func ShouldAccept(attr fact.Attribute, known bool, level *Level) bool {
 	if level == nil {
 		// no trust evaluator gave an opinion, treat as Untrusted

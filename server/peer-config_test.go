@@ -220,36 +220,9 @@ func TestLinkServer_deletePeers(t *testing.T) {
 			},
 			false,
 		},
-		{
-			"don't delete remote fact exchangers",
-			fields{
-				// need a peer that has DelTrust
-				buildConfig(wgIface).withPeer(k1, &config.Peer{
-					Trust: trust.Ptr(trust.DelPeer),
-				}).withPeer(k2, &config.Peer{
-					FactExchanger: true,
-				}).Build(),
-				map[wgtypes.Key]*apply.PeerConfigState{
-					// k1 must be alive & healthy, for a while, for its DelPeer trust
-					// to take effect
-					k1: makePCS(t, true, true, true),
-				},
-				func(t *testing.T) *mocks.WgClient {
-					// should not be called
-					return &mocks.WgClient{}
-				},
-			},
-			args{
-				// k2 must exist to delete it
-				deviceWithPeerSimple(k2),
-				map[wgtypes.Key]bool{
-					k2: true,
-				},
-			},
-			false,
-		},
 		// TODO: don't delete when local is router
-		// TODO: don't delete when local is fact exchanger
+		// TODO: don't delete when local is AddPeer
+		// TODO: don't delete when remote is statically valid
 		// TODO: don't delete when DelPeer is offline
 	}
 	for _, tt := range tests {
@@ -297,7 +270,6 @@ func TestLinkServer_configurePeer(t *testing.T) {
 	}
 	type args struct {
 		inputState       *apply.PeerConfigState
-		self             *wgtypes.Key
 		peer             *wgtypes.Peer
 		facts            []*fact.Fact
 		allowDeconfigure bool
@@ -330,7 +302,7 @@ func TestLinkServer_configurePeer(t *testing.T) {
 				signer:          tt.fields.signer,
 				printsRequested: tt.fields.printsRequested,
 			}
-			gotState, err := s.configurePeer(tt.args.inputState, tt.args.self, tt.args.peer, tt.args.facts, tt.args.allowDeconfigure, tt.args.allowAdd)
+			gotState, err := s.configurePeer(tt.args.inputState, tt.args.peer, tt.args.facts, tt.args.allowDeconfigure, tt.args.allowAdd)
 			if tt.wantErr {
 				require.NotNil(t, err, "LinkServer.configurePeer() error")
 			} else {

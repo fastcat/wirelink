@@ -14,7 +14,8 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-// DeviceFacts returns facts about the local wireguard device
+// DeviceFacts returns facts about the local wireguard device and the peer that
+// it represents, but not about other peers configured in the device.
 func DeviceFacts(
 	dev *wgtypes.Device,
 	now time.Time,
