@@ -70,6 +70,60 @@ func TestPeers_Trust(t *testing.T) {
 	}
 }
 
+func TestPeers_AnyTrustedAt(t *testing.T) {
+	k1 := testutils.MustKey(t)
+
+	type args struct {
+		level trust.Level
+	}
+	tests := []struct {
+		name string
+		p    Peers
+		args args
+		want bool
+	}{
+		{
+			"empty",
+			Peers{},
+			args{trust.Untrusted},
+			false,
+		},
+		{
+			"no set",
+			// this peer is not _flagged_ with a trust level, so even though it would
+			// be `Untrusted`, we don't have anything explicitly configured at that
+			// level, so the wanted return is false
+			Peers{k1: &Peer{}},
+			args{trust.Untrusted},
+			false,
+		},
+		{
+			"no match",
+			Peers{k1: &Peer{Trust: trust.Ptr(trust.Untrusted)}},
+			args{trust.Endpoint},
+			false,
+		},
+		{
+			"match",
+			Peers{k1: &Peer{Trust: trust.Ptr(trust.Endpoint)}},
+			args{trust.Endpoint},
+			true,
+		},
+		{
+			"over-match",
+			Peers{k1: &Peer{Trust: trust.Ptr(trust.Membership)}},
+			args{trust.Endpoint},
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.p.AnyTrustedAt(tt.args.level)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestPeers_IsFactExchanger(t *testing.T) {
 	k1 := testutils.MustKey(t)
 	k2 := testutils.MustKey(t)
