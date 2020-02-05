@@ -83,3 +83,43 @@ func TestMergeList(t *testing.T) {
 		})
 	}
 }
+
+func TestSliceHas(t *testing.T) {
+	f1 := &Fact{}
+	f2 := &Fact{}
+	type args struct {
+		facts     []*Fact
+		predicate func(*Fact) bool
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			"nil",
+			args{nil, nil},
+			false,
+		},
+		{
+			"empty",
+			args{[]*Fact{}, nil},
+			false,
+		},
+		{
+			"no match",
+			args{[]*Fact{f1, f2}, func(*Fact) bool { return false }},
+			false,
+		},
+		{
+			"match",
+			args{[]*Fact{f1, f2}, func(f *Fact) bool { return f == f2 }},
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, SliceHas(tt.args.facts, tt.args.predicate))
+		})
+	}
+}
