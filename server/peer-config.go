@@ -113,6 +113,12 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) error {
 	return nil
 }
 
+// deletePeers takes a map (mostly a set) of candidate peers to delete, decides
+// whether any peer deletion should happen, and delete the flagged peers that
+// are safe to delete. For peer deletion to happen, the local node must not be
+// a router or fact exchanger, and there needs to be a peer with DelPeer trust
+// that is online & healthy. For an individual peer to be deleted, it needs to
+// be flagged, not be a router, and not be a fact exchanger.
 func (s *LinkServer) deletePeers(
 	dev *wgtypes.Device,
 	removePeer map[wgtypes.Key]bool,
@@ -121,7 +127,7 @@ func (s *LinkServer) deletePeers(
 	// and it has been online for longer than the fact TTL so that we are
 	// reasonably sure we have all the data from it ... and we are not a router
 	doDelPeers := false
-	if !s.config.IsRouterNow {
+	if !s.config.IsRouterNow && !s.config.Peers.IsFactExchanger(dev.PublicKey) {
 		now := time.Now()
 		for pk, pc := range s.config.Peers {
 			if pc.Trust == nil || *pc.Trust < trust.DelPeer {
