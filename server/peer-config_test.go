@@ -7,11 +7,7 @@ import (
 	"net"
 	"sync"
 	"testing"
-
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"golang.org/x/sync/errgroup"
+	"time"
 
 	"github.com/fastcat/wirelink/apply"
 	"github.com/fastcat/wirelink/config"
@@ -22,7 +18,10 @@ import (
 	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/fastcat/wirelink/signing"
 	"github.com/fastcat/wirelink/trust"
-
+	"github.com/google/uuid"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -78,6 +77,61 @@ func TestLinkServer_configurePeers(t *testing.T) {
 			} else {
 				require.Nil(t, err)
 			}
+
+			// TODO: check mocks
+		})
+	}
+}
+
+func TestLinkServer_configurePeersOnce(t *testing.T) {
+	type fields struct {
+		bootID          uuid.UUID
+		stateAccess     *sync.Mutex
+		config          *config.Server
+		net             networking.Environment
+		conn            *net.UDPConn
+		addr            net.UDPAddr
+		ctrl            internal.WgClient
+		eg              *errgroup.Group
+		ctx             context.Context
+		cancel          context.CancelFunc
+		peerKnowledge   *peerKnowledgeSet
+		peerConfig      *peerConfigSet
+		signer          *signing.Signer
+		printsRequested *int32
+	}
+	type args struct {
+		newFacts  []*fact.Fact
+		dev       *wgtypes.Device
+		startTime time.Time
+		now       time.Time
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &LinkServer{
+				bootID:          tt.fields.bootID,
+				stateAccess:     tt.fields.stateAccess,
+				config:          tt.fields.config,
+				net:             tt.fields.net,
+				conn:            tt.fields.conn,
+				addr:            tt.fields.addr,
+				ctrl:            tt.fields.ctrl,
+				eg:              tt.fields.eg,
+				ctx:             tt.fields.ctx,
+				cancel:          tt.fields.cancel,
+				peerKnowledge:   tt.fields.peerKnowledge,
+				peerConfig:      tt.fields.peerConfig,
+				signer:          tt.fields.signer,
+				printsRequested: tt.fields.printsRequested,
+			}
+			s.configurePeersOnce(tt.args.newFacts, tt.args.dev, tt.args.startTime, tt.args.now)
 
 			// TODO: check mocks
 		})

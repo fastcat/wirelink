@@ -13,6 +13,7 @@ import (
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/trust"
+	"github.com/fastcat/wirelink/util"
 )
 
 func (s *LinkServer) readPackets(packets chan<- *ReceivedFact) error {
@@ -31,8 +32,14 @@ func (s *LinkServer) readPackets(packets chan<- *ReceivedFact) error {
 			s.conn.SetReadDeadline(time.Now().Add(time.Second))
 			n, addr, err := s.conn.ReadFromUDP(buffer[:])
 			if err != nil {
+				if util.IsNetClosing(err) {
+					// the socket has been closed, we're done
+					return nil
+				}
+
 				if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-					// send a nil to wake up the processor in case it has other work to do
+					// didn't get a packet after our timeout, send a nil to wake up the
+					// processor in case it has other work to do
 					packets <- nil
 					continue
 				}
@@ -176,64 +183,78 @@ func (s *LinkServer) processChunks(
 
 	for chunk := range newFacts {
 		now := time.Now()
-		// accumulate all the still valid and newly valid facts
-		newFactsChunk := make([]*fact.Fact, 0, len(currentFacts)+len(chunk))
-		// add all the not-expired facts
-		for _, f := range currentFacts {
-			if now.Before(f.Expires) {
-				newFactsChunk = append(newFactsChunk, f)
-			}
-		}
-		dev, err := s.deviceState()
+
+		uniqueFacts, newLocalFacts, err := s.processOneChunk(currentFacts, lastLocalFacts, chunk, now)
 		if err != nil {
-			// this probably means the interface is down
-			// the log message will be printed by the main app as it exits
-			return errors.Wrap(err, "Unable to load device info to evaluate trust, giving up")
+			return err
 		}
-		s.UpdateRouterState(dev, true)
-
-		localFacts, err := s.collectFacts(dev, now)
-		if err != nil {
-			log.Error("Unable to collect local facts: %v", err)
-		}
-		// might still have gotten something before the error tho
-		if len(localFacts) != 0 {
-			newFactsChunk = append(newFactsChunk, localFacts...)
-		}
-		// only prune if we retrieved local facts without error
-		if err == nil {
-			newFactsChunk = pruneRemovedLocalFacts(newFactsChunk, lastLocalFacts, localFacts)
-			lastLocalFacts = localFacts
-		}
-
-		pl := createPeerLookup(dev.Peers)
-
-		evaluator := trust.CreateComposite(trust.FirstOnly,
-			// TODO: we can cache the config trust to avoid some re-computation
-			config.CreateTrustEvaluator(s.config.Peers),
-			trust.CreateRouteBasedTrust(dev.Peers),
-		)
-		// add all the new not-expired and _trusted_ facts
-		for _, rf := range chunk {
-			// add to what the peer knows, even if we otherwise discard the information
-			s.peerKnowledge.upsertReceived(rf, pl)
-
-			if now.After(rf.fact.Expires) {
-				continue
-			}
-
-			level := evaluator.TrustLevel(rf.fact, rf.source)
-			known := evaluator.IsKnown(rf.fact.Subject)
-			if trust.ShouldAccept(rf.fact.Attribute, known, level) {
-				newFactsChunk = append(newFactsChunk, rf.fact)
-			}
-		}
-		uniqueFacts := fact.MergeList(newFactsChunk)
-		// TODO: log new/removed facts, ignoring TTL
+		lastLocalFacts = newLocalFacts
 		currentFacts = uniqueFacts
 
 		factsRefreshed <- uniqueFacts
 	}
 
 	return nil
+}
+
+func (s *LinkServer) processOneChunk(
+	currentFacts, lastLocalFacts []*fact.Fact,
+	chunk []*ReceivedFact,
+	now time.Time,
+) (uniqueFacts, newLocalFacts []*fact.Fact, err error) {
+	// accumulate all the still valid and newly valid facts
+	newFactsChunk := make([]*fact.Fact, 0, len(currentFacts)+len(chunk))
+	// add all the not-expired facts
+	for _, f := range currentFacts {
+		if now.Before(f.Expires) {
+			newFactsChunk = append(newFactsChunk, f)
+		}
+	}
+	dev, err := s.deviceState()
+	if err != nil {
+		// this probably means the interface is down
+		// the log message will be printed by the main app as it exits
+		return nil, lastLocalFacts, errors.Wrap(err, "Unable to load device info to evaluate trust, giving up")
+	}
+	s.UpdateRouterState(dev, true)
+
+	localFacts, err := s.collectFacts(dev, now)
+	if err != nil {
+		log.Error("Unable to collect local facts: %v", err)
+	}
+	// might still have gotten something before the error tho
+	if len(localFacts) != 0 {
+		newFactsChunk = append(newFactsChunk, localFacts...)
+	}
+	// only prune if we retrieved local facts without error
+	if err == nil {
+		newFactsChunk = pruneRemovedLocalFacts(newFactsChunk, lastLocalFacts, localFacts)
+		lastLocalFacts = localFacts
+	}
+
+	pl := createPeerLookup(dev.Peers)
+
+	evaluator := trust.CreateComposite(trust.FirstOnly,
+		// TODO: we can cache the config trust to avoid some re-computation
+		config.CreateTrustEvaluator(s.config.Peers),
+		trust.CreateRouteBasedTrust(dev.Peers),
+	)
+	// add all the new not-expired and _trusted_ facts
+	for _, rf := range chunk {
+		// add to what the peer knows, even if we otherwise discard the information
+		s.peerKnowledge.upsertReceived(rf, pl)
+
+		if now.After(rf.fact.Expires) {
+			continue
+		}
+
+		level := evaluator.TrustLevel(rf.fact, rf.source)
+		known := evaluator.IsKnown(rf.fact.Subject)
+		if trust.ShouldAccept(rf.fact.Attribute, known, level) {
+			newFactsChunk = append(newFactsChunk, rf.fact)
+		}
+	}
+	uniqueFacts = fact.MergeList(newFactsChunk)
+	// TODO: log new/removed facts, ignoring TTL
+	return uniqueFacts, lastLocalFacts, nil
 }
