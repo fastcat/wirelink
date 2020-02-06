@@ -17,6 +17,8 @@ import (
 )
 
 func TestParseSignedGroup_Trivial(t *testing.T) {
+	now := time.Now()
+
 	// trivial test: inner is one empty fact
 	// crypto here is all faked
 
@@ -44,7 +46,7 @@ func TestParseSignedGroup_Trivial(t *testing.T) {
 		},
 	})
 
-	f = mustDeserialize(t, p)
+	f = mustDeserialize(t, p, now)
 	assert.Equal(t, AttributeSignedGroup, f.Attribute)
 
 	if assert.IsType(t, &PeerSubject{}, f.Subject) {
@@ -57,7 +59,7 @@ func TestParseSignedGroup_Trivial(t *testing.T) {
 		assert.Equal(t, mockNonce, sgv.Nonce, "Parsed nonce should be zeros")
 		assert.Equal(t, mockTag, sgv.Tag, "Parsed tag should be zeros")
 
-		f = mustDeserialize(t, sgv.InnerBytes)
+		f = mustDeserialize(t, sgv.InnerBytes, now)
 		assert.Equal(t, AttributeAlive, f.Attribute, "SGV inner attr")
 		if assert.IsType(t, &PeerSubject{}, f.Subject) {
 			assert.Equal(t, mockSubjectKey, f.Subject.(*PeerSubject).Key, "SGV inner subject should be correct")
@@ -70,6 +72,7 @@ func TestParseSignedGroup_Trivial(t *testing.T) {
 }
 
 func TestParseSignedGroup_Large(t *testing.T) {
+	now := time.Now()
 	longBytes := make([]byte, chacha20poly1305.NonceSizeX+poly1305.TagSize+1500)
 	n, err := rand.Read(longBytes)
 	sgv := &SignedGroupValue{}
@@ -88,7 +91,7 @@ func TestParseSignedGroup_Large(t *testing.T) {
 	})
 	assert.GreaterOrEqual(t, len(p), len(longBytes))
 	require.NotEqual(t, p[0], 0)
-	f := mustDeserialize(t, p)
+	f := mustDeserialize(t, p, now)
 	if assert.IsType(t, &SignedGroupValue{}, f.Value) {
 		assert.Equal(t, longBytes[0:l1], f.Value.(*SignedGroupValue).Nonce[:])
 		assert.Equal(t, longBytes[l1:l2], f.Value.(*SignedGroupValue).Tag[:])
@@ -97,6 +100,8 @@ func TestParseSignedGroup_Large(t *testing.T) {
 }
 
 func TestParseSignedGroup_Inner(t *testing.T) {
+	now := time.Now()
+
 	// use a sequence of UUID packets for simplicity
 	// as with the trivial test, crypto here is all faked
 
@@ -127,12 +132,12 @@ func TestParseSignedGroup_Inner(t *testing.T) {
 		},
 	})
 
-	f = mustDeserialize(t, p)
+	f = mustDeserialize(t, p, now)
 	assert.Equal(t, AttributeSignedGroup, f.Attribute)
 
 	if assert.IsType(t, &PeerSubject{}, f.Subject) {
 		assert.Equal(t, mockSignerKey, f.Subject.(*PeerSubject).Key, "parsed signer subject should be correct")
-		assert.False(t, f.Expires.After(time.Now()), "Parsed expires should be <= now")
+		assert.Equal(t, now, f.Expires, "Parsed expires should be = now")
 	}
 
 	if assert.IsType(t, &SignedGroupValue{}, f.Value) {
@@ -140,7 +145,7 @@ func TestParseSignedGroup_Inner(t *testing.T) {
 		assert.Equal(t, mockNonce, sgv.Nonce, "Parsed nonce should be preserved")
 		assert.Equal(t, mockTag, sgv.Tag, "Parsed tag should be preserved")
 
-		fip, err := sgv.ParseInner()
+		fip, err := sgv.ParseInner(now)
 		require.Nil(t, err)
 		assert.Len(t, fip, 2)
 
@@ -150,7 +155,7 @@ func TestParseSignedGroup_Inner(t *testing.T) {
 			if assert.IsTypef(t, &PeerSubject{}, fipi.Subject, "SGV inner#%d subject type", i) {
 				assert.Equalf(t, fi[i].Subject.(*PeerSubject).Key, fipi.Subject.(*PeerSubject).Key, "SGV inner#%d subject should be correct", i)
 			}
-			assert.Falsef(t, fipi.Expires.After(time.Now()), "SGV inner#%d expires should be <= now", i)
+			assert.Falsef(t, fipi.Expires.After(now), "SGV inner#%d expires should be <= now", i)
 			if assert.IsTypef(t, &UUIDValue{}, fipi.Value, "SGV inner#%d value type", i) {
 				assert.Equalf(t, fi[i].Value, fipi.Value, "SGV inner#%d uuid should be preserved", i)
 			}

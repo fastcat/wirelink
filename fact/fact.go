@@ -61,13 +61,19 @@ func (f *Fact) FancyString(subjectFormatter func(s Subject) string) string {
 
 // MarshalBinary serializes a Fact to its on-wire format
 func (f *Fact) MarshalBinary() ([]byte, error) {
+	return f.MarshalBinaryNow(time.Now())
+}
+
+// MarshalBinaryNow is like MarshalBinary, except it uses a provided value of
+// `now` so that the output is deterministic
+func (f *Fact) MarshalBinaryNow(now time.Time) ([]byte, error) {
 	var buf bytes.Buffer
 	var tmp [binary.MaxVarintLen64]byte
 	var tmpLen int
 
 	buf.WriteByte(byte(f.Attribute))
 
-	ttl := f.Expires.Sub(time.Now()) / time.Second
+	ttl := f.Expires.Sub(now) / time.Second
 	// clamp ttl to uint16 range
 	// TODO: warn if we somehow get outside this range
 	if ttl < 0 {

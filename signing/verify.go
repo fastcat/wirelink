@@ -1,6 +1,8 @@
 package signing
 
 import (
+	"crypto/cipher"
+
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/poly1305"
 
@@ -18,7 +20,8 @@ func (s *Signer) VerifyFrom(
 	err error,
 ) {
 	sk := s.sharedKey(peer)
-	cipher, err := chacha20poly1305.NewX(sk[:])
+	var cipher cipher.AEAD
+	cipher, err = chacha20poly1305.NewX(sk[:])
 	if err != nil {
 		return
 	}

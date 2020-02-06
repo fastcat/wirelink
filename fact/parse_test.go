@@ -17,11 +17,13 @@ import (
 )
 
 func Test_TTLClamping(t *testing.T) {
+	now := time.Now()
+
 	// going to modify the fact before serializing it
 	f, _ := mustMockAlivePacket(t, nil, nil)
 	// needs to be +2 so that forwards movement of the clock combined with
 	// rounding errors don't cause it to miss the clamping branch
-	f.Expires = time.Now().Add(time.Second * (math.MaxUint16 + 2))
+	f.Expires = now.Add(time.Second * (math.MaxUint16 + 2))
 	_, p := mustSerialize(t, f)
 
 	// TODO: find a cleaner way to verify serialization-time clamping
@@ -35,7 +37,7 @@ func Test_TTLClamping(t *testing.T) {
 	require.Equal(t, n, n2)
 
 	f = &Fact{}
-	err := f.DecodeFrom(len(p), bytes.NewBuffer(p))
+	err := f.DecodeFrom(len(p), now, bytes.NewBuffer(p))
 	if assert.Error(t, err, "Decoding fact with out of range TTL should fail") {
 		// FIXME: this is a terrible way to check the error
 		assert.Contains(t, err.Error(), "range")
@@ -44,6 +46,8 @@ func Test_TTLClamping(t *testing.T) {
 }
 
 func TestParseEndpointV4(t *testing.T) {
+	now := time.Now()
+
 	ep := &IPPortValue{
 		IP:   testutils.MustRandBytes(t, make([]byte, net.IPv4len)),
 		Port: 1,
@@ -57,7 +61,7 @@ func TestParseEndpointV4(t *testing.T) {
 		Value:     ep,
 	})
 
-	f = mustDeserialize(t, p)
+	f = mustDeserialize(t, p, now)
 
 	assert.Equal(t, AttributeEndpointV4, f.Attribute)
 
@@ -72,6 +76,8 @@ func TestParseEndpointV4(t *testing.T) {
 }
 
 func TestParseEndpointV6(t *testing.T) {
+	now := time.Now()
+
 	ep := &IPPortValue{
 		IP:   testutils.MustRandBytes(t, make([]byte, net.IPv6len)),
 		Port: 1,
@@ -85,7 +91,7 @@ func TestParseEndpointV6(t *testing.T) {
 		Value:     ep,
 	})
 
-	f = mustDeserialize(t, p)
+	f = mustDeserialize(t, p, now)
 
 	assert.Equal(t, AttributeEndpointV6, f.Attribute)
 
@@ -100,6 +106,8 @@ func TestParseEndpointV6(t *testing.T) {
 }
 
 func TestParseCidrV4(t *testing.T) {
+	now := time.Now()
+
 	ipn := &IPNetValue{
 		IPNet: net.IPNet{
 			IP:   testutils.MustRandBytes(t, make([]byte, net.IPv4len)),
@@ -118,7 +126,7 @@ func TestParseCidrV4(t *testing.T) {
 	t.Logf("CidrV4 fact: %#v", f)
 	t.Logf("CidrV4 packet: %v", p)
 
-	f = mustDeserialize(t, p)
+	f = mustDeserialize(t, p, now)
 
 	assert.Equal(t, AttributeAllowedCidrV4, f.Attribute)
 
@@ -133,6 +141,8 @@ func TestParseCidrV4(t *testing.T) {
 }
 
 func TestParseCidrV6(t *testing.T) {
+	now := time.Now()
+
 	ipn := &IPNetValue{
 		IPNet: net.IPNet{
 			IP:   testutils.MustRandBytes(t, make([]byte, net.IPv6len)),
@@ -149,7 +159,7 @@ func TestParseCidrV6(t *testing.T) {
 	})
 	t.Logf("CidrV6 packet: %v", p)
 
-	f = mustDeserialize(t, p)
+	f = mustDeserialize(t, p, now)
 
 	assert.Equal(t, AttributeAllowedCidrV6, f.Attribute)
 
@@ -164,6 +174,8 @@ func TestParseCidrV6(t *testing.T) {
 }
 
 func TestParseMember(t *testing.T) {
+	now := time.Now()
+
 	key := testutils.MustKey(t)
 
 	f, p := mustSerialize(t, &Fact{
@@ -174,7 +186,7 @@ func TestParseMember(t *testing.T) {
 	})
 	t.Logf("Member packet: %v", p)
 
-	f = mustDeserialize(t, p)
+	f = mustDeserialize(t, p, now)
 
 	assert.Equal(t, AttributeMember, f.Attribute)
 

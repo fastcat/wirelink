@@ -45,14 +45,15 @@ func (s *LinkServer) readPackets(packets chan<- *ReceivedFact) error {
 				}
 				return errors.Wrap(err, "Failed to read from UDP socket, giving up")
 			}
+			now := time.Now()
 			pp := &fact.Fact{}
-			err = pp.DecodeFrom(n, bytes.NewBuffer(buffer[:n]))
+			err = pp.DecodeFrom(n, now, bytes.NewBuffer(buffer[:n]))
 			if err != nil {
 				log.Error("Unable to decode fact: %v %v", err, buffer[:n])
 				continue
 			}
 			if pp.Attribute == fact.AttributeSignedGroup {
-				err = s.processGroup(pp, addr, packets)
+				err = s.processSignedGroup(pp, addr, now, packets)
 				if err != nil {
 					log.Error("Unable to process SignedGroup from %v: %v", *addr, err)
 				}
@@ -67,14 +68,22 @@ func (s *LinkServer) readPackets(packets chan<- *ReceivedFact) error {
 	}
 }
 
-func (s *LinkServer) processGroup(f *fact.Fact, source *net.UDPAddr, packets chan<- *ReceivedFact) error {
+// processSignedGroup takes a single fact with a SignedGroupValue,
+// verifies it, if valid parses it into individual facts,
+// and emits them to the `packets` channel
+func (s *LinkServer) processSignedGroup(
+	f *fact.Fact,
+	source *net.UDPAddr,
+	now time.Time,
+	packets chan<- *ReceivedFact,
+) error {
 	ps, ok := f.Subject.(*fact.PeerSubject)
 	if !ok {
 		return errors.Errorf("SignedGroup has non-PeerSubject: %T", f.Subject)
 	}
 	pv, ok := f.Value.(*fact.SignedGroupValue)
 	if !ok {
-		return errors.Errorf("SignedGroup has non-SigendGroupValue: %T", f.Value)
+		return errors.Errorf("SignedGroup has non-SignedGroupValue: %T", f.Value)
 	}
 
 	if !autopeer.AutoAddress(ps.Key).Equal(source.IP) {
@@ -91,7 +100,7 @@ func (s *LinkServer) processGroup(f *fact.Fact, source *net.UDPAddr, packets cha
 		return errors.Errorf("Unknown error validating SignedGroup")
 	}
 
-	inner, err := pv.ParseInner()
+	inner, err := pv.ParseInner(now)
 	if err != nil {
 		return errors.Wrapf(err, "Unable to parse SignedGroup inner")
 	}
