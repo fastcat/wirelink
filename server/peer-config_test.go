@@ -90,6 +90,7 @@ func TestLinkServer_configurePeers(t *testing.T) {
 
 func TestLinkServer_configurePeersOnce(t *testing.T) {
 	now := time.Now()
+	unhealthyAgo := now.Add(-time.Hour / 2)
 	startTime := now.Add(-time.Hour)
 	expiresFuture := now.Add(FactTTL)
 
@@ -103,6 +104,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 	remoteLeaf1Key := testutils.MustKey(t)
 
 	leaf1Endpoint := testutils.RandUDP4Addr(t)
+	leaf1AIP32 := testutils.RandIPNet(t, net.IPv4len, nil, nil, 32)
 
 	// t.Logf("Local is %s", localKey)
 	// t.Logf("Remote trusted 1 is %s", remoteController1Key)
@@ -155,7 +157,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 					}).Return(nil)
 					return ret
 				},
-				&peerKnowledgeSet{},
+				newPKS(),
 				map[wgtypes.Key]*apply.PeerConfigState{},
 			},
 			args{
@@ -193,13 +195,13 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 					}).Return(nil)
 					return ret
 				},
-				&peerKnowledgeSet{},
+				newPKS(),
 				map[wgtypes.Key]*apply.PeerConfigState{},
 			},
 			args{
 				[]*fact.Fact{
 					factutils.MemberFactFull(&remoteLeaf1Key, expiresFuture),
-					factutils.AllowedIPFactFull(testutils.RandIPNet(t, net.IPv4len, nil, nil, 32), &remoteLeaf1Key, expiresFuture),
+					factutils.AllowedIPFactFull(leaf1AIP32, &remoteLeaf1Key, expiresFuture),
 					factutils.EndpointFactFull(leaf1Endpoint, &remoteLeaf1Key, expiresFuture),
 				},
 				&wgtypes.Device{
@@ -228,14 +230,14 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 					}).Return(nil)
 					return ret
 				},
-				&peerKnowledgeSet{},
+				newPKS(),
 				map[wgtypes.Key]*apply.PeerConfigState{
 					remoteController1Key: makePCS(t, true, true, true),
 				},
 			},
 			args{
 				[]*fact.Fact{
-					factutils.AllowedIPFactFull(testutils.RandIPNet(t, net.IPv4len, nil, nil, 32), &remoteLeaf1Key, expiresFuture),
+					factutils.AllowedIPFactFull(leaf1AIP32, &remoteLeaf1Key, expiresFuture),
 					factutils.EndpointFactFull(leaf1Endpoint, &remoteLeaf1Key, expiresFuture),
 				},
 				&wgtypes.Device{
@@ -264,7 +266,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 					// no calls expected
 					return ret
 				},
-				&peerKnowledgeSet{},
+				newPKS(),
 				map[wgtypes.Key]*apply.PeerConfigState{
 					remoteController1Key: makePCS(t, true, true, true),
 					remoteController2Key: makePCS(t, false, false, false),
@@ -273,7 +275,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 			args{
 				[]*fact.Fact{
 					factutils.MemberFactFull(&remoteLeaf1Key, expiresFuture),
-					factutils.AllowedIPFactFull(testutils.RandIPNet(t, net.IPv4len, nil, nil, 32), &remoteLeaf1Key, expiresFuture),
+					factutils.AllowedIPFactFull(leaf1AIP32, &remoteLeaf1Key, expiresFuture),
 					factutils.EndpointFactFull(leaf1Endpoint, &remoteLeaf1Key, expiresFuture),
 				},
 				&wgtypes.Device{
@@ -284,6 +286,134 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 							PublicKey:  remoteLeaf1Key,
 							AllowedIPs: []net.IPNet{autopeer.AutoAddressNet(remoteLeaf1Key)},
 							Endpoint:   leaf1Endpoint,
+						},
+					},
+				},
+				startTime,
+				now,
+			},
+		},
+		{
+			"add aip to healthy-alive peer",
+			fields{
+				// don't need config for this one, just trusted facts
+				buildConfig(wgIface).Build(),
+				func(t *testing.T) *mocks.WgClient {
+					ret := &mocks.WgClient{}
+					ret.On("ConfigureDevice", wgIface, wgtypes.Config{
+						Peers: []wgtypes.PeerConfig{
+							wgtypes.PeerConfig{
+								PublicKey:  remoteLeaf1Key,
+								AllowedIPs: []net.IPNet{leaf1AIP32},
+								UpdateOnly: true,
+							},
+						},
+					}).Return(nil)
+					return ret
+				},
+				newPKS().mockPeerAlive(remoteLeaf1Key, expiresFuture, nil),
+				map[wgtypes.Key]*apply.PeerConfigState{
+					// nothing here because this routine _updates_ PCS, not uses it
+				},
+			},
+			args{
+				[]*fact.Fact{
+					factutils.MemberFactFull(&remoteLeaf1Key, expiresFuture),
+					factutils.AllowedIPFactFull(leaf1AIP32, &remoteLeaf1Key, expiresFuture),
+				},
+				&wgtypes.Device{
+					Name:      wgIface,
+					PublicKey: localKey,
+					Peers: []wgtypes.Peer{
+						wgtypes.Peer{
+							PublicKey:         remoteLeaf1Key,
+							AllowedIPs:        []net.IPNet{autopeer.AutoAddressNet(remoteLeaf1Key)},
+							Endpoint:          leaf1Endpoint,
+							LastHandshakeTime: now,
+						},
+					},
+				},
+				startTime,
+				now,
+			},
+		},
+		{
+			"keep aip on healthy-notalive peer",
+			fields{
+				// don't need config for this one, just trusted facts
+				buildConfig(wgIface).Build(),
+				func(t *testing.T) *mocks.WgClient {
+					ret := &mocks.WgClient{}
+					// should not reconfigure in this case
+					return ret
+				},
+				newPKS(),
+				map[wgtypes.Key]*apply.PeerConfigState{},
+			},
+			args{
+				[]*fact.Fact{
+					factutils.MemberFactFull(&remoteLeaf1Key, expiresFuture),
+					factutils.AllowedIPFactFull(leaf1AIP32, &remoteLeaf1Key, expiresFuture),
+				},
+				&wgtypes.Device{
+					Name:      wgIface,
+					PublicKey: localKey,
+					Peers: []wgtypes.Peer{
+						wgtypes.Peer{
+							PublicKey: remoteLeaf1Key,
+							AllowedIPs: []net.IPNet{
+								autopeer.AutoAddressNet(remoteLeaf1Key),
+								leaf1AIP32,
+							},
+							Endpoint:          leaf1Endpoint,
+							LastHandshakeTime: now,
+						},
+					},
+				},
+				startTime,
+				now,
+			},
+		},
+		{
+			"remove aip from unhealthy-notalive peer",
+			fields{
+				// don't need config for this one, just trusted facts
+				buildConfig(wgIface).Build(),
+				func(t *testing.T) *mocks.WgClient {
+					ret := &mocks.WgClient{}
+					// expect to reconfigire peer with just auto-ip
+					ret.On("ConfigureDevice", wgIface, wgtypes.Config{
+						Peers: []wgtypes.PeerConfig{
+							wgtypes.PeerConfig{
+								PublicKey:         remoteLeaf1Key,
+								AllowedIPs:        []net.IPNet{autopeer.AutoAddressNet(remoteLeaf1Key)},
+								ReplaceAllowedIPs: true,
+								UpdateOnly:        true,
+							},
+						},
+					}).Return(nil)
+					return ret
+				},
+				newPKS(),
+				map[wgtypes.Key]*apply.PeerConfigState{},
+			},
+			args{
+				[]*fact.Fact{
+					factutils.MemberFactFull(&remoteLeaf1Key, expiresFuture),
+					factutils.AllowedIPFactFull(leaf1AIP32, &remoteLeaf1Key, expiresFuture),
+				},
+				&wgtypes.Device{
+					Name:      wgIface,
+					PublicKey: localKey,
+					Peers: []wgtypes.Peer{
+						wgtypes.Peer{
+							PublicKey: remoteLeaf1Key,
+							AllowedIPs: []net.IPNet{
+								autopeer.AutoAddressNet(remoteLeaf1Key),
+								leaf1AIP32,
+							},
+							Endpoint:          leaf1Endpoint,
+							LastHandshakeTime: unhealthyAgo,
 						},
 					},
 				},
