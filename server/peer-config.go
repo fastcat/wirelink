@@ -167,10 +167,10 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 	}
 
 	// we may want to delete peers that we didn't want to deconfigure above
-	allowDeconfigure = now.Sub(startTime) > FactTTL &&
+	allowDelete := now.Sub(startTime) > FactTTL &&
 		!s.config.IsRouterNow &&
 		s.config.Peers.Trust(dev.PublicKey, trust.Untrusted) < trust.Membership
-	if allowDeconfigure {
+	if allowDelete {
 		eg.Go(func() error { return s.deletePeers(dev, removePeer, now) })
 	}
 
