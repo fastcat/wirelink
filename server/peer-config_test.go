@@ -23,6 +23,7 @@ import (
 	factutils "github.com/fastcat/wirelink/internal/testutils/facts"
 	"github.com/fastcat/wirelink/signing"
 	"github.com/fastcat/wirelink/trust"
+	"github.com/fastcat/wirelink/util"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
@@ -105,6 +106,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 
 	leaf1Endpoint := testutils.RandUDP4Addr(t)
 	leaf1AIP32 := testutils.RandIPNet(t, net.IPv4len, nil, nil, 32)
+	leaf1AIP32wrong := testutils.RandIPNet(t, net.IPv4len, nil, nil, 32)
 
 	// t.Logf("Local is %s", localKey)
 	// t.Logf("Remote trusted 1 is %s", remoteController1Key)
@@ -328,6 +330,58 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 						wgtypes.Peer{
 							PublicKey:         remoteLeaf1Key,
 							AllowedIPs:        []net.IPNet{autopeer.AutoAddressNet(remoteLeaf1Key)},
+							Endpoint:          leaf1Endpoint,
+							LastHandshakeTime: now,
+						},
+					},
+				},
+				startTime,
+				now,
+			},
+		},
+		{
+			"replace aip on healthy-alive peer with wrong value",
+			fields{
+				// don't need config for this one, just trusted facts
+				buildConfig(wgIface).Build(),
+				func(t *testing.T) *mocks.WgClient {
+					ret := &mocks.WgClient{}
+					ret.On("ConfigureDevice", wgIface, wgtypes.Config{
+						Peers: []wgtypes.PeerConfig{
+							wgtypes.PeerConfig{
+								PublicKey: remoteLeaf1Key,
+								// have to sort this slice to make things match consistently
+								AllowedIPs: util.SortIPNetSlice([]net.IPNet{
+									autopeer.AutoAddressNet(remoteLeaf1Key),
+									leaf1AIP32,
+								}),
+								ReplaceAllowedIPs: true,
+								UpdateOnly:        true,
+							},
+						},
+					}).Return(nil)
+					return ret
+				},
+				newPKS().mockPeerAlive(remoteLeaf1Key, expiresFuture, nil),
+				map[wgtypes.Key]*apply.PeerConfigState{
+					// nothing here because this routine _updates_ PCS, not uses it
+				},
+			},
+			args{
+				[]*fact.Fact{
+					factutils.MemberFactFull(&remoteLeaf1Key, expiresFuture),
+					factutils.AllowedIPFactFull(leaf1AIP32, &remoteLeaf1Key, expiresFuture),
+				},
+				&wgtypes.Device{
+					Name:      wgIface,
+					PublicKey: localKey,
+					Peers: []wgtypes.Peer{
+						wgtypes.Peer{
+							PublicKey: remoteLeaf1Key,
+							AllowedIPs: []net.IPNet{
+								autopeer.AutoAddressNet(remoteLeaf1Key),
+								leaf1AIP32wrong,
+							},
 							Endpoint:          leaf1Endpoint,
 							LastHandshakeTime: now,
 						},

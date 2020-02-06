@@ -3,14 +3,15 @@ package server
 import (
 	"time"
 
+	"github.com/pkg/errors"
+	"golang.org/x/sync/errgroup"
+
 	"github.com/fastcat/wirelink/apply"
 	"github.com/fastcat/wirelink/detect"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/trust"
 	"github.com/fastcat/wirelink/util"
-	"github.com/pkg/errors"
-	"golang.org/x/sync/errgroup"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -357,6 +358,11 @@ func (s *LinkServer) configurePeer(
 	}
 
 	pcfg.UpdateOnly = !allowAdd
+
+	//FIXME: this is a hack to make test assertions stable, find a better way
+	if log.IsDebug() {
+		util.SortIPNetSlice(pcfg.AllowedIPs)
+	}
 
 	log.Debug("Applying peer configuration: %v", *pcfg)
 	err = s.ctrl.ConfigureDevice(s.config.Iface, wgtypes.Config{

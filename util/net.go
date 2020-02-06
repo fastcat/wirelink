@@ -3,6 +3,7 @@ package util
 import (
 	"errors"
 	"net"
+	"sort"
 	"strings"
 )
 
@@ -31,4 +32,14 @@ func UDPEqualIPPort(a, b *net.UDPAddr) bool {
 		return false
 	}
 	return a.IP.Equal(b.IP) && a.Port == b.Port
+}
+
+// SortIPNetSlice sorts a slice of IPNets by their string value, returning the
+// (modified in place) slice.
+// OMG want generics.
+func SortIPNetSlice(slice []net.IPNet) []net.IPNet {
+	sort.Slice(slice, func(i, j int) bool {
+		return strings.Compare(slice[i].String(), slice[j].String()) < 0
+	})
+	return slice
 }
