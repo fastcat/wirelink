@@ -137,7 +137,7 @@ func (pks *peerKnowledgeSet) peerAlive(peer wgtypes.Key, maxTTL time.Duration) (
 			Attribute: fact.AttributeAlive,
 			Subject:   &fact.PeerSubject{Key: peer},
 			// value doesn't actually matter for alive packet keying
-			Value: fact.EmptyValue{},
+			Value: &fact.EmptyValue{},
 		}),
 		peer: peer,
 	}
@@ -161,7 +161,7 @@ func (pks *peerKnowledgeSet) forcePing(self, peer wgtypes.Key) {
 			Attribute: fact.AttributeAlive,
 			Subject:   &fact.PeerSubject{Key: self},
 			// value doesn't actually matter for alive packet keying
-			Value: fact.EmptyValue{},
+			Value: &fact.EmptyValue{},
 		}),
 		peer: peer,
 	}

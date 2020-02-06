@@ -20,7 +20,7 @@ func (p Peers) Has(peer wgtypes.Key) bool {
 
 // Name returns the name of the peer, if configured, or else its key string
 func (p Peers) Name(peer wgtypes.Key) string {
-	if config, ok := p[peer]; ok {
+	if config, ok := p[peer]; ok && len(config.Name) > 0 {
 		return config.Name
 	}
 	return peer.String()

@@ -8,6 +8,7 @@ import (
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/trust"
+	"github.com/fastcat/wirelink/util"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
@@ -40,9 +41,6 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) error {
 
 func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Device, startTime, now time.Time) {
 	factsByPeer := groupFactsByPeer(newFacts)
-
-	// trim `peerStates` to just the current peers
-	s.peerConfig.Trim(func(k wgtypes.Key) bool { _, ok := factsByPeer[k]; return ok })
 
 	// track which peers are known to the device, so we know which we should add
 	// this assumes that the prior layer has filtered to not include facts for
@@ -83,12 +81,29 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 
 	// loop over the facts to identify valid and invalid peers from that list
 	for peer, factGroup := range factsByPeer {
-		if !fact.SliceHas(factGroup, func(f *fact.Fact) bool { return f.Attribute == fact.AttributeMember }) {
+		if fact.SliceHas(factGroup, func(f *fact.Fact) bool { return f.Attribute == fact.AttributeMember }) {
 			validPeers[peer] = true
 		} else {
 			removePeer[peer] = true
 		}
 	}
+
+	// trim `peerStates` down to just the peers that we might want to know about
+	s.peerConfig.Trim(func(k wgtypes.Key) bool {
+		if _, ok := factsByPeer[k]; ok {
+			return true
+		}
+		if _, ok := localPeers[k]; ok {
+			return true
+		}
+		if _, ok := validPeers[k]; ok {
+			return true
+		}
+		if s.config.Peers.Has(k) {
+			return true
+		}
+		return false
+	})
 
 	// do another loop to actually modify the peer configs
 	updatePeer := func(peer *wgtypes.Peer, allowAdd bool) {
@@ -156,7 +171,7 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 		!s.config.IsRouterNow &&
 		s.config.Peers.Trust(dev.PublicKey, trust.Untrusted) < trust.Membership
 	if allowDeconfigure {
-		eg.Go(func() error { return s.deletePeers(dev, removePeer) })
+		eg.Go(func() error { return s.deletePeers(dev, removePeer, now) })
 	}
 
 	// we don't actually care if any of the routines failed, just that they
@@ -176,8 +191,8 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 func (s *LinkServer) deletePeers(
 	dev *wgtypes.Device,
 	removePeer map[wgtypes.Key]bool,
+	now time.Time,
 ) (err error) {
-	now := time.Now()
 
 	peerHealthyEnough := func(key wgtypes.Key) bool {
 		pcs, ok := s.peerConfig.Get(key)
@@ -307,7 +322,12 @@ func (s *LinkServer) configurePeer(
 
 		if state.TimeForNextEndpoint() {
 			nextEndpoint := state.NextEndpoint(facts, now)
-			if nextEndpoint != nil {
+			if nextEndpoint == nil {
+				log.Debug("Time for new EP for %s, but none known", peerName)
+			} else if util.UDPEqualIPPort(nextEndpoint, peer.Endpoint) {
+				// don't poke the config if it already has the same endpoint, e.g. there is only one known to try
+				log.Debug("Time for new EP for %s, but no alternate known", peerName)
+			} else {
 				log.Info("Trying EP for %s: %v", peerName, nextEndpoint)
 				logged = true
 				if pcfg == nil {
@@ -317,8 +337,6 @@ func (s *LinkServer) configurePeer(
 				// make sure we try to send to the peer on the new endpoint, so that
 				// it gets tested and we can look for the health change on the next pass
 				s.peerKnowledge.forcePing(s.signer.PublicKey, peer.PublicKey)
-			} else {
-				log.Debug("Time for ne wEP for %s, but none found", peerName)
 			}
 		}
 	}

@@ -2,6 +2,7 @@ package util
 
 import (
 	"errors"
+	"net"
 	"strings"
 )
 
@@ -18,4 +19,16 @@ func IsNetClosing(err error) bool {
 		return true
 	}
 	return IsNetClosing(errors.Unwrap(err))
+}
+
+// UDPEqualIPPort checks if to UDPAddrs are equal in terms of their IP and Port
+// fields, but ignoring any Zone value
+func UDPEqualIPPort(a, b *net.UDPAddr) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.IP.Equal(b.IP) && a.Port == b.Port
 }
