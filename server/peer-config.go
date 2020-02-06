@@ -49,6 +49,11 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 	removePeer := make(map[wgtypes.Key]bool)
 	validPeers := make(map[wgtypes.Key]bool)
 
+	// statically configured peers are all valid
+	for k := range s.config.Peers {
+		validPeers[k] = true
+	}
+
 	// don't need the group members to cancel when one of them fails
 	var eg errgroup.Group
 
@@ -68,7 +73,7 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 		localPeers[peer.PublicKey] = true
 		_, ok := factsByPeer[peer.PublicKey]
 		// if we have no info about a local peer, flag it for deletion
-		if !ok {
+		if !ok && !validPeers[peer.PublicKey] {
 			removePeer[peer.PublicKey] = true
 		}
 		// alive check uses 0 for the maxTTL, as we just care whether the alive fact
@@ -81,6 +86,11 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 
 	// loop over the facts to identify valid and invalid peers from that list
 	for peer, factGroup := range factsByPeer {
+		// don't flag for removal anything already identified as valid
+		if validPeers[peer] {
+			continue
+		}
+
 		if fact.SliceHas(factGroup, func(f *fact.Fact) bool { return f.Attribute == fact.AttributeMember }) {
 			validPeers[peer] = true
 		} else {
@@ -99,13 +109,10 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 		if _, ok := validPeers[k]; ok {
 			return true
 		}
-		if s.config.Peers.Has(k) {
-			return true
-		}
+		// we already added all the peers in s.config.Peers to validPeers, don't need to re-check here
 		return false
 	})
 
-	// do another loop to actually modify the peer configs
 	updatePeer := func(peer *wgtypes.Peer, allowAdd bool) {
 		factGroup, ok := factsByPeer[peer.PublicKey]
 		if !ok {
@@ -122,6 +129,8 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 			return err
 		})
 	}
+
+	// do another loop to actually modify the peer configs
 	for i := range dev.Peers {
 		peer := &dev.Peers[i]
 		// if the peer is valid, update it (important we don't start updating a
@@ -132,6 +141,8 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 	}
 
 	// in the second pass, we add new peers where appropriate
+	// note that this doesn't handle adding static peers if we haven't loaded any facts for them
+	// that should not be a concern in practice, but may produce oddities in unit tests
 	for peer := range factsByPeer {
 		// don't add peers we already have
 		if localPeers[peer] {
