@@ -2,6 +2,7 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"net"
 	"sync/atomic"
 	"time"
@@ -11,61 +12,47 @@ import (
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/config"
 	"github.com/fastcat/wirelink/fact"
+	"github.com/fastcat/wirelink/internal/networking"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/trust"
-	"github.com/fastcat/wirelink/util"
 )
 
-func (s *LinkServer) readPackets(packets chan<- *ReceivedFact) error {
-	defer close(packets)
+func (s *LinkServer) readPackets(received chan<- *ReceivedFact) error {
+	defer close(received)
 
-	var buffer [fact.UDPMaxSafePayload * 2]byte
-	for {
-		select {
-		case <-s.ctx.Done():
-			// deferred close(packets) will wake up downstream
-			return nil
-		default:
-			// make sure we wake up often enough to check for the end signal,
-			// and to send the "nothing happened" signal to the next goroutine downstream from us,
-			// so that it can wake up and do some work to
-			s.conn.SetReadDeadline(time.Now().Add(time.Second))
-			n, addr, err := s.conn.ReadFromUDP(buffer[:])
-			if err != nil {
-				if util.IsNetClosing(err) {
-					// the socket has been closed, we're done
-					return nil
-				}
+	// run the packet reader in the background
+	packets := make(chan *networking.UDPPacket, 1)
+	rCtx, rCancel := context.WithCancel(s.ctx)
+	defer rCancel()
+	s.AddHandler(func(ctx context.Context) error {
+		return s.conn.ReadPackets(rCtx, fact.UDPMaxSafePayload*2, packets)
+	})
 
-				if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-					// didn't get a packet after our timeout, send a nil to wake up the
-					// processor in case it has other work to do
-					packets <- nil
-					continue
-				}
-				return errors.Wrap(err, "Failed to read from UDP socket, giving up")
-			}
-			now := time.Now()
-			pp := &fact.Fact{}
-			err = pp.DecodeFrom(n, now, bytes.NewBuffer(buffer[:n]))
+	for packet := range packets {
+		// reader will filter out timeouts for us, anything left we give up
+		if packet.Err != nil {
+			return errors.Wrap(packet.Err, "Failed to read from UDP socket, giving up")
+		}
+
+		pp := &fact.Fact{}
+		err := pp.DecodeFrom(len(packet.Data), packet.Time, bytes.NewBuffer(packet.Data))
+		if err != nil {
+			log.Error("Unable to decode fact: %v %v", err, packet.Data)
+			continue
+		}
+		if pp.Attribute == fact.AttributeSignedGroup {
+			err = s.processSignedGroup(pp, packet.Addr, packet.Time, received)
 			if err != nil {
-				log.Error("Unable to decode fact: %v %v", err, buffer[:n])
-				continue
+				log.Error("Unable to process SignedGroup from %v: %v", packet.Addr, err)
 			}
-			if pp.Attribute == fact.AttributeSignedGroup {
-				err = s.processSignedGroup(pp, addr, now, packets)
-				if err != nil {
-					log.Error("Unable to process SignedGroup from %v: %v", *addr, err)
-				}
-			} else {
-				// if we had a peerLookup, we could map the source IP to a name here,
-				// but creating that is unnecessarily expensive for this rare error
-				log.Error("Ignoring unsigned fact from %v", *addr)
-				// rcv := &ReceivedFact{fact: pp, source: *addr}
-				// packets <- rcv
-			}
+		} else {
+			// if we had a peerLookup, we could map the source IP to a name here,
+			// but creating that is unnecessarily expensive for this rare error
+			log.Error("Ignoring unsigned fact from %v", packet.Addr)
 		}
 	}
+
+	return nil
 }
 
 // processSignedGroup takes a single fact with a SignedGroupValue,
@@ -119,6 +106,10 @@ func (s *LinkServer) receivePackets(
 	defer close(newFacts)
 
 	var buffer []*ReceivedFact
+
+	// TODO: using a ticker here is not ideal, as we can't reset its phase to
+	// match when we send a chunk downstream, but using a timer involves more
+	// boilerplate
 	chunkTicker := time.NewTicker(chunkPeriod)
 	defer chunkTicker.Stop()
 
@@ -130,6 +121,7 @@ func (s *LinkServer) receivePackets(
 		select {
 		case p, ok := <-packets:
 			if !ok {
+				// upstream has closed the channel, we're done
 				// we don't care much about transmitting the accumulated facts to peers,
 				// but we do want to evaluate them so we can report final state
 				sendBuffer = len(buffer) > 0

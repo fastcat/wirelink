@@ -3,9 +3,12 @@
 package mocks
 
 import (
+	context "context"
 	net "net"
 
 	mock "github.com/stretchr/testify/mock"
+
+	networking "github.com/fastcat/wirelink/internal/networking"
 
 	time "time"
 )
@@ -57,6 +60,20 @@ func (_m *UDPConn) ReadFromUDP(b []byte) (int, *net.UDPAddr, error) {
 	}
 
 	return r0, r1, r2
+}
+
+// ReadPackets provides a mock function with given fields: ctx, maxSize, output
+func (_m *UDPConn) ReadPackets(ctx context.Context, maxSize int, output chan<- *networking.UDPPacket) error {
+	ret := _m.Called(ctx, maxSize, output)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int, chan<- *networking.UDPPacket) error); ok {
+		r0 = rf(ctx, maxSize, output)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // SetReadDeadline provides a mock function with given fields: t
