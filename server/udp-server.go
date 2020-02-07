@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -45,8 +44,9 @@ type LinkServer struct {
 	peerKnowledge *peerKnowledgeSet
 	peerConfig    *peerConfigSet
 	signer        *signing.Signer
-	// counter for asking it to print out its current info
-	printsRequested *int32
+
+	// channel for asking it to print out its current info
+	printRequested chan struct{}
 }
 
 // MaxChunk is the max number of packets to receive before processing them
@@ -87,20 +87,20 @@ func Create(ctrl internal.WgClient, config *config.Server) (*LinkServer, error) 
 	ctx, cancel := context.WithCancel(egCtx)
 
 	ret := &LinkServer{
-		bootID:          uuid.Must(uuid.NewRandom()),
-		config:          config,
-		net:             nil, // this will be filled in by `Start()`
-		conn:            nil, // this will be filled in by `Start()`
-		addr:            addr,
-		ctrl:            ctrl,
-		stateAccess:     new(sync.Mutex),
-		eg:              eg,
-		ctx:             ctx,
-		cancel:          cancel,
-		peerKnowledge:   newPKS(),
-		peerConfig:      newPeerConfigSet(),
-		signer:          signing.New(&device.PrivateKey),
-		printsRequested: new(int32),
+		bootID:         uuid.Must(uuid.NewRandom()),
+		config:         config,
+		net:            nil, // this will be filled in by `Start()`
+		conn:           nil, // this will be filled in by `Start()`
+		addr:           addr,
+		ctrl:           ctrl,
+		stateAccess:    new(sync.Mutex),
+		eg:             eg,
+		ctx:            ctx,
+		cancel:         cancel,
+		peerKnowledge:  newPKS(),
+		peerConfig:     newPeerConfigSet(),
+		signer:         signing.New(&device.PrivateKey),
+		printRequested: make(chan struct{}, 1),
 	}
 
 	return ret, nil
@@ -180,7 +180,7 @@ func (s *LinkServer) AddHandler(handler func(ctx context.Context) error) {
 
 // RequestPrint asks the packet receiver to print out the full set of known facts (local and remote)
 func (s *LinkServer) RequestPrint() {
-	atomic.AddInt32(s.printsRequested, 1)
+	s.printRequested <- struct{}{}
 }
 
 // multiplexFactChunks copies values from input to each output. It will only

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"net"
-	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
@@ -134,11 +133,9 @@ func (s *LinkServer) receivePackets(
 					sendBuffer = true
 				}
 			}
-			// push the buffer through if state report is requested so that it happens quickly
-			// don't need to use the atomic load here, as the worst case is a delay in printing
-			if atomic.LoadInt32(s.printsRequested) != 0 {
-				sendBuffer = true
-			}
+		//TODO: we want to push the buffer through if a print was requested,
+		// however, that will eat the request. to fix this nicely we may need to
+		// send an annotated struct downstream, which is a messy refactor
 		case <-chunkTicker.C:
 			sendBuffer = true
 		}

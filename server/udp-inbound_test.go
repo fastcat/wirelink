@@ -5,7 +5,6 @@ import (
 	"math/rand"
 	"net"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -276,16 +275,14 @@ func TestLinkServer_receivePackets(t *testing.T) {
 	}
 
 	type fields struct {
-		// this only works for initial trigger testing
-		printsRequested int32
 	}
 	type args struct {
 		maxChunk    int
 		chunkPeriod time.Duration
 	}
 	tests := []struct {
-		name       string
-		fields     fields
+		name string
+		// fields     fields
 		args       args
 		assertion  require.ErrorAssertionFunc
 		packets    []*ReceivedFact
@@ -294,7 +291,6 @@ func TestLinkServer_receivePackets(t *testing.T) {
 	}{
 		{
 			"no data",
-			fields{},
 			args{
 				maxChunk:    1,
 				chunkPeriod: time.Second,
@@ -304,24 +300,7 @@ func TestLinkServer_receivePackets(t *testing.T) {
 			[][]*ReceivedFact{},
 		},
 		{
-			"print requested",
-			fields{1},
-			args{
-				maxChunk:    2,
-				chunkPeriod: time.Second,
-			},
-			require.NoError,
-			rfs(0, 1),
-			[][]*ReceivedFact{
-				// first packet is forced out by printsRequested
-				rfs(0),
-				// second packet is the last thing ... but also since we don't clear printsRequested
-				rfs(1),
-			},
-		},
-		{
 			"chunk size",
-			fields{},
 			args{
 				maxChunk:    5,
 				chunkPeriod: time.Second,
@@ -337,10 +316,7 @@ func TestLinkServer_receivePackets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &LinkServer{
-				printsRequested: new(int32),
-			}
-			*s.printsRequested = tt.fields.printsRequested
+			s := &LinkServer{}
 			// make deep channels to avoid buffering problems
 			packets := make(chan *ReceivedFact, len(tt.packets))
 			// need +1 because there is an extra empty chunk sent at start
@@ -397,10 +373,8 @@ func TestLinkServer_receivePackets_slow(t *testing.T) {
 		chunkPeriod time.Duration
 	}
 	type send struct {
-		offset      time.Duration
-		packet      *ReceivedFact
-		incrPrints  bool
-		clearPrints bool
+		offset time.Duration
+		packet *ReceivedFact
 	}
 	type receive struct {
 		offset time.Duration
@@ -489,30 +463,10 @@ func TestLinkServer_receivePackets_slow(t *testing.T) {
 				receiveAtMs(200, 4, 5),
 			},
 		},
-		{
-			"print requests",
-			args{3, 100 * time.Millisecond},
-			require.NoError,
-			[]send{
-				sendAtMs(10, 0),
-				send{offset: 20 * time.Millisecond, incrPrints: true},
-				send{offset: 30 * time.Millisecond, clearPrints: true},
-				send{offset: 40 * time.Millisecond, incrPrints: true},
-				send{offset: 50 * time.Millisecond, clearPrints: true},
-				sendAtMs(60, 1),
-			},
-			[]receive{
-				receiveAtMs(20, 0),
-				receiveAtMs(40),
-				receiveAtMs(60, 1),
-			},
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &LinkServer{
-				printsRequested: new(int32),
-			}
+			s := &LinkServer{}
 			// for this test, use the same limited buffer for the incoming packets as
 			// the real server
 			packets := make(chan *ReceivedFact, 1)
@@ -539,13 +493,7 @@ func TestLinkServer_receivePackets_slow(t *testing.T) {
 						// treat the packet expires as an offset from timeZero, update it to be that offset from now
 						p.packet.fact.Expires.Add(time.Now().Sub(timeZero))
 						packets <- p.packet
-					} else if p.clearPrints {
-						atomic.StoreInt32(s.printsRequested, 0)
 					} else {
-						if p.incrPrints {
-							atomic.AddInt32(s.printsRequested, 1)
-							// have to send for this to take effect
-						}
 						packets <- nil
 					}
 				}
