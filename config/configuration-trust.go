@@ -49,7 +49,8 @@ func (c *configEvaluator) TrustLevel(f *fact.Fact, source net.UDPAddr) *trust.Le
 	// source port evaluation is left to route-based-trust
 	pk, ok := c.ipToPeer[util.IPToBytes(source.IP)]
 	if !ok {
-		log.Info("No configured peer found for source: %v", source)
+		// having valid peers in the config is fine
+		log.Debug("No configured peer found for source: %v", source)
 		return nil
 	}
 	pc, ok := c.Peers[pk]
