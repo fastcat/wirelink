@@ -31,12 +31,35 @@ func TestLinkServer_readPackets(t *testing.T) {
 		t.SkipNow()
 	}
 	now := time.Now()
-	t.Log(now)
+	expires := now.Add(FactTTL)
 
 	// need real crypto keys for this test
 	localPrivateKey, localPublicKey := testutils.MustKeyPair(t)
-	assert.NotNil(t, &localPublicKey)
-	// remotePrivateKey, remotePublicKey := testutils.MustKeyPair(t)
+	remotePrivateKey, remotePublicKey := testutils.MustKeyPair(t)
+	randomKey := testutils.MustKey(t)
+
+	remoteSigner := signing.New(&remotePrivateKey)
+	properSource := &net.UDPAddr{
+		IP:   autopeer.AutoAddress(remotePublicKey),
+		Port: rand.Intn(65535),
+	}
+	// improperSource := testutils.RandUDP4Addr(t)
+
+	wrapAndSign := func(facts ...*fact.Fact) []byte {
+		buffer := make([]byte, 0)
+		for _, f := range facts {
+			buffer = append(buffer, util.MustBytes(f.MarshalBinaryNow(now))...)
+		}
+		nonce, tag, err := remoteSigner.SignFor(buffer, &localPublicKey)
+		require.NoError(t, err)
+		sgf := &fact.Fact{
+			Attribute: fact.AttributeSignedGroup,
+			Subject:   &fact.PeerSubject{Key: remotePublicKey},
+			Value:     &fact.SignedGroupValue{Nonce: nonce, Tag: tag, InnerBytes: buffer},
+			Expires:   expires,
+		}
+		return util.MustBytes(sgf.MarshalBinary())
+	}
 
 	type fields struct {
 		conn func(*testing.T) *netmocks.UDPConn
@@ -50,21 +73,63 @@ func TestLinkServer_readPackets(t *testing.T) {
 	}{
 		{
 			"empty",
-			fields{
-				func(t *testing.T) *netmocks.UDPConn {
-					return &netmocks.UDPConn{}
-				},
-			},
+			fields{},
 			require.NoError,
 			[]*networking.UDPPacket{},
 			[]*ReceivedFact{},
+		},
+		{
+			"one alive",
+			fields{},
+			require.NoError,
+			[]*networking.UDPPacket{
+				&networking.UDPPacket{
+					Time: now,
+					Addr: properSource,
+					Data: wrapAndSign(facts.AliveFact(&remotePublicKey, expires)),
+				},
+			},
+			[]*ReceivedFact{
+				&ReceivedFact{
+					fact:   facts.AliveFact(&remotePublicKey, expires),
+					source: *properSource,
+				},
+			},
+		},
+		{
+			"ignore unsigned",
+			fields{},
+			require.NoError,
+			[]*networking.UDPPacket{
+				&networking.UDPPacket{
+					Time: now,
+					Addr: properSource,
+					Data: util.MustBytes(facts.AliveFact(&randomKey, expires).MarshalBinaryNow(now)),
+				},
+				&networking.UDPPacket{
+					Time: now,
+					Addr: properSource,
+					Data: wrapAndSign(facts.AliveFact(&remotePublicKey, expires)),
+				},
+			},
+			[]*ReceivedFact{
+				&ReceivedFact{
+					fact:   facts.AliveFact(&remotePublicKey, expires),
+					source: *properSource,
+				},
+			},
 		},
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			conn := tt.fields.conn(t)
-			conn.WithPacketSequence(time.Now(), tt.packets...)
+			var conn *netmocks.UDPConn
+			if tt.fields.conn != nil {
+				conn = tt.fields.conn(t)
+			} else {
+				conn = &netmocks.UDPConn{}
+			}
+			conn.WithPacketSequence(now, tt.packets...)
 			conn.Test(t)
 			s := &LinkServer{
 				conn:   conn,
@@ -72,16 +137,17 @@ func TestLinkServer_readPackets(t *testing.T) {
 				ctx:    context.Background(),
 				signer: signing.New(&localPrivateKey),
 			}
-			// deep channel to simplify test logic
-			received := make(chan *ReceivedFact, len(tt.wantReceived))
+			// deep channel to simplify extracting outputs
+			received := make(chan *ReceivedFact, len(tt.wantReceived)+len(tt.packets))
 
 			tt.assertion(t, s.readPackets(received))
 
 			tt.assertion(t, s.eg.Wait())
-			gotReceived := make([]*ReceivedFact, 0, len(tt.wantReceived))
+			gotReceived := make([]*ReceivedFact, 0, len(tt.wantReceived)+len(tt.packets))
 			for r := range received {
 				gotReceived = append(gotReceived, r)
 			}
+			// we have just enough `now` locking that we can safely use a plain equality comparison here
 			assert.Equal(t, tt.wantReceived, gotReceived)
 			conn.AssertExpectations(t)
 		})
