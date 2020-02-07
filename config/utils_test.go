@@ -2,8 +2,6 @@ package config
 
 import (
 	"math/rand"
-
-	"github.com/fastcat/wirelink/trust"
 )
 
 func letter() rune {
@@ -16,8 +14,4 @@ func boolean() bool {
 
 func boolPtr(value bool) *bool {
 	return &value
-}
-
-func trustPtr(level trust.Level) *trust.Level {
-	return &level
 }

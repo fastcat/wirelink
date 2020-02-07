@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/pkg/errors"
 
@@ -77,7 +78,7 @@ func (sgv *SignedGroupValue) DecodeFrom(lengthHint int, reader io.Reader) error 
 // ParseInner parses the inner bytes of a SignedGroupValue into facts.
 // Validating the signature must be done separately, and should be done before
 // calling this method.
-func (sgv *SignedGroupValue) ParseInner() (ret []*Fact, err error) {
+func (sgv *SignedGroupValue) ParseInner(now time.Time) (ret []*Fact, err error) {
 	buf := bytes.NewBuffer(sgv.InnerBytes)
 	for buf.Len() != 0 {
 		// TODO: bytes[0] or readbyte/unreadbyte?
@@ -86,7 +87,7 @@ func (sgv *SignedGroupValue) ParseInner() (ret []*Fact, err error) {
 			return
 		}
 		next := &Fact{}
-		if err = next.DecodeFrom(0, buf); err != nil {
+		if err = next.DecodeFrom(0, now, buf); err != nil {
 			err = errors.Wrapf(err, "Unable to decode SignedGroupValue inner #%d @%d", len(ret), buf.Len()-len(sgv.InnerBytes))
 			return
 		}

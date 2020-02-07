@@ -24,3 +24,6 @@ coverage.out
 coverage.html
 
 version.go
+
+# try folder has temp test code
+try/

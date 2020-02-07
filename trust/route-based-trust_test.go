@@ -74,19 +74,19 @@ func Test_routeBasedTrust_TrustLevel(t *testing.T) {
 			"known leaf self info",
 			peerList(k1),
 			mkArgs(k1, k1),
-			trustPtr(Endpoint),
+			Ptr(Endpoint),
 		},
 		{
 			"known leaf other info",
 			peerList(k1),
 			mkArgs(k2, k1),
-			trustPtr(Endpoint),
+			Ptr(Endpoint),
 		},
 		{
 			"known router",
 			routerList(k1),
 			mkArgs(k2, k1),
-			trustPtr(AllowedIPs),
+			Ptr(Membership),
 		},
 	}
 	for _, tt := range tests {

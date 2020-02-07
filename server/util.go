@@ -50,6 +50,9 @@ func (s *LinkServer) printFactsIfRequested(
 	log.Info("%s", str.String())
 }
 
+// groupFactsByPeer takes a list of facts and groups them by the public key in
+// their Subject. Any facts that don't have a PeerSubject will be logged as an error,
+// but otherwise ignored.
 func groupFactsByPeer(facts []*fact.Fact) map[wgtypes.Key][]*fact.Fact {
 	factsByPeer := make(map[wgtypes.Key][]*fact.Fact)
 	for _, f := range facts {

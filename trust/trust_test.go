@@ -40,6 +40,7 @@ func TestShouldAccept(t *testing.T) {
 		fact.AttributeEndpointV6,
 		fact.AttributeAllowedCidrV4,
 		fact.AttributeAllowedCidrV6,
+		fact.AttributeMember,
 	}
 	invalidAttrs := []fact.Attribute{
 		fact.AttributeUnknown,
@@ -48,11 +49,18 @@ func TestShouldAccept(t *testing.T) {
 		// signed group is a transport structure and never directly evaluated for trust
 		fact.AttributeSignedGroup,
 	}
+	epAttrs := []fact.Attribute{
+		fact.AttributeEndpointV4,
+		fact.AttributeEndpointV6,
+	}
 	aipAttrs := []fact.Attribute{
 		fact.AttributeAllowedCidrV4,
 		fact.AttributeAllowedCidrV6,
 	}
-	allLevels := []Level{Untrusted, Endpoint, AllowedIPs, AddPeer, DelPeer, SetTrust}
+	memberAttr := []fact.Attribute{
+		fact.AttributeMember,
+	}
+	allLevels := []Level{Untrusted, Endpoint, AllowedIPs, Membership, DelegateTrust}
 
 	tests := []test{
 		{"nil trust", args{fact.AttributeAlive, true, nil}, false},
@@ -60,9 +68,13 @@ func TestShouldAccept(t *testing.T) {
 	tests = append(tests, matrix("gigo", invalidAttrs, false, allLevels, false)...)
 	tests = append(tests, matrix("gigo", invalidAttrs, true, allLevels, false)...)
 	tests = append(tests, matrix("new peer", validAttrs, false, []Level{Untrusted, Endpoint, AllowedIPs}, false)...)
-	tests = append(tests, matrix("new peer", validAttrs, false, []Level{AddPeer, DelPeer, SetTrust}, true)...)
+	tests = append(tests, matrix("new peer", validAttrs, false, []Level{Membership, DelegateTrust}, true)...)
+	tests = append(tests, matrix("ep", epAttrs, true, []Level{Untrusted}, false)...)
+	tests = append(tests, matrix("ep", epAttrs, true, []Level{Endpoint, AllowedIPs, Membership, DelegateTrust}, true)...)
 	tests = append(tests, matrix("aip", aipAttrs, true, []Level{Untrusted, Endpoint}, false)...)
-	tests = append(tests, matrix("aip", aipAttrs, true, []Level{AllowedIPs, AddPeer, DelPeer, SetTrust}, true)...)
+	tests = append(tests, matrix("aip", aipAttrs, true, []Level{AllowedIPs, Membership, DelegateTrust}, true)...)
+	tests = append(tests, matrix("member", memberAttr, true, []Level{Untrusted, Endpoint, AllowedIPs}, false)...)
+	tests = append(tests, matrix("member", memberAttr, true, []Level{Membership, DelegateTrust}, true)...)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

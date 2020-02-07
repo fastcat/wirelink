@@ -136,7 +136,7 @@ func TestServerData_Parse(t *testing.T) {
 					PeerData{
 						PublicKey:     k1.String(),
 						Name:          name,
-						Trust:         trust.Names[trust.DelPeer],
+						Trust:         trust.Names[trust.Membership],
 						FactExchanger: fe,
 						Basic:         basic,
 						Endpoints:     []string{"127.0.0.1:1"},
@@ -156,7 +156,7 @@ func TestServerData_Parse(t *testing.T) {
 				Peers: Peers{
 					k1: &Peer{
 						Name:          name,
-						Trust:         trustPtr(trust.DelPeer),
+						Trust:         trust.Ptr(trust.Membership),
 						FactExchanger: fe,
 						Basic:         basic,
 						Endpoints: []PeerEndpoint{

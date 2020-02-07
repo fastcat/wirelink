@@ -24,6 +24,8 @@ The following attributes are defined, mostly as 1 byte ASCII values:
 * `!`: `Alive`: An indicator that the remote peer is alive
   * Value is a 16 byte UUID, which will change if the peer restarts or
     otherwise forgets things and needs to be re-told them.
+* `m`: `Member`: An indicator that the peer is a valid member of the network
+  * Value is empty (zero bytes)
 * `e`: `EndpointV4`: A candidate IPv4 address + UDP port for reaching the peer
   * Value is a 4 byte IPv4 address followed by a two byte UDP port
 * `E`: `EndpointV6`: A candidate IPv4 address + UDP port for reaching the peer
@@ -44,7 +46,8 @@ Currently all attributes use a single kind of subject, namely a wireguard
 public key, in binary form (32 bytes). For most attributes, this identifies the
 peer being described by the attribute. For the `SignedGroup` attribute, this
 represents the key of the _source_ peer against which the signature should be
-verified.
+verified. Similarly, for the `Alive` attribute, it identifiers the peer that
+sent it and is saying that it is alive.
 
 ## Values
 

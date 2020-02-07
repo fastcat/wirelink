@@ -33,7 +33,7 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 	iface := fmt.Sprintf("wg%d", rand.Int31())
 
 	type args struct {
-		ctrl *mocks.WgClient
+		ctrl func(*testing.T) *mocks.WgClient
 		dev  *wgtypes.Device
 	}
 	tests := []struct {
@@ -54,7 +54,8 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 		{
 			"one peer to configure",
 			args{
-				ctrl: mocks.SetupClient(t, func(ctrl *mocks.WgClient) {
+				ctrl: func(t *testing.T) *mocks.WgClient {
+					ctrl := &mocks.WgClient{}
 					ctrl.On("ConfigureDevice", iface, wgtypes.Config{
 						Peers: []wgtypes.PeerConfig{
 							wgtypes.PeerConfig{
@@ -64,7 +65,8 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 							},
 						},
 					}).Return(nil)
-				}),
+					return ctrl
+				},
 				dev: &wgtypes.Device{
 					Name: iface,
 					Peers: []wgtypes.Peer{
@@ -80,7 +82,8 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 		{
 			"two peers, one to configure",
 			args{
-				ctrl: mocks.SetupClient(t, func(ctrl *mocks.WgClient) {
+				ctrl: func(t *testing.T) *mocks.WgClient {
+					ctrl := &mocks.WgClient{}
 					ctrl.On("ConfigureDevice", iface, wgtypes.Config{
 						Peers: []wgtypes.PeerConfig{
 							wgtypes.PeerConfig{
@@ -90,7 +93,8 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 							},
 						},
 					}).Return(nil)
-				}),
+					return ctrl
+				},
 				dev: &wgtypes.Device{
 					Name: iface,
 					Peers: []wgtypes.Peer{
@@ -126,7 +130,8 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 		{
 			"configuration failure",
 			args{
-				ctrl: mocks.SetupClient(t, func(ctrl *mocks.WgClient) {
+				ctrl: func(t *testing.T) *mocks.WgClient {
+					ctrl := &mocks.WgClient{}
 					ctrl.On("ConfigureDevice", iface, wgtypes.Config{
 						Peers: []wgtypes.PeerConfig{
 							wgtypes.PeerConfig{
@@ -136,7 +141,8 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 							},
 						},
 					}).Return(errors.New("mocked device error"))
-				}),
+					return ctrl
+				},
 				dev: &wgtypes.Device{
 					Name: iface,
 					Peers: []wgtypes.Peer{
@@ -152,12 +158,14 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			var ctrl *mocks.WgClient
 			if tt.args.ctrl != nil {
-				tt.args.ctrl.Test(t)
+				ctrl = tt.args.ctrl(t)
+				ctrl.Test(t)
 			}
-			got, err := EnsurePeersAutoIP(tt.args.ctrl, tt.args.dev)
-			if tt.args.ctrl != nil {
-				tt.args.ctrl.AssertExpectations(t)
+			got, err := EnsurePeersAutoIP(ctrl, tt.args.dev)
+			if ctrl != nil {
+				ctrl.AssertExpectations(t)
 			}
 			if tt.wantErr {
 				require.NotNil(t, err, "EnsurePeersAutoIP() error")

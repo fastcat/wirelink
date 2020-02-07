@@ -12,7 +12,7 @@ import (
 )
 
 // DecodeFrom implements Decodable
-func (f *Fact) DecodeFrom(lengthHint int, reader io.Reader) error {
+func (f *Fact) DecodeFrom(lengthHint int, now time.Time, reader io.Reader) error {
 	// TODO: generic reader support
 	var buf *bytes.Buffer
 	var ok bool
@@ -35,7 +35,7 @@ func (f *Fact) DecodeFrom(lengthHint int, reader io.Reader) error {
 	if ttl > math.MaxUint16 {
 		return errors.Errorf("Received TTL outside range: %v", ttl)
 	}
-	f.Expires = time.Now().Add(time.Duration(ttl) * time.Second)
+	f.Expires = now.Add(time.Duration(ttl) * time.Second)
 
 	var valueLength int
 
@@ -74,6 +74,11 @@ func (f *Fact) DecodeFrom(lengthHint int, reader io.Reader) error {
 		valueLength = net.IPv6len + 1
 		f.Subject = &PeerSubject{}
 		f.Value = &IPNetValue{}
+
+	case AttributeMember:
+		// member attrs don't have a value
+		f.Subject = &PeerSubject{}
+		f.Value = &EmptyValue{}
 
 	case AttributeSignedGroup:
 		f.Subject = &PeerSubject{}

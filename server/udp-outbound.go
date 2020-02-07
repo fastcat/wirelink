@@ -29,18 +29,22 @@ func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) er
 			return errors.Wrap(err, "Unable to load device state, giving up")
 		}
 
-		_, errs := s.broadcastFacts(dev.PublicKey, dev.Peers, newFacts, ChunkPeriod-time.Second)
-		if errs != nil {
-			// don't print more than a handful of errors
-			if len(errs) > 5 {
-				log.Error("Failed to send some facts: %v ...", errs)
-			} else {
-				log.Error("Failed to send some facts: %v", errs)
-			}
-		}
+		s.broadcastFactUpdatesOnce(newFacts, dev)
 	}
 
 	return nil
+}
+
+func (s *LinkServer) broadcastFactUpdatesOnce(newFacts []*fact.Fact, dev *wgtypes.Device) {
+	_, errs := s.broadcastFacts(dev.PublicKey, dev.Peers, newFacts, ChunkPeriod-time.Second)
+	if errs != nil {
+		// don't print more than a handful of errors
+		if len(errs) > 5 {
+			log.Error("Failed to send some facts: %v ...", errs)
+		} else {
+			log.Error("Failed to send some facts: %v", errs)
+		}
+	}
 }
 
 type sendLevel int

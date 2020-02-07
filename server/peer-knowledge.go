@@ -129,18 +129,22 @@ func (pks *peerKnowledgeSet) peerNeeds(peer *wgtypes.Peer, f *fact.Fact, maxTTL 
 	return !ok || time.Now().Add(maxTTL).After(e) && e.Before(f.Expires)
 }
 
-// peerAlive returns if we have received an alive fact from the peer which is going to be alive
-// for at least `maxTTL`. Commonly `maxTTL` will be set to zero.
-func (pks *peerKnowledgeSet) peerAlive(peer wgtypes.Key, maxTTL time.Duration) (bool, *uuid.UUID) {
-	k := peerKnowledgeKey{
+func aliveKey(peer wgtypes.Key) peerKnowledgeKey {
+	return peerKnowledgeKey{
 		Key: fact.KeyOf(&fact.Fact{
 			Attribute: fact.AttributeAlive,
 			Subject:   &fact.PeerSubject{Key: peer},
 			// value doesn't actually matter for alive packet keying
-			Value: fact.EmptyValue{},
+			Value: &fact.EmptyValue{},
 		}),
 		peer: peer,
 	}
+}
+
+// peerAlive returns if we have received an alive fact from the peer which is going to be alive
+// for at least `maxTTL`. Commonly `maxTTL` will be set to zero.
+func (pks *peerKnowledgeSet) peerAlive(peer wgtypes.Key, maxTTL time.Duration) (bool, *uuid.UUID) {
+	k := aliveKey(peer)
 	pks.access.RLock()
 	e, eok := pks.data[k]
 	id, idOk := pks.bootIDs[peer]
@@ -161,7 +165,7 @@ func (pks *peerKnowledgeSet) forcePing(self, peer wgtypes.Key) {
 			Attribute: fact.AttributeAlive,
 			Subject:   &fact.PeerSubject{Key: self},
 			// value doesn't actually matter for alive packet keying
-			Value: fact.EmptyValue{},
+			Value: &fact.EmptyValue{},
 		}),
 		peer: peer,
 	}

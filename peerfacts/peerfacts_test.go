@@ -31,10 +31,11 @@ func TestLocalFacts(t *testing.T) {
 	n3 := testutils.RandIPNet(t, net.IPv6len, []byte{0xfe, 0x80}, nil, 128)
 
 	type args struct {
-		peer           *wgtypes.Peer
-		ttl            time.Duration
-		trustLocalAIPs bool
-		now            time.Time
+		peer                 *wgtypes.Peer
+		ttl                  time.Duration
+		trustLocalAIPs       bool
+		trustLocalMembership bool
+		now                  time.Time
 	}
 	tests := []struct {
 		name    string
@@ -48,6 +49,7 @@ func TestLocalFacts(t *testing.T) {
 				&wgtypes.Peer{},
 				ttl,
 				true,
+				false,
 				now,
 			},
 			nil,
@@ -63,6 +65,7 @@ func TestLocalFacts(t *testing.T) {
 				},
 				ttl,
 				false,
+				false,
 				now,
 			},
 			nil,
@@ -77,6 +80,7 @@ func TestLocalFacts(t *testing.T) {
 					Endpoint:          u1,
 				},
 				ttl,
+				false,
 				false,
 				now,
 			},
@@ -95,6 +99,7 @@ func TestLocalFacts(t *testing.T) {
 				},
 				ttl,
 				false,
+				false,
 				now,
 			},
 			[]*fact.Fact{
@@ -112,6 +117,7 @@ func TestLocalFacts(t *testing.T) {
 				},
 				ttl,
 				true,
+				false,
 				now,
 			},
 			[]*fact.Fact{
@@ -131,6 +137,7 @@ func TestLocalFacts(t *testing.T) {
 				},
 				ttl,
 				true,
+				false,
 				now,
 			},
 			[]*fact.Fact{
@@ -140,10 +147,28 @@ func TestLocalFacts(t *testing.T) {
 			},
 			false,
 		},
+		{
+			"local member trust",
+			args{
+				&wgtypes.Peer{
+					PublicKey:         k1,
+					LastHandshakeTime: now,
+					AllowedIPs:        []net.IPNet{n1, n2, n3},
+				},
+				ttl,
+				false,
+				true,
+				now,
+			},
+			[]*fact.Fact{
+				factutils.MemberFactFull(&k1, expires),
+			},
+			false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotRet, err := LocalFacts(tt.args.peer, tt.args.ttl, tt.args.trustLocalAIPs, tt.args.now)
+			gotRet, err := LocalFacts(tt.args.peer, tt.args.ttl, tt.args.trustLocalAIPs, tt.args.trustLocalMembership, tt.args.now)
 			if tt.wantErr {
 				require.NotNil(t, err, "LocalFacts() error")
 			} else {

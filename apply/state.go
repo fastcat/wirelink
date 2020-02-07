@@ -37,6 +37,22 @@ func (pcs *PeerConfigState) EnsureNotNil() *PeerConfigState {
 	return pcs
 }
 
+// Clone makes a deep clone of the receiver
+func (pcs *PeerConfigState) Clone() *PeerConfigState {
+	if pcs == nil {
+		return nil
+	}
+
+	ret := *pcs
+	if pcs.endpointLastUsed != nil {
+		ret.endpointLastUsed = make(map[string]time.Time, len(pcs.endpointLastUsed))
+		for k, v := range pcs.endpointLastUsed {
+			ret.endpointLastUsed[k] = v
+		}
+	}
+	return &ret
+}
+
 // Update refreshes the PeerConfigState with new data from the wireguard device.
 // NOTE: It is safe to call this on a `nil` pointer, it will return a new state
 // TODO: give this access to the `peerKnowledgeSet` instead of passing in the alive state

@@ -11,6 +11,7 @@ import (
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/internal/testutils"
+	"github.com/fastcat/wirelink/util"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -141,10 +142,10 @@ func TestEnsureAllowedIPs(t *testing.T) {
 			got := EnsureAllowedIPs(tt.args.peer, tt.args.facts, tt.args.cfg, tt.args.allowDeconfigure)
 			// have to sort the AIP lists for the equality to work
 			if got != nil {
-				testutils.SortIPNetSlice(got.AllowedIPs)
+				util.SortIPNetSlice(got.AllowedIPs)
 			}
 			if tt.want != nil {
-				testutils.SortIPNetSlice(tt.want.AllowedIPs)
+				util.SortIPNetSlice(tt.want.AllowedIPs)
 			}
 			assert.Equal(t, tt.want, got)
 		})

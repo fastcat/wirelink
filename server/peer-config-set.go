@@ -50,3 +50,22 @@ func (pcs *peerConfigSet) ForEach(visitor func(key wgtypes.Key, value *apply.Pee
 		visitor(k, v)
 	}
 }
+
+// Clone makes a deep clone of the receiver
+func (pcs *peerConfigSet) Clone() *peerConfigSet {
+	if pcs == nil {
+		return nil
+	}
+
+	pcs.psm.Lock()
+	defer pcs.psm.Unlock()
+
+	ret := &peerConfigSet{
+		peerStates: make(map[wgtypes.Key]*apply.PeerConfigState),
+		psm:        &sync.Mutex{},
+	}
+	for k, v := range pcs.peerStates {
+		ret.peerStates[k] = v.Clone()
+	}
+	return ret
+}

@@ -13,6 +13,7 @@ import (
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/internal/networking/mocks"
 	"github.com/fastcat/wirelink/internal/testutils"
+	factutils "github.com/fastcat/wirelink/internal/testutils/facts"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,6 +23,7 @@ import (
 
 func TestLinkServer_collectFacts(t *testing.T) {
 	now := time.Now()
+	expires := now.Add(FactTTL)
 	k1 := testutils.MustKey(t)
 	k2 := testutils.MustKey(t)
 	ifWg := fmt.Sprintf("wg%d", rand.Int())
@@ -102,37 +104,15 @@ func TestLinkServer_collectFacts(t *testing.T) {
 			}},
 			[]*fact.Fact{
 				// should know the local endpoint
-				&fact.Fact{
-					Attribute: fact.AttributeEndpointV4,
-					Subject:   &fact.PeerSubject{Key: k1},
-					Value:     &fact.IPPortValue{IP: ipn2.IP, Port: p1},
-					Expires:   now.Add(FactTTL),
-				},
+				factutils.EndpointFactFull(&net.UDPAddr{IP: ipn2.IP, Port: p1}, &k1, expires),
 				// should know the local AIP
-				&fact.Fact{
-					Attribute: fact.AttributeAllowedCidrV4,
-					Subject:   &fact.PeerSubject{Key: k1},
-					Value: &fact.IPNetValue{IPNet: net.IPNet{
-						IP:   ipn1.IP.Mask(ipn1.Mask),
-						Mask: ipn1.Mask,
-					}},
-					Expires: now.Add(FactTTL),
-				},
+				factutils.AllowedIPFactFull(applyMask(ipn1), &k1, expires),
 				// should know the remote endpoint
-				&fact.Fact{
-					Attribute: fact.AttributeEndpointV4,
-					Subject:   &fact.PeerSubject{Key: k2},
-					Value:     &fact.IPPortValue{IP: ep1.IP, Port: ep1.Port},
-					Expires:   now.Add(FactTTL),
-				},
+				factutils.EndpointFactFull(ep1, &k2, expires),
 				// should know the remote AIP
-				&fact.Fact{
-					Attribute: fact.AttributeAllowedCidrV4,
-					Subject:   &fact.PeerSubject{Key: k2},
-					// we don't mask this one because we expect wg to have done it already
-					Value:   &fact.IPNetValue{IPNet: ipn3},
-					Expires: now.Add(FactTTL),
-				},
+				factutils.AllowedIPFactFull(ipn3, &k2, expires),
+				// should know the remote as a member
+				factutils.MemberFactFull(&k2, expires),
 			},
 			false,
 		},
@@ -169,32 +149,14 @@ func TestLinkServer_collectFacts(t *testing.T) {
 			},
 			args{&wgtypes.Device{}},
 			[]*fact.Fact{
+				// member
+				factutils.MemberFactFull(&k1, expires),
 				// ipv4 and ipv6 endpoints
-				&fact.Fact{
-					Attribute: fact.AttributeEndpointV4,
-					Subject:   &fact.PeerSubject{Key: k1},
-					Value:     &fact.IPPortValue{IP: ep1.IP, Port: ep1.Port},
-					Expires:   now.Add(FactTTL),
-				},
-				&fact.Fact{
-					Attribute: fact.AttributeEndpointV6,
-					Subject:   &fact.PeerSubject{Key: k1},
-					Value:     &fact.IPPortValue{IP: ep2.IP, Port: ep2.Port},
-					Expires:   now.Add(FactTTL),
-				},
+				factutils.EndpointFactFull(ep1, &k1, expires),
+				factutils.EndpointFactFull(ep2, &k1, expires),
 				// ipv4 and ipv6 aips
-				&fact.Fact{
-					Attribute: fact.AttributeAllowedCidrV4,
-					Subject:   &fact.PeerSubject{Key: k1},
-					Value:     &fact.IPNetValue{IPNet: ipn1},
-					Expires:   now.Add(FactTTL),
-				},
-				&fact.Fact{
-					Attribute: fact.AttributeAllowedCidrV6,
-					Subject:   &fact.PeerSubject{Key: k1},
-					Value:     &fact.IPNetValue{IPNet: ipn4},
-					Expires:   now.Add(FactTTL),
-				},
+				factutils.AllowedIPFactFull(ipn1, &k1, expires),
+				factutils.AllowedIPFactFull(ipn4, &k1, expires),
 			},
 			false,
 		},

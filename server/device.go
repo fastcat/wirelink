@@ -33,11 +33,13 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device, now time.Time) (ret []*fa
 
 	// facts the local node knows about peers configured in the wireguard device
 	//FIXME: find a better way to figure out if we should trust our local AIP list
-	useLocalAIPs := s.config.IsRouterNow || s.config.Peers.Trust(dev.PublicKey, trust.Untrusted) >= trust.AddPeer
+	localTrust := s.config.Peers.Trust(dev.PublicKey, trust.Untrusted)
+	useLocalAIPs := s.config.IsRouterNow || localTrust >= trust.AllowedIPs
+	useLocalMembership := s.config.IsRouterNow || localTrust >= trust.Membership
 	log.Debug("Using local AIP facts: %v", useLocalAIPs)
 	for _, peer := range dev.Peers {
 		var pf []*fact.Fact
-		pf, err = peerfacts.LocalFacts(&peer, FactTTL, useLocalAIPs, now)
+		pf, err = peerfacts.LocalFacts(&peer, FactTTL, useLocalAIPs, useLocalMembership, now)
 		if err != nil {
 			return
 		}
@@ -49,6 +51,13 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device, now time.Time) (ret []*fa
 	// static facts from the config
 	// these may duplicate other known facts, higher layers will dedupe
 	for pk, pc := range s.config.Peers {
+		// statically configured peers are always valid members
+		ret = append(ret, &fact.Fact{
+			Attribute: fact.AttributeMember,
+			Subject:   &fact.PeerSubject{Key: pk},
+			Value:     &fact.EmptyValue{},
+			Expires:   expires,
+		})
 		ret = s.handlePeerConfigAllowedIPs(pk, pc, expires, ret)
 		// skip endpoint lookups for self
 		// if other peers need these as static facts, they would have it in their config

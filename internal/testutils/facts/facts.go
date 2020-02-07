@@ -59,3 +59,23 @@ func AllowedIPFactFull(aip net.IPNet, peer *wgtypes.Key, expires time.Time) *fac
 	}
 	return ret
 }
+
+// MemberFactFull returns a membership fact for the given peer
+func MemberFactFull(peer *wgtypes.Key, expires time.Time) *fact.Fact {
+	return &fact.Fact{
+		Attribute: fact.AttributeMember,
+		Subject:   &fact.PeerSubject{Key: *peer},
+		Expires:   expires,
+		Value:     &fact.EmptyValue{},
+	}
+}
+
+// AliveFact generates an alive fact for the peer, with a zero boot ID
+func AliveFact(peer *wgtypes.Key, expires time.Time) *fact.Fact {
+	return &fact.Fact{
+		Attribute: fact.AttributeAlive,
+		Subject:   &fact.PeerSubject{Key: *peer},
+		Expires:   expires,
+		Value:     &fact.UUIDValue{},
+	}
+}

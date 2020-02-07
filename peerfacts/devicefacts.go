@@ -14,7 +14,8 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-// DeviceFacts returns facts about the local wireguard device
+// DeviceFacts returns facts about the local wireguard device and the peer that
+// it represents, but not about other peers configured in the device.
 func DeviceFacts(
 	dev *wgtypes.Device,
 	now time.Time,
@@ -54,9 +55,9 @@ func DeviceFacts(
 		if iface.Name() == dev.Name {
 			// but maybe do report allowedIPs, if we don't have them explicitly configured
 			if config.IsRouterNow && len(config.Peers.AllowedIPs(dev.PublicKey)) == 0 {
-				log.Debug("Reporting AllowedIPs for local iface %s", iface.Name)
+				log.Debug("Reporting AllowedIPs for local iface %s", iface.Name())
 				forEachAddr(iface, func(ipn net.IPNet) error {
-					log.Debug("Reporting local AllowedIP: %s: %v", iface.Name, ipn)
+					log.Debug("Reporting local AllowedIP: %s: %v", iface.Name(), ipn)
 					// apply the mask to the IP so it matches how it will be interpreted by WG later
 					normalized := net.IPNet{
 						IP:   ipn.IP.Mask(ipn.Mask),

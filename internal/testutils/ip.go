@@ -3,8 +3,6 @@ package testutils
 import (
 	"math/rand"
 	"net"
-	"sort"
-	"strings"
 
 	"testing"
 )
@@ -65,14 +63,6 @@ func RandUDP6Addr(t *testing.T) *net.UDPAddr {
 		IP:   MustRandBytes(t, make([]byte, net.IPv6len)),
 		Port: rand.Intn(65535),
 	}
-}
-
-// SortIPNetSlice sorts a slice of IPNets by their string value.
-// OMG want generics.
-func SortIPNetSlice(slice []net.IPNet) {
-	sort.Slice(slice, func(i, j int) bool {
-		return strings.Compare(slice[i].String(), slice[j].String()) < 0
-	})
 }
 
 // ContainsIPNet runs a predicate across a net.IPNet slice and returns if any match was found

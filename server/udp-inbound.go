@@ -13,6 +13,7 @@ import (
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/trust"
+	"github.com/fastcat/wirelink/util"
 )
 
 func (s *LinkServer) readPackets(packets chan<- *ReceivedFact) error {
@@ -31,21 +32,28 @@ func (s *LinkServer) readPackets(packets chan<- *ReceivedFact) error {
 			s.conn.SetReadDeadline(time.Now().Add(time.Second))
 			n, addr, err := s.conn.ReadFromUDP(buffer[:])
 			if err != nil {
+				if util.IsNetClosing(err) {
+					// the socket has been closed, we're done
+					return nil
+				}
+
 				if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
-					// send a nil to wake up the processor in case it has other work to do
+					// didn't get a packet after our timeout, send a nil to wake up the
+					// processor in case it has other work to do
 					packets <- nil
 					continue
 				}
 				return errors.Wrap(err, "Failed to read from UDP socket, giving up")
 			}
+			now := time.Now()
 			pp := &fact.Fact{}
-			err = pp.DecodeFrom(n, bytes.NewBuffer(buffer[:n]))
+			err = pp.DecodeFrom(n, now, bytes.NewBuffer(buffer[:n]))
 			if err != nil {
 				log.Error("Unable to decode fact: %v %v", err, buffer[:n])
 				continue
 			}
 			if pp.Attribute == fact.AttributeSignedGroup {
-				err = s.processGroup(pp, addr, packets)
+				err = s.processSignedGroup(pp, addr, now, packets)
 				if err != nil {
 					log.Error("Unable to process SignedGroup from %v: %v", *addr, err)
 				}
@@ -60,14 +68,22 @@ func (s *LinkServer) readPackets(packets chan<- *ReceivedFact) error {
 	}
 }
 
-func (s *LinkServer) processGroup(f *fact.Fact, source *net.UDPAddr, packets chan<- *ReceivedFact) error {
+// processSignedGroup takes a single fact with a SignedGroupValue,
+// verifies it, if valid parses it into individual facts,
+// and emits them to the `packets` channel
+func (s *LinkServer) processSignedGroup(
+	f *fact.Fact,
+	source *net.UDPAddr,
+	now time.Time,
+	packets chan<- *ReceivedFact,
+) error {
 	ps, ok := f.Subject.(*fact.PeerSubject)
 	if !ok {
 		return errors.Errorf("SignedGroup has non-PeerSubject: %T", f.Subject)
 	}
 	pv, ok := f.Value.(*fact.SignedGroupValue)
 	if !ok {
-		return errors.Errorf("SignedGroup has non-SigendGroupValue: %T", f.Value)
+		return errors.Errorf("SignedGroup has non-SignedGroupValue: %T", f.Value)
 	}
 
 	if !autopeer.AutoAddress(ps.Key).Equal(source.IP) {
@@ -84,7 +100,7 @@ func (s *LinkServer) processGroup(f *fact.Fact, source *net.UDPAddr, packets cha
 		return errors.Errorf("Unknown error validating SignedGroup")
 	}
 
-	inner, err := pv.ParseInner()
+	inner, err := pv.ParseInner(now)
 	if err != nil {
 		return errors.Wrapf(err, "Unable to parse SignedGroup inner")
 	}
@@ -104,6 +120,7 @@ func (s *LinkServer) receivePackets(
 
 	var buffer []*ReceivedFact
 	chunkTicker := time.NewTicker(chunkPeriod)
+	defer chunkTicker.Stop()
 
 	// send an empty chunk once at startup to prime things
 	newFacts <- nil
@@ -113,9 +130,9 @@ func (s *LinkServer) receivePackets(
 		select {
 		case p, ok := <-packets:
 			if !ok {
-				// we don't care about transmitting the accumulated facts to peers,
+				// we don't care much about transmitting the accumulated facts to peers,
 				// but we do want to evaluate them so we can report final state
-				sendBuffer = true
+				sendBuffer = len(buffer) > 0
 				done = true
 				break
 			}
@@ -141,6 +158,7 @@ func (s *LinkServer) receivePackets(
 		}
 	}
 
+	// deferred close(packets) will wake up downstream
 	return nil
 }
 
@@ -176,64 +194,87 @@ func (s *LinkServer) processChunks(
 
 	for chunk := range newFacts {
 		now := time.Now()
-		// accumulate all the still valid and newly valid facts
-		newFactsChunk := make([]*fact.Fact, 0, len(currentFacts)+len(chunk))
-		// add all the not-expired facts
-		for _, f := range currentFacts {
-			if now.Before(f.Expires) {
-				newFactsChunk = append(newFactsChunk, f)
-			}
-		}
-		dev, err := s.deviceState()
+
+		uniqueFacts, newLocalFacts, err := s.processOneChunk(currentFacts, lastLocalFacts, chunk, now)
 		if err != nil {
-			// this probably means the interface is down
-			// the log message will be printed by the main app as it exits
-			return errors.Wrap(err, "Unable to load device info to evaluate trust, giving up")
+			return err
 		}
-		s.UpdateRouterState(dev, true)
-
-		localFacts, err := s.collectFacts(dev, now)
-		if err != nil {
-			log.Error("Unable to collect local facts: %v", err)
-		}
-		// might still have gotten something before the error tho
-		if len(localFacts) != 0 {
-			newFactsChunk = append(newFactsChunk, localFacts...)
-		}
-		// only prune if we retrieved local facts without error
-		if err == nil {
-			newFactsChunk = pruneRemovedLocalFacts(newFactsChunk, lastLocalFacts, localFacts)
-			lastLocalFacts = localFacts
-		}
-
-		pl := createPeerLookup(dev.Peers)
-
-		evaluator := trust.CreateComposite(trust.FirstOnly,
-			// TODO: we can cache the config trust to avoid some re-computation
-			config.CreateTrustEvaluator(s.config.Peers),
-			trust.CreateRouteBasedTrust(dev.Peers),
-		)
-		// add all the new not-expired and _trusted_ facts
-		for _, rf := range chunk {
-			// add to what the peer knows, even if we otherwise discard the information
-			s.peerKnowledge.upsertReceived(rf, pl)
-
-			if now.After(rf.fact.Expires) {
-				continue
-			}
-
-			level := evaluator.TrustLevel(rf.fact, rf.source)
-			known := evaluator.IsKnown(rf.fact.Subject)
-			if trust.ShouldAccept(rf.fact.Attribute, known, level) {
-				newFactsChunk = append(newFactsChunk, rf.fact)
-			}
-		}
-		uniqueFacts := fact.MergeList(newFactsChunk)
-		// TODO: log new/removed facts, ignoring TTL
+		lastLocalFacts = newLocalFacts
 		currentFacts = uniqueFacts
 
 		factsRefreshed <- uniqueFacts
 	}
 
 	return nil
+}
+
+func (s *LinkServer) processOneChunk(
+	currentFacts, lastLocalFacts []*fact.Fact,
+	chunk []*ReceivedFact,
+	now time.Time,
+) (uniqueFacts, newLocalFacts []*fact.Fact, err error) {
+	// accumulate all the still valid and newly valid facts
+	newFactsChunk := make([]*fact.Fact, 0, len(currentFacts)+len(chunk))
+	// add all the not-expired facts
+	for _, f := range currentFacts {
+		if now.Before(f.Expires) {
+			newFactsChunk = append(newFactsChunk, f)
+		}
+	}
+	dev, err := s.deviceState()
+	if err != nil {
+		// this probably means the interface is down
+		// the log message will be printed by the main app as it exits
+		return nil, lastLocalFacts, errors.Wrap(err, "Unable to load device info to evaluate trust, giving up")
+	}
+	s.UpdateRouterState(dev, true)
+
+	newLocalFacts, err = s.collectFacts(dev, now)
+	if err != nil {
+		log.Error("Unable to collect local facts: %v", err)
+	}
+	// might still have gotten something before the error tho
+	if len(newLocalFacts) != 0 {
+		newFactsChunk = append(newFactsChunk, newLocalFacts...)
+	}
+	// only prune if we retrieved local facts without error
+	if err == nil {
+		// TODO: this may cause us to remove facts received remotely if we used to
+		// also source them locally, but no longer do, even if they are still valid remotely.
+		// unclear how big an issue this is. at the very least, the remote should
+		// eventually re-send them and we'll re-add them, but it might cause
+		// service disruptions
+		newFactsChunk = pruneRemovedLocalFacts(newFactsChunk, lastLocalFacts, newLocalFacts)
+	} else {
+		// something went wrong keep original even though we appended the new data to the combined chunk
+		newLocalFacts = lastLocalFacts
+	}
+
+	pl := createPeerLookup(dev.Peers)
+
+	evaluator := trust.CreateComposite(trust.FirstOnly,
+		// TODO: we can cache the config trust to avoid some re-computation
+		config.CreateTrustEvaluator(s.config.Peers),
+		trust.CreateRouteBasedTrust(dev.Peers),
+	)
+	// add all the new not-expired and _trusted_ facts
+	for _, rf := range chunk {
+		// add to what the peer knows, even if we otherwise discard the information
+		s.peerKnowledge.upsertReceived(rf, pl)
+
+		if now.After(rf.fact.Expires) {
+			continue
+		}
+
+		level := evaluator.TrustLevel(rf.fact, rf.source)
+		known := evaluator.IsKnown(rf.fact.Subject)
+		if trust.ShouldAccept(rf.fact.Attribute, known, level) {
+			newFactsChunk = append(newFactsChunk, rf.fact)
+		}
+	}
+	uniqueFacts = fact.MergeList(newFactsChunk)
+	// at this point, ignore any prior error we got
+	err = nil
+	// TODO: log new/removed facts, ignoring TTL
+	return
 }
