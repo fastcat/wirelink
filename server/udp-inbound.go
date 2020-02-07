@@ -120,6 +120,7 @@ func (s *LinkServer) receivePackets(
 
 	var buffer []*ReceivedFact
 	chunkTicker := time.NewTicker(chunkPeriod)
+	defer chunkTicker.Stop()
 
 	// send an empty chunk once at startup to prime things
 	newFacts <- nil
@@ -129,9 +130,9 @@ func (s *LinkServer) receivePackets(
 		select {
 		case p, ok := <-packets:
 			if !ok {
-				// we don't care about transmitting the accumulated facts to peers,
+				// we don't care much about transmitting the accumulated facts to peers,
 				// but we do want to evaluate them so we can report final state
-				sendBuffer = true
+				sendBuffer = len(buffer) > 0
 				done = true
 				break
 			}
@@ -157,6 +158,7 @@ func (s *LinkServer) receivePackets(
 		}
 	}
 
+	// deferred close(packets) will wake up downstream
 	return nil
 }
 

@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"net"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -247,6 +248,328 @@ func TestLinkServer_processSignedGroup(t *testing.T) {
 				packets = append(packets, p)
 			}
 			assert.Equal(t, tt.wantPackets, packets)
+		})
+	}
+}
+
+func TestLinkServer_receivePackets(t *testing.T) {
+	now := time.Now()
+	expires := now.Add(FactTTL)
+
+	var randRfs []*ReceivedFact
+	rf := func(index int) *ReceivedFact {
+		for len(randRfs) <= index {
+			k := testutils.MustKey(t)
+			randRfs = append(randRfs, &ReceivedFact{
+				facts.AliveFact(&k, expires),
+				*testutils.RandUDP4Addr(t),
+			})
+		}
+		return randRfs[index]
+	}
+	rfs := func(indexes ...int) []*ReceivedFact {
+		ret := make([]*ReceivedFact, len(indexes))
+		for i, index := range indexes {
+			ret[i] = rf(index)
+		}
+		return ret
+	}
+
+	type fields struct {
+		// this only works for initial trigger testing
+		printsRequested int32
+	}
+	type args struct {
+		maxChunk    int
+		chunkPeriod time.Duration
+	}
+	tests := []struct {
+		name       string
+		fields     fields
+		args       args
+		assertion  require.ErrorAssertionFunc
+		packets    []*ReceivedFact
+		wantChunks [][]*ReceivedFact
+		// testing timing is a different test setup
+	}{
+		{
+			"no data",
+			fields{},
+			args{
+				maxChunk:    1,
+				chunkPeriod: time.Second,
+			},
+			require.NoError,
+			nil,
+			[][]*ReceivedFact{},
+		},
+		{
+			"print requested",
+			fields{1},
+			args{
+				maxChunk:    2,
+				chunkPeriod: time.Second,
+			},
+			require.NoError,
+			rfs(0, 1),
+			[][]*ReceivedFact{
+				// first packet is forced out by printsRequested
+				rfs(0),
+				// second packet is the last thing ... but also since we don't clear printsRequested
+				rfs(1),
+			},
+		},
+		{
+			"chunk size",
+			fields{},
+			args{
+				maxChunk:    5,
+				chunkPeriod: time.Second,
+			},
+			require.NoError,
+			rfs(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11),
+			[][]*ReceivedFact{
+				rfs(0, 1, 2, 3, 4),
+				rfs(5, 6, 7, 8, 9),
+				rfs(10, 11),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &LinkServer{
+				printsRequested: new(int32),
+			}
+			*s.printsRequested = tt.fields.printsRequested
+			// make deep channels to avoid buffering problems
+			packets := make(chan *ReceivedFact, len(tt.packets))
+			// need +1 because there is an extra empty chunk sent at start
+			newFacts := make(chan []*ReceivedFact, len(tt.packets)+1)
+			for _, p := range tt.packets {
+				packets <- p
+			}
+			close(packets)
+			tt.assertion(t, s.receivePackets(packets, newFacts, tt.args.maxChunk, tt.args.chunkPeriod))
+			var gotChunks [][]*ReceivedFact
+			for chunk := range newFacts {
+				gotChunks = append(gotChunks, chunk)
+			}
+			// there's always a nil startup chunk, don't require tests to specify that
+			wantChunks := append([][]*ReceivedFact{nil}, tt.wantChunks...)
+			assert.Equal(t, wantChunks, gotChunks)
+		})
+	}
+}
+
+func TestLinkServer_receivePackets_slow(t *testing.T) {
+	// all the tests in here have long runtimes,
+	if testing.Short() {
+		t.SkipNow()
+	}
+
+	timeZero := time.Now()
+	expires := timeZero.Add(FactTTL)
+
+	var randRfs []*ReceivedFact
+	rf := func(index int) *ReceivedFact {
+		for len(randRfs) <= index {
+			k := testutils.MustKey(t)
+			randRfs = append(randRfs, &ReceivedFact{
+				facts.AliveFact(&k, expires),
+				*testutils.RandUDP4Addr(t),
+			})
+		}
+		return randRfs[index]
+	}
+	rfs := func(indexes ...int) []*ReceivedFact {
+		if len(indexes) == 0 {
+			return nil
+		}
+		ret := make([]*ReceivedFact, len(indexes))
+		for i, index := range indexes {
+			ret[i] = rf(index)
+		}
+		return ret
+	}
+
+	type args struct {
+		maxChunk    int
+		chunkPeriod time.Duration
+	}
+	type send struct {
+		offset      time.Duration
+		packet      *ReceivedFact
+		incrPrints  bool
+		clearPrints bool
+	}
+	type receive struct {
+		offset time.Duration
+		chunk  []*ReceivedFact
+	}
+
+	sendAtMs := func(ms, index int) send {
+		return send{offset: time.Duration(ms) * time.Millisecond, packet: rf(index)}
+	}
+	receiveAtMs := func(ms int, indexes ...int) receive {
+		return receive{offset: time.Duration(ms) * time.Millisecond, chunk: rfs(indexes...)}
+	}
+
+	tests := []struct {
+		name       string
+		args       args
+		assertion  require.ErrorAssertionFunc
+		packets    []send
+		wantChunks []receive
+	}{
+		{
+			"empty",
+			args{1, time.Hour},
+			require.NoError,
+			nil,
+			[]receive{},
+		},
+		{
+			"two quick",
+			args{3, time.Hour},
+			require.NoError,
+			[]send{
+				sendAtMs(1, 0),
+				sendAtMs(2, 1),
+			},
+			[]receive{
+				receiveAtMs(2, 0, 1),
+			},
+		},
+		{
+			"two delayed",
+			args{2, 100 * time.Millisecond},
+			require.NoError,
+			[]send{
+				sendAtMs(50, 0),
+				sendAtMs(150, 1),
+			},
+			[]receive{
+				receiveAtMs(100, 0),
+				receiveAtMs(150, 1),
+			},
+		},
+		{
+			"two chunks, pause after each",
+			args{3, 100 * time.Millisecond},
+			require.NoError,
+			[]send{
+				sendAtMs(50, 0),
+				sendAtMs(55, 1),
+				sendAtMs(250, 2),
+				sendAtMs(255, 3),
+				send{offset: 350 * time.Millisecond},
+			},
+			[]receive{
+				receiveAtMs(100, 0, 1),
+				receive{offset: 200 * time.Millisecond},
+				receiveAtMs(300, 2, 3),
+			},
+		},
+		{
+			"buffer fill with delay",
+			args{3, 100 * time.Millisecond},
+			require.NoError,
+			[]send{
+				sendAtMs(10, 0),
+				sendAtMs(20, 1),
+				sendAtMs(30, 2),
+				sendAtMs(40, 3),
+				sendAtMs(110, 4),
+				sendAtMs(120, 5),
+				send{offset: 210 * time.Millisecond},
+			},
+			[]receive{
+				receiveAtMs(30, 0, 1, 2),
+				receiveAtMs(100, 3),
+				receiveAtMs(200, 4, 5),
+			},
+		},
+		{
+			"print requests",
+			args{3, 100 * time.Millisecond},
+			require.NoError,
+			[]send{
+				sendAtMs(10, 0),
+				send{offset: 20 * time.Millisecond, incrPrints: true},
+				send{offset: 30 * time.Millisecond, clearPrints: true},
+				send{offset: 40 * time.Millisecond, incrPrints: true},
+				send{offset: 50 * time.Millisecond, clearPrints: true},
+				sendAtMs(60, 1),
+			},
+			[]receive{
+				receiveAtMs(20, 0),
+				receiveAtMs(40),
+				receiveAtMs(60, 1),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &LinkServer{
+				printsRequested: new(int32),
+			}
+			// for this test, use the same limited buffer for the incoming packets as
+			// the real server
+			packets := make(chan *ReceivedFact, 1)
+			// but still make a deep channel for the output to simplify test logic
+			newFacts := make(chan []*ReceivedFact, len(tt.packets)+1)
+			doneSend := make(chan struct{})
+			doneReceive := make(chan struct{})
+			start := time.Now()
+			go func() {
+				defer close(doneSend)
+				defer close(packets)
+				// this initial duration will be ignored
+				timer := time.NewTimer(time.Hour)
+				defer timer.Stop()
+				for _, p := range tt.packets {
+					currentOffset := time.Now().Sub(start)
+					delay := p.offset - currentOffset
+					if delay > 0 {
+						timer.Reset(delay)
+						<-timer.C
+					}
+					// sending a nil packet is valid, so we need to check flags if that's what we've got
+					if p.packet != nil {
+						// treat the packet expires as an offset from timeZero, update it to be that offset from now
+						p.packet.fact.Expires.Add(time.Now().Sub(timeZero))
+						packets <- p.packet
+					} else if p.clearPrints {
+						atomic.StoreInt32(s.printsRequested, 0)
+					} else {
+						if p.incrPrints {
+							atomic.AddInt32(s.printsRequested, 1)
+							// have to send for this to take effect
+						}
+						packets <- nil
+					}
+				}
+			}()
+			var gotChunks []receive
+			go func() {
+				defer close(doneReceive)
+				for chunk := range newFacts {
+					gotChunks = append(gotChunks, receive{time.Now().Sub(start), chunk})
+				}
+			}()
+			tt.assertion(t, s.receivePackets(packets, newFacts, tt.args.maxChunk, tt.args.chunkPeriod))
+			// wait for goroutines
+			<-doneSend
+			<-doneReceive
+			// there's always a nil startup chunk, don't require tests to specify that
+			wantChunks := append([]receive{receive{0, nil}}, tt.wantChunks...)
+			assert.Len(t, gotChunks, len(wantChunks))
+			for i := 0; i < len(gotChunks) && i < len(wantChunks); i++ {
+				assert.Equal(t, wantChunks[i].chunk, gotChunks[i].chunk, "Received chunk %d", i)
+				// need to allow some slop in the receive timing
+				// exact threshold here requires some experimentation
+				assert.InDelta(t, wantChunks[i].offset, gotChunks[i].offset, float64(2*time.Millisecond), "Received timing %d", i)
+			}
 		})
 	}
 }
