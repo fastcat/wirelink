@@ -111,14 +111,15 @@ func (m *Environment) RegisterUDPConn(c *UDPConn) {
 // at their denoted times, interpreted as offsets relative to reference,
 // relative to when ReadPackets is called. It will obey the context parameter
 // and stop sending early if it is canceled.
-func (c *UDPConn) WithPacketSequence(reference time.Time, packets ...networking.UDPPacket) *mock.Call {
+func (c *UDPConn) WithPacketSequence(reference time.Time, packets ...*networking.UDPPacket) *mock.Call {
 	return c.On(
 		"ReadPackets",
-		mock.AnythingOfType("Context"),
-		mock.AnythingOfType("int"),
-		//FIXME: what's the proper type name here for the channel?
+		// we don't actually care about the arg values, we're going to use them, not check them
+		mock.Anything,
+		mock.Anything,
 		mock.Anything,
 	).Return(func(ctx context.Context, maxSize int, output chan<- *networking.UDPPacket) error {
+		defer close(output)
 		offset := time.Now().Sub(reference)
 		ctxDone := ctx.Done()
 		for i := range packets {
@@ -132,7 +133,7 @@ func (c *UDPConn) WithPacketSequence(reference time.Time, packets ...networking.
 				// NOTE: the real packet reader returns nil here
 				return ctx.Err()
 			case <-timer.C:
-				output <- &packets[i]
+				output <- packets[i]
 			}
 		}
 		return nil

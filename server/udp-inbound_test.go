@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"net"
@@ -12,6 +13,7 @@ import (
 	"github.com/fastcat/wirelink/config"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/internal/mocks"
+	"github.com/fastcat/wirelink/internal/networking"
 	netmocks "github.com/fastcat/wirelink/internal/networking/mocks"
 	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/fastcat/wirelink/internal/testutils/facts"
@@ -19,8 +21,72 @@ import (
 	"github.com/fastcat/wirelink/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
+
+func TestLinkServer_readPackets(t *testing.T) {
+	// this test does timed things, so skip it when running quick tests
+	if testing.Short() {
+		t.SkipNow()
+	}
+	now := time.Now()
+	t.Log(now)
+
+	// need real crypto keys for this test
+	localPrivateKey, localPublicKey := testutils.MustKeyPair(t)
+	assert.NotNil(t, &localPublicKey)
+	// remotePrivateKey, remotePublicKey := testutils.MustKeyPair(t)
+
+	type fields struct {
+		conn func(*testing.T) *netmocks.UDPConn
+	}
+	tests := []struct {
+		name         string
+		fields       fields
+		assertion    require.ErrorAssertionFunc
+		packets      []*networking.UDPPacket
+		wantReceived []*ReceivedFact
+	}{
+		{
+			"empty",
+			fields{
+				func(t *testing.T) *netmocks.UDPConn {
+					return &netmocks.UDPConn{}
+				},
+			},
+			require.NoError,
+			[]*networking.UDPPacket{},
+			[]*ReceivedFact{},
+		},
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			conn := tt.fields.conn(t)
+			conn.WithPacketSequence(time.Now(), tt.packets...)
+			conn.Test(t)
+			s := &LinkServer{
+				conn:   conn,
+				eg:     &errgroup.Group{},
+				ctx:    context.Background(),
+				signer: signing.New(&localPrivateKey),
+			}
+			// deep channel to simplify test logic
+			received := make(chan *ReceivedFact, len(tt.wantReceived))
+
+			tt.assertion(t, s.readPackets(received))
+
+			tt.assertion(t, s.eg.Wait())
+			gotReceived := make([]*ReceivedFact, 0, len(tt.wantReceived))
+			for r := range received {
+				gotReceived = append(gotReceived, r)
+			}
+			assert.Equal(t, tt.wantReceived, gotReceived)
+			conn.AssertExpectations(t)
+		})
+	}
+}
 
 func TestLinkServer_processSignedGroup(t *testing.T) {
 	now := time.Now()
@@ -338,7 +404,7 @@ func TestLinkServer_chunkPackets(t *testing.T) {
 }
 
 func TestLinkServer_chunkPackets_slow(t *testing.T) {
-	// all the tests in here have long runtimes,
+	// all the tests in here have long runtimes, skip this if doing quick tests
 	if testing.Short() {
 		t.SkipNow()
 	}
