@@ -251,7 +251,7 @@ func TestLinkServer_processSignedGroup(t *testing.T) {
 	}
 }
 
-func TestLinkServer_receivePackets(t *testing.T) {
+func TestLinkServer_chunkPackets(t *testing.T) {
 	now := time.Now()
 	expires := now.Add(FactTTL)
 
@@ -325,7 +325,7 @@ func TestLinkServer_receivePackets(t *testing.T) {
 				packets <- p
 			}
 			close(packets)
-			tt.assertion(t, s.receivePackets(packets, newFacts, tt.args.maxChunk, tt.args.chunkPeriod))
+			tt.assertion(t, s.chunkPackets(packets, newFacts, tt.args.maxChunk, tt.args.chunkPeriod))
 			var gotChunks [][]*ReceivedFact
 			for chunk := range newFacts {
 				gotChunks = append(gotChunks, chunk)
@@ -337,7 +337,7 @@ func TestLinkServer_receivePackets(t *testing.T) {
 	}
 }
 
-func TestLinkServer_receivePackets_slow(t *testing.T) {
+func TestLinkServer_chunkPackets_slow(t *testing.T) {
 	// all the tests in here have long runtimes,
 	if testing.Short() {
 		t.SkipNow()
@@ -505,7 +505,7 @@ func TestLinkServer_receivePackets_slow(t *testing.T) {
 					gotChunks = append(gotChunks, receive{time.Now().Sub(start), chunk})
 				}
 			}()
-			tt.assertion(t, s.receivePackets(packets, newFacts, tt.args.maxChunk, tt.args.chunkPeriod))
+			tt.assertion(t, s.chunkPackets(packets, newFacts, tt.args.maxChunk, tt.args.chunkPeriod))
 			// wait for goroutines
 			<-doneSend
 			<-doneReceive

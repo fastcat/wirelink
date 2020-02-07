@@ -96,7 +96,9 @@ func (s *LinkServer) processSignedGroup(
 	return nil
 }
 
-func (s *LinkServer) receivePackets(
+// chunkPackets takes a continuous stream of ReceivedFacts and lumps them into
+// chunks based on a maximum chunk size and a maximum delay time.
+func (s *LinkServer) chunkPackets(
 	packets <-chan *ReceivedFact,
 	newFacts chan<- []*ReceivedFact,
 	maxChunk int,

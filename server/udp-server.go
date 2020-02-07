@@ -151,7 +151,7 @@ func (s *LinkServer) Start() (err error) {
 	s.eg.Go(func() error { return s.readPackets(packets) })
 
 	newFacts := make(chan []*ReceivedFact, 1)
-	s.eg.Go(func() error { return s.receivePackets(packets, newFacts, MaxChunk, ChunkPeriod) })
+	s.eg.Go(func() error { return s.chunkPackets(packets, newFacts, MaxChunk, ChunkPeriod) })
 
 	factsRefreshed := make(chan []*fact.Fact, 1)
 	factsRefreshedForBroadcast := make(chan []*fact.Fact, 1)
