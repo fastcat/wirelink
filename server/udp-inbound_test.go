@@ -567,8 +567,14 @@ func TestLinkServer_receivePackets_slow(t *testing.T) {
 			for i := 0; i < len(gotChunks) && i < len(wantChunks); i++ {
 				assert.Equal(t, wantChunks[i].chunk, gotChunks[i].chunk, "Received chunk %d", i)
 				// need to allow some slop in the receive timing
-				// exact threshold here requires some experimentation
-				assert.InDelta(t, wantChunks[i].offset, gotChunks[i].offset, float64(2*time.Millisecond), "Received timing %d", i)
+				// using `assert.InDelta` would be nice, but we really need an asymmetric behavior
+				// it's OK if things are a little late due to timing issues,
+				// but if they are early, there is definitely a bug
+				// have to cast to int64 because of https://github.com/stretchr/testify/issues/780
+				assert.GreaterOrEqual(t, int64(gotChunks[i].offset), int64(wantChunks[i].offset),
+					"Received timing %d: must not be early", i)
+				assert.LessOrEqual(t, int64(gotChunks[i].offset), int64(wantChunks[i].offset+5*time.Millisecond),
+					"Received timing %d: must not be late", i)
 			}
 		})
 	}
