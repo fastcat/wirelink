@@ -32,7 +32,7 @@ type LinkServer struct {
 	stateAccess *sync.Mutex
 	config      *config.Server
 	net         networking.Environment
-	conn        *net.UDPConn
+	conn        networking.UDPConn
 	addr        net.UDPAddr
 	ctrl        internal.WgClient
 

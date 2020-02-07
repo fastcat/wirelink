@@ -37,7 +37,7 @@ func TestLinkServer_configurePeers(t *testing.T) {
 		stateAccess     *sync.Mutex
 		config          *config.Server
 		net             networking.Environment
-		conn            *net.UDPConn
+		conn            networking.UDPConn
 		addr            net.UDPAddr
 		ctrl            internal.WgClient
 		eg              *errgroup.Group
@@ -716,7 +716,7 @@ func TestLinkServer_configurePeer(t *testing.T) {
 		stateAccess     *sync.Mutex
 		config          *config.Server
 		net             networking.Environment
-		conn            *net.UDPConn
+		conn            networking.UDPConn
 		addr            net.UDPAddr
 		ctrl            internal.WgClient
 		eg              *errgroup.Group

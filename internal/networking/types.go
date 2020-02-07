@@ -3,6 +3,7 @@ package networking
 import (
 	"io"
 	"net"
+	"time"
 )
 
 // Environment represents the top level abstraction of the system's networking
@@ -15,7 +16,7 @@ type Environment interface {
 	InterfaceByName(string) (Interface, error)
 
 	// ListenUDP abstracts net.ListenUDP
-	ListenUDP(network string, laddr *net.UDPAddr) (*net.UDPConn, error)
+	ListenUDP(network string, laddr *net.UDPAddr) (UDPConn, error)
 }
 
 // Interface represents a single network interface
@@ -26,4 +27,13 @@ type Interface interface {
 	AddAddr(net.IPNet) error
 }
 
-// TODO: virtual udp sockets so we can write tests of server interactions
+// UDPConn abstracts net.UDPConn
+type UDPConn interface {
+	io.Closer
+
+	SetReadDeadline(t time.Time) error
+	SetWriteDeadline(t time.Time) error
+
+	ReadFromUDP(b []byte) (n int, addr *net.UDPAddr, err error)
+	WriteToUDP(p []byte, addr *net.UDPAddr) (n int, err error)
+}

@@ -23,6 +23,7 @@ GENERATED_SOURCES:=\
 	trust/mock_Evaluator_test.go \
 	internal/networking/mocks/Environment.go \
 	internal/networking/mocks/Interface.go \
+	internal/networking/mocks/UDPConn.go \
 	$(NULL)
 generate: $(GENERATED_SOURCES)
 #TODO: use go generate for this stuff
