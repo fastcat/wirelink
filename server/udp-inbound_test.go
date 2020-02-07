@@ -573,7 +573,7 @@ func TestLinkServer_receivePackets_slow(t *testing.T) {
 				// have to cast to int64 because of https://github.com/stretchr/testify/issues/780
 				assert.GreaterOrEqual(t, int64(gotChunks[i].offset), int64(wantChunks[i].offset),
 					"Received timing %d: must not be early", i)
-				assert.LessOrEqual(t, int64(gotChunks[i].offset), int64(wantChunks[i].offset+5*time.Millisecond),
+				assert.LessOrEqual(t, int64(gotChunks[i].offset), int64(wantChunks[i].offset+10*time.Millisecond),
 					"Received timing %d: must not be late", i)
 			}
 		})
