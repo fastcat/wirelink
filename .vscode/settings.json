@@ -27,6 +27,7 @@
 		"goimports",
 		"golint",
 		"gopls",
+		"laddr",
 		"pcfg",
 		"pflag",
 		"pflags",

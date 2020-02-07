@@ -135,7 +135,7 @@ func (s *LinkServer) Start() (err error) {
 	}
 
 	// only listen on the local ipv6 auto address on the specific interface
-	s.conn, err = net.ListenUDP("udp6", &s.addr)
+	s.conn, err = s.net.ListenUDP("udp6", &s.addr)
 	if err != nil {
 		return err
 	}

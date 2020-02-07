@@ -13,6 +13,9 @@ type Environment interface {
 	Interfaces() ([]Interface, error)
 	// InterfaceByName looks up an interface by its name
 	InterfaceByName(string) (Interface, error)
+
+	// ListenUDP abstracts net.ListenUDP
+	ListenUDP(network string, laddr *net.UDPAddr) (*net.UDPConn, error)
 }
 
 // Interface represents a single network interface
