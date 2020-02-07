@@ -227,18 +227,25 @@ func (s *LinkServer) processOneChunk(
 	}
 	s.UpdateRouterState(dev, true)
 
-	localFacts, err := s.collectFacts(dev, now)
+	newLocalFacts, err = s.collectFacts(dev, now)
 	if err != nil {
 		log.Error("Unable to collect local facts: %v", err)
 	}
 	// might still have gotten something before the error tho
-	if len(localFacts) != 0 {
-		newFactsChunk = append(newFactsChunk, localFacts...)
+	if len(newLocalFacts) != 0 {
+		newFactsChunk = append(newFactsChunk, newLocalFacts...)
 	}
 	// only prune if we retrieved local facts without error
 	if err == nil {
-		newFactsChunk = pruneRemovedLocalFacts(newFactsChunk, lastLocalFacts, localFacts)
-		lastLocalFacts = localFacts
+		// TODO: this may cause us to remove facts received remotely if we used to
+		// also source them locally, but no longer do, even if they are still valid remotely.
+		// unclear how big an issue this is. at the very least, the remote should
+		// eventually re-send them and we'll re-add them, but it might cause
+		// service disruptions
+		newFactsChunk = pruneRemovedLocalFacts(newFactsChunk, lastLocalFacts, newLocalFacts)
+	} else {
+		// something went wrong keep original even though we appended the new data to the combined chunk
+		newLocalFacts = lastLocalFacts
 	}
 
 	pl := createPeerLookup(dev.Peers)
@@ -264,6 +271,8 @@ func (s *LinkServer) processOneChunk(
 		}
 	}
 	uniqueFacts = fact.MergeList(newFactsChunk)
+	// at this point, ignore any prior error we got
+	err = nil
 	// TODO: log new/removed facts, ignoring TTL
-	return uniqueFacts, lastLocalFacts, nil
+	return
 }
