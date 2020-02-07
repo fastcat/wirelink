@@ -61,22 +61,30 @@ func TestLinkServer_processSignedGroup(t *testing.T) {
 	}
 	corrupt := func(offset int, data []byte) []byte {
 		inner := data[offset:]
-		inner[rand.Intn(len(inner))] = byte(rand.Intn(256))
+		// using xor to ensure we change at least one bit, i.e. no matter what random value we get,
+		// we will change the target byte
+		inner[rand.Intn(len(inner))] ^= byte(1 + rand.Intn(255))
 		return data
 	}
 	corruptSGV := func(f *fact.SignedGroupValue) *fact.SignedGroupValue {
 		pos := rand.Intn(len(f.Nonce) + len(f.Tag) + len(f.InnerBytes))
 		if pos < len(f.Nonce) {
+			t.Logf("Corrupting nonce")
 			corrupt(0, f.Nonce[:])
 		} else if pos < len(f.Nonce)+len(f.Tag) {
+			t.Logf("Corrupting Tag")
 			corrupt(0, f.Tag[:])
 		} else {
+			t.Logf("Corrupting InnerBytes")
 			corrupt(0, f.InnerBytes)
 		}
 		return f
 	}
 	shorten := func(f *fact.SignedGroupValue) *fact.SignedGroupValue {
-		f.InnerBytes = f.InnerBytes[:rand.Intn(len(f.InnerBytes))]
+		// make sure we both shorten it by at least one byte, and leave at least one byte behind
+		end := rand.Intn(len(f.InnerBytes)-1) + 1
+		t.Logf("Shortening InnerBytes from %d to %d", len(f.InnerBytes), end)
+		f.InnerBytes = f.InnerBytes[:end]
 		return f
 	}
 
