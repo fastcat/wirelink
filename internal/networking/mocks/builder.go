@@ -1,13 +1,17 @@
 package mocks
 
 import (
+	context "context"
 	"net"
 	"testing"
+	time "time"
 
 	"github.com/fastcat/wirelink/internal/networking"
+	"github.com/stretchr/testify/mock"
 )
 
 const tdInterfaces = "_Interfaces"
+const tdConnections = "_Connections"
 
 // WithInterface updates the mock environment to be aware of a new interface name
 func (m *Environment) WithInterface(name string) *Interface {
@@ -69,6 +73,11 @@ func (m *Environment) Test(t *testing.T) {
 			iface.(*Interface).Test(t)
 		}
 	}
+	if m.TestData().Has(tdConnections) {
+		for _, iface := range m.TestData().Get(tdConnections).MustInterSlice() {
+			iface.(*UDPConn).Test(t)
+		}
+	}
 }
 
 // AssertExpectations calls the method on the Environment mock and on all its
@@ -80,4 +89,52 @@ func (m *Environment) AssertExpectations(t *testing.T) {
 			iface.(*Interface).AssertExpectations(t)
 		}
 	}
+	if m.TestData().Has(tdConnections) {
+		for _, iface := range m.TestData().Get(tdConnections).MustInterSlice() {
+			iface.(*UDPConn).AssertExpectations(t)
+		}
+	}
+}
+
+// RegisterUDPConn records a mocked connection as being related to the environment,
+// so that calling Test or AssertExpections will propagate to it
+func (m *Environment) RegisterUDPConn(c *UDPConn) {
+	td := m.TestData()
+	if td.Has(tdConnections) {
+		td.Set(tdConnections, append(td.Get(tdConnections).MustInterSlice(), c))
+	} else {
+		td.Set(tdConnections, []interface{}{c})
+	}
+}
+
+// WithPacketSequence will mock the connection to emit the given packet sequence
+// at their denoted times, interpreted as offsets relative to reference,
+// relative to when ReadPackets is called. It will obey the context parameter
+// and stop sending early if it is canceled.
+func (c *UDPConn) WithPacketSequence(reference time.Time, packets ...networking.UDPPacket) *mock.Call {
+	return c.On(
+		"ReadPackets",
+		mock.AnythingOfType("Context"),
+		mock.AnythingOfType("int"),
+		//FIXME: what's the proper type name here for the channel?
+		mock.Anything,
+	).Return(func(ctx context.Context, maxSize int, output chan<- *networking.UDPPacket) error {
+		offset := time.Now().Sub(reference)
+		ctxDone := ctx.Done()
+		for i := range packets {
+			packetDeadline := packets[i].Time.Add(offset)
+			timer := time.NewTimer(time.Now().Sub(packetDeadline))
+			select {
+			case <-ctxDone:
+				if !timer.Stop() {
+					<-timer.C
+				}
+				// NOTE: the real packet reader returns nil here
+				return ctx.Err()
+			case <-timer.C:
+				output <- &packets[i]
+			}
+		}
+		return nil
+	})
 }

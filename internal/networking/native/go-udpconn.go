@@ -101,5 +101,6 @@ READLOOP:
 	// reset read deadline on the connection to be safe
 	c.SetReadDeadline(time.Time{})
 
+	// TODO: should we return ctx.Err() or the network closing error here?
 	return nil
 }
