@@ -1,10 +1,10 @@
 package mocks
 
 import (
-	context "context"
+	"context"
 	"net"
 	"testing"
-	time "time"
+	"time"
 
 	"github.com/fastcat/wirelink/internal/networking"
 	"github.com/stretchr/testify/mock"

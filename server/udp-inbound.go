@@ -135,9 +135,7 @@ func (s *LinkServer) chunkPackets(
 					sendBuffer = true
 				}
 			}
-		//TODO: we want to push the buffer through if a print was requested,
-		// however, that will eat the request. to fix this nicely we may need to
-		// send an annotated struct downstream, which is a messy refactor
+
 		case <-chunkTicker.C:
 			sendBuffer = true
 		}

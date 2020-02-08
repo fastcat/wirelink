@@ -39,7 +39,6 @@ func TestLinkServer_readPackets(t *testing.T) {
 		IP:   autopeer.AutoAddress(remotePublicKey),
 		Port: rand.Intn(65535),
 	}
-	// improperSource := testutils.RandUDP4Addr(t)
 
 	wrapAndSign := func(facts ...*fact.Fact) []byte {
 		buffer := make([]byte, 0)
@@ -402,15 +401,12 @@ func TestLinkServer_chunkPackets(t *testing.T) {
 		return ret
 	}
 
-	type fields struct {
-	}
 	type args struct {
 		maxChunk    int
 		chunkPeriod time.Duration
 	}
 	tests := []struct {
-		name string
-		// fields     fields
+		name       string
 		args       args
 		assertion  require.ErrorAssertionFunc
 		packets    []*ReceivedFact
