@@ -22,6 +22,7 @@ codecov:
 
 ignore:
   # mocks are test code, don't care about coverage there
-  - "internal/mocks/*.go"
-  - "internal/networking/mocks/*.go"
+  # go reports coverage names package qualified, important for the ignore
+  - "github.com/fastcat/wirelink/internal/mocks/"
+  - "github.com/fastcat/wirelink/internal/networking/mocks/"
   - "*_test.go"
