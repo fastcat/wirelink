@@ -33,20 +33,19 @@ import (
 
 func TestLinkServer_configurePeers(t *testing.T) {
 	type fields struct {
-		bootID          uuid.UUID
-		stateAccess     *sync.Mutex
-		config          *config.Server
-		net             networking.Environment
-		conn            *net.UDPConn
-		addr            net.UDPAddr
-		ctrl            internal.WgClient
-		eg              *errgroup.Group
-		ctx             context.Context
-		cancel          context.CancelFunc
-		peerKnowledge   *peerKnowledgeSet
-		peerConfig      *peerConfigSet
-		signer          *signing.Signer
-		printsRequested *int32
+		bootID        uuid.UUID
+		stateAccess   *sync.Mutex
+		config        *config.Server
+		net           networking.Environment
+		conn          networking.UDPConn
+		addr          net.UDPAddr
+		ctrl          internal.WgClient
+		eg            *errgroup.Group
+		ctx           context.Context
+		cancel        context.CancelFunc
+		peerKnowledge *peerKnowledgeSet
+		peerConfig    *peerConfigSet
+		signer        *signing.Signer
 	}
 	type args struct {
 		factsRefreshed <-chan []*fact.Fact
@@ -62,20 +61,19 @@ func TestLinkServer_configurePeers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &LinkServer{
-				bootID:          tt.fields.bootID,
-				stateAccess:     tt.fields.stateAccess,
-				config:          tt.fields.config,
-				net:             tt.fields.net,
-				conn:            tt.fields.conn,
-				addr:            tt.fields.addr,
-				ctrl:            tt.fields.ctrl,
-				eg:              tt.fields.eg,
-				ctx:             tt.fields.ctx,
-				cancel:          tt.fields.cancel,
-				peerKnowledge:   tt.fields.peerKnowledge,
-				peerConfig:      tt.fields.peerConfig,
-				signer:          tt.fields.signer,
-				printsRequested: tt.fields.printsRequested,
+				bootID:        tt.fields.bootID,
+				stateAccess:   tt.fields.stateAccess,
+				config:        tt.fields.config,
+				net:           tt.fields.net,
+				conn:          tt.fields.conn,
+				addr:          tt.fields.addr,
+				ctrl:          tt.fields.ctrl,
+				eg:            tt.fields.eg,
+				ctx:           tt.fields.ctx,
+				cancel:        tt.fields.cancel,
+				peerKnowledge: tt.fields.peerKnowledge,
+				peerConfig:    tt.fields.peerConfig,
+				signer:        tt.fields.signer,
 			}
 			err := s.configurePeers(tt.args.factsRefreshed)
 			if tt.wantErr {
@@ -712,20 +710,19 @@ func TestLinkServer_deletePeers(t *testing.T) {
 
 func TestLinkServer_configurePeer(t *testing.T) {
 	type fields struct {
-		bootID          uuid.UUID
-		stateAccess     *sync.Mutex
-		config          *config.Server
-		net             networking.Environment
-		conn            *net.UDPConn
-		addr            net.UDPAddr
-		ctrl            internal.WgClient
-		eg              *errgroup.Group
-		ctx             context.Context
-		cancel          context.CancelFunc
-		peerKnowledge   *peerKnowledgeSet
-		peerConfig      *peerConfigSet
-		signer          *signing.Signer
-		printsRequested *int32
+		bootID        uuid.UUID
+		stateAccess   *sync.Mutex
+		config        *config.Server
+		net           networking.Environment
+		conn          networking.UDPConn
+		addr          net.UDPAddr
+		ctrl          internal.WgClient
+		eg            *errgroup.Group
+		ctx           context.Context
+		cancel        context.CancelFunc
+		peerKnowledge *peerKnowledgeSet
+		peerConfig    *peerConfigSet
+		signer        *signing.Signer
 	}
 	type args struct {
 		inputState       *apply.PeerConfigState
@@ -746,20 +743,19 @@ func TestLinkServer_configurePeer(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &LinkServer{
-				bootID:          tt.fields.bootID,
-				stateAccess:     tt.fields.stateAccess,
-				config:          tt.fields.config,
-				net:             tt.fields.net,
-				conn:            tt.fields.conn,
-				addr:            tt.fields.addr,
-				ctrl:            tt.fields.ctrl,
-				eg:              tt.fields.eg,
-				ctx:             tt.fields.ctx,
-				cancel:          tt.fields.cancel,
-				peerKnowledge:   tt.fields.peerKnowledge,
-				peerConfig:      tt.fields.peerConfig,
-				signer:          tt.fields.signer,
-				printsRequested: tt.fields.printsRequested,
+				bootID:        tt.fields.bootID,
+				stateAccess:   tt.fields.stateAccess,
+				config:        tt.fields.config,
+				net:           tt.fields.net,
+				conn:          tt.fields.conn,
+				addr:          tt.fields.addr,
+				ctrl:          tt.fields.ctrl,
+				eg:            tt.fields.eg,
+				ctx:           tt.fields.ctx,
+				cancel:        tt.fields.cancel,
+				peerKnowledge: tt.fields.peerKnowledge,
+				peerConfig:    tt.fields.peerConfig,
+				signer:        tt.fields.signer,
 			}
 			gotState, err := s.configurePeer(tt.args.inputState, tt.args.peer, tt.args.facts, tt.args.allowDeconfigure, tt.args.allowAdd)
 			if tt.wantErr {

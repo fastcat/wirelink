@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -32,7 +31,7 @@ type LinkServer struct {
 	stateAccess *sync.Mutex
 	config      *config.Server
 	net         networking.Environment
-	conn        *net.UDPConn
+	conn        networking.UDPConn
 	addr        net.UDPAddr
 	ctrl        internal.WgClient
 
@@ -45,8 +44,9 @@ type LinkServer struct {
 	peerKnowledge *peerKnowledgeSet
 	peerConfig    *peerConfigSet
 	signer        *signing.Signer
-	// counter for asking it to print out its current info
-	printsRequested *int32
+
+	// channel for asking it to print out its current info
+	printRequested chan struct{}
 }
 
 // MaxChunk is the max number of packets to receive before processing them
@@ -87,20 +87,20 @@ func Create(ctrl internal.WgClient, config *config.Server) (*LinkServer, error) 
 	ctx, cancel := context.WithCancel(egCtx)
 
 	ret := &LinkServer{
-		bootID:          uuid.Must(uuid.NewRandom()),
-		config:          config,
-		net:             nil, // this will be filled in by `Start()`
-		conn:            nil, // this will be filled in by `Start()`
-		addr:            addr,
-		ctrl:            ctrl,
-		stateAccess:     new(sync.Mutex),
-		eg:              eg,
-		ctx:             ctx,
-		cancel:          cancel,
-		peerKnowledge:   newPKS(),
-		peerConfig:      newPeerConfigSet(),
-		signer:          signing.New(&device.PrivateKey),
-		printsRequested: new(int32),
+		bootID:         uuid.Must(uuid.NewRandom()),
+		config:         config,
+		net:            nil, // this will be filled in by `Start()`
+		conn:           nil, // this will be filled in by `Start()`
+		addr:           addr,
+		ctrl:           ctrl,
+		stateAccess:    new(sync.Mutex),
+		eg:             eg,
+		ctx:            ctx,
+		cancel:         cancel,
+		peerKnowledge:  newPKS(),
+		peerConfig:     newPeerConfigSet(),
+		signer:         signing.New(&device.PrivateKey),
+		printRequested: make(chan struct{}, 1),
 	}
 
 	return ret, nil
@@ -135,7 +135,7 @@ func (s *LinkServer) Start() (err error) {
 	}
 
 	// only listen on the local ipv6 auto address on the specific interface
-	s.conn, err = net.ListenUDP("udp6", &s.addr)
+	s.conn, err = s.net.ListenUDP("udp6", &s.addr)
 	if err != nil {
 		return err
 	}
@@ -151,7 +151,7 @@ func (s *LinkServer) Start() (err error) {
 	s.eg.Go(func() error { return s.readPackets(packets) })
 
 	newFacts := make(chan []*ReceivedFact, 1)
-	s.eg.Go(func() error { return s.receivePackets(packets, newFacts, MaxChunk, ChunkPeriod) })
+	s.eg.Go(func() error { return s.chunkPackets(packets, newFacts, MaxChunk, ChunkPeriod) })
 
 	factsRefreshed := make(chan []*fact.Fact, 1)
 	factsRefreshedForBroadcast := make(chan []*fact.Fact, 1)
@@ -180,7 +180,7 @@ func (s *LinkServer) AddHandler(handler func(ctx context.Context) error) {
 
 // RequestPrint asks the packet receiver to print out the full set of known facts (local and remote)
 func (s *LinkServer) RequestPrint() {
-	atomic.AddInt32(s.printsRequested, 1)
+	s.printRequested <- struct{}{}
 }
 
 // multiplexFactChunks copies values from input to each output. It will only

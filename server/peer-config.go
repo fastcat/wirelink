@@ -21,20 +21,33 @@ func (s *LinkServer) configurePeers(factsRefreshed <-chan []*fact.Fact) error {
 	// for everyone we're connected to to tell us everything
 	startTime := time.Now()
 
-	for newFacts := range factsRefreshed {
-		now := time.Now()
-		log.Debug("Got a new fact set of length %d", len(newFacts))
+	var facts []*fact.Fact
+	var ok bool
 
-		dev, err := s.deviceState()
-		if err != nil {
-			// this probably means the interface is down
-			// the log message will be printed by the main app as it exits
-			return errors.Wrap(err, "Unable to load device state, giving up")
+FACTLOOP:
+	for {
+		select {
+
+		case facts, ok = <-factsRefreshed:
+			if !ok {
+				// input closed, we're done
+				break FACTLOOP
+			}
+			now := time.Now()
+			log.Debug("Got a new fact set of length %d", len(facts))
+
+			dev, err := s.deviceState()
+			if err != nil {
+				// this probably means the interface is down
+				// the log message will be printed by the main app as it exits
+				return errors.Wrap(err, "Unable to load device state, giving up")
+			}
+
+			s.configurePeersOnce(facts, dev, startTime, now)
+
+		case <-s.printRequested:
+			s.printFacts(facts)
 		}
-
-		s.configurePeersOnce(newFacts, dev, startTime, now)
-
-		s.printFactsIfRequested(dev, newFacts)
 	}
 
 	return nil

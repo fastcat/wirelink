@@ -30,6 +30,7 @@ type linuxEnvironment struct {
 	nlh *netlink.Handle
 }
 
+// linuxEnvironment implements networking.Environment
 var _ networking.Environment = &linuxEnvironment{}
 
 // Interfaces implements Environment

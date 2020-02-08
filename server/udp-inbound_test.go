@@ -1,11 +1,11 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"net"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -13,6 +13,7 @@ import (
 	"github.com/fastcat/wirelink/config"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/internal/mocks"
+	"github.com/fastcat/wirelink/internal/networking"
 	netmocks "github.com/fastcat/wirelink/internal/networking/mocks"
 	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/fastcat/wirelink/internal/testutils/facts"
@@ -20,8 +21,133 @@ import (
 	"github.com/fastcat/wirelink/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
+
+func TestLinkServer_readPackets(t *testing.T) {
+	now := time.Now()
+	expires := now.Add(FactTTL)
+
+	// need real crypto keys for this test
+	localPrivateKey, localPublicKey := testutils.MustKeyPair(t)
+	remotePrivateKey, remotePublicKey := testutils.MustKeyPair(t)
+	randomKey := testutils.MustKey(t)
+
+	remoteSigner := signing.New(&remotePrivateKey)
+	properSource := &net.UDPAddr{
+		IP:   autopeer.AutoAddress(remotePublicKey),
+		Port: rand.Intn(65535),
+	}
+
+	wrapAndSign := func(facts ...*fact.Fact) []byte {
+		buffer := make([]byte, 0)
+		for _, f := range facts {
+			buffer = append(buffer, util.MustBytes(f.MarshalBinaryNow(now))...)
+		}
+		nonce, tag, err := remoteSigner.SignFor(buffer, &localPublicKey)
+		require.NoError(t, err)
+		sgf := &fact.Fact{
+			Attribute: fact.AttributeSignedGroup,
+			Subject:   &fact.PeerSubject{Key: remotePublicKey},
+			Value:     &fact.SignedGroupValue{Nonce: nonce, Tag: tag, InnerBytes: buffer},
+			Expires:   expires,
+		}
+		return util.MustBytes(sgf.MarshalBinary())
+	}
+
+	type fields struct {
+		conn func(*testing.T) *netmocks.UDPConn
+	}
+	tests := []struct {
+		name         string
+		fields       fields
+		assertion    require.ErrorAssertionFunc
+		packets      []*networking.UDPPacket
+		wantReceived []*ReceivedFact
+		// TODO: add `long` flag for skipping tests with non-immediate timings
+	}{
+		{
+			"empty",
+			fields{},
+			require.NoError,
+			[]*networking.UDPPacket{},
+			[]*ReceivedFact{},
+		},
+		{
+			"one alive",
+			fields{},
+			require.NoError,
+			[]*networking.UDPPacket{
+				&networking.UDPPacket{
+					Time: now,
+					Addr: properSource,
+					Data: wrapAndSign(facts.AliveFact(&remotePublicKey, expires)),
+				},
+			},
+			[]*ReceivedFact{
+				&ReceivedFact{
+					fact:   facts.AliveFact(&remotePublicKey, expires),
+					source: *properSource,
+				},
+			},
+		},
+		{
+			"ignore unsigned",
+			fields{},
+			require.NoError,
+			[]*networking.UDPPacket{
+				&networking.UDPPacket{
+					Time: now,
+					Addr: properSource,
+					Data: util.MustBytes(facts.AliveFact(&randomKey, expires).MarshalBinaryNow(now)),
+				},
+				&networking.UDPPacket{
+					Time: now,
+					Addr: properSource,
+					Data: wrapAndSign(facts.AliveFact(&remotePublicKey, expires)),
+				},
+			},
+			[]*ReceivedFact{
+				&ReceivedFact{
+					fact:   facts.AliveFact(&remotePublicKey, expires),
+					source: *properSource,
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var conn *netmocks.UDPConn
+			if tt.fields.conn != nil {
+				conn = tt.fields.conn(t)
+			} else {
+				conn = &netmocks.UDPConn{}
+			}
+			conn.WithPacketSequence(now, tt.packets...)
+			conn.Test(t)
+			s := &LinkServer{
+				conn:   conn,
+				eg:     &errgroup.Group{},
+				ctx:    context.Background(),
+				signer: signing.New(&localPrivateKey),
+			}
+			// deep channel to simplify extracting outputs
+			received := make(chan *ReceivedFact, len(tt.wantReceived)+len(tt.packets))
+
+			tt.assertion(t, s.readPackets(received))
+
+			tt.assertion(t, s.eg.Wait())
+			gotReceived := make([]*ReceivedFact, 0, len(tt.wantReceived))
+			for r := range received {
+				gotReceived = append(gotReceived, r)
+			}
+			// we have just enough `now` locking that we can safely use a plain equality comparison here
+			assert.Equal(t, tt.wantReceived, gotReceived)
+			conn.AssertExpectations(t)
+		})
+	}
+}
 
 func TestLinkServer_processSignedGroup(t *testing.T) {
 	now := time.Now()
@@ -252,7 +378,7 @@ func TestLinkServer_processSignedGroup(t *testing.T) {
 	}
 }
 
-func TestLinkServer_receivePackets(t *testing.T) {
+func TestLinkServer_chunkPackets(t *testing.T) {
 	now := time.Now()
 	expires := now.Add(FactTTL)
 
@@ -275,17 +401,12 @@ func TestLinkServer_receivePackets(t *testing.T) {
 		return ret
 	}
 
-	type fields struct {
-		// this only works for initial trigger testing
-		printsRequested int32
-	}
 	type args struct {
 		maxChunk    int
 		chunkPeriod time.Duration
 	}
 	tests := []struct {
 		name       string
-		fields     fields
 		args       args
 		assertion  require.ErrorAssertionFunc
 		packets    []*ReceivedFact
@@ -294,7 +415,6 @@ func TestLinkServer_receivePackets(t *testing.T) {
 	}{
 		{
 			"no data",
-			fields{},
 			args{
 				maxChunk:    1,
 				chunkPeriod: time.Second,
@@ -304,24 +424,7 @@ func TestLinkServer_receivePackets(t *testing.T) {
 			[][]*ReceivedFact{},
 		},
 		{
-			"print requested",
-			fields{1},
-			args{
-				maxChunk:    2,
-				chunkPeriod: time.Second,
-			},
-			require.NoError,
-			rfs(0, 1),
-			[][]*ReceivedFact{
-				// first packet is forced out by printsRequested
-				rfs(0),
-				// second packet is the last thing ... but also since we don't clear printsRequested
-				rfs(1),
-			},
-		},
-		{
 			"chunk size",
-			fields{},
 			args{
 				maxChunk:    5,
 				chunkPeriod: time.Second,
@@ -337,10 +440,7 @@ func TestLinkServer_receivePackets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &LinkServer{
-				printsRequested: new(int32),
-			}
-			*s.printsRequested = tt.fields.printsRequested
+			s := &LinkServer{}
 			// make deep channels to avoid buffering problems
 			packets := make(chan *ReceivedFact, len(tt.packets))
 			// need +1 because there is an extra empty chunk sent at start
@@ -349,7 +449,7 @@ func TestLinkServer_receivePackets(t *testing.T) {
 				packets <- p
 			}
 			close(packets)
-			tt.assertion(t, s.receivePackets(packets, newFacts, tt.args.maxChunk, tt.args.chunkPeriod))
+			tt.assertion(t, s.chunkPackets(packets, newFacts, tt.args.maxChunk, tt.args.chunkPeriod))
 			var gotChunks [][]*ReceivedFact
 			for chunk := range newFacts {
 				gotChunks = append(gotChunks, chunk)
@@ -361,12 +461,7 @@ func TestLinkServer_receivePackets(t *testing.T) {
 	}
 }
 
-func TestLinkServer_receivePackets_slow(t *testing.T) {
-	// all the tests in here have long runtimes,
-	if testing.Short() {
-		t.SkipNow()
-	}
-
+func TestLinkServer_chunkPackets_slow(t *testing.T) {
 	timeZero := time.Now()
 	expires := timeZero.Add(FactTTL)
 
@@ -397,10 +492,8 @@ func TestLinkServer_receivePackets_slow(t *testing.T) {
 		chunkPeriod time.Duration
 	}
 	type send struct {
-		offset      time.Duration
-		packet      *ReceivedFact
-		incrPrints  bool
-		clearPrints bool
+		offset time.Duration
+		packet *ReceivedFact
 	}
 	type receive struct {
 		offset time.Duration
@@ -420,6 +513,7 @@ func TestLinkServer_receivePackets_slow(t *testing.T) {
 		assertion  require.ErrorAssertionFunc
 		packets    []send
 		wantChunks []receive
+		long       bool
 	}{
 		{
 			"empty",
@@ -427,6 +521,7 @@ func TestLinkServer_receivePackets_slow(t *testing.T) {
 			require.NoError,
 			nil,
 			[]receive{},
+			false,
 		},
 		{
 			"two quick",
@@ -439,6 +534,7 @@ func TestLinkServer_receivePackets_slow(t *testing.T) {
 			[]receive{
 				receiveAtMs(2, 0, 1),
 			},
+			false,
 		},
 		{
 			"two delayed",
@@ -452,6 +548,7 @@ func TestLinkServer_receivePackets_slow(t *testing.T) {
 				receiveAtMs(100, 0),
 				receiveAtMs(150, 1),
 			},
+			true,
 		},
 		{
 			"two chunks, pause after each",
@@ -469,6 +566,7 @@ func TestLinkServer_receivePackets_slow(t *testing.T) {
 				receive{offset: 200 * time.Millisecond},
 				receiveAtMs(300, 2, 3),
 			},
+			true,
 		},
 		{
 			"buffer fill with delay",
@@ -488,31 +586,17 @@ func TestLinkServer_receivePackets_slow(t *testing.T) {
 				receiveAtMs(100, 3),
 				receiveAtMs(200, 4, 5),
 			},
-		},
-		{
-			"print requests",
-			args{3, 100 * time.Millisecond},
-			require.NoError,
-			[]send{
-				sendAtMs(10, 0),
-				send{offset: 20 * time.Millisecond, incrPrints: true},
-				send{offset: 30 * time.Millisecond, clearPrints: true},
-				send{offset: 40 * time.Millisecond, incrPrints: true},
-				send{offset: 50 * time.Millisecond, clearPrints: true},
-				sendAtMs(60, 1),
-			},
-			[]receive{
-				receiveAtMs(20, 0),
-				receiveAtMs(40),
-				receiveAtMs(60, 1),
-			},
+			true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &LinkServer{
-				printsRequested: new(int32),
+			// skip long tests
+			if tt.long && testing.Short() {
+				t.SkipNow()
 			}
+
+			s := &LinkServer{}
 			// for this test, use the same limited buffer for the incoming packets as
 			// the real server
 			packets := make(chan *ReceivedFact, 1)
@@ -539,13 +623,7 @@ func TestLinkServer_receivePackets_slow(t *testing.T) {
 						// treat the packet expires as an offset from timeZero, update it to be that offset from now
 						p.packet.fact.Expires.Add(time.Now().Sub(timeZero))
 						packets <- p.packet
-					} else if p.clearPrints {
-						atomic.StoreInt32(s.printsRequested, 0)
 					} else {
-						if p.incrPrints {
-							atomic.AddInt32(s.printsRequested, 1)
-							// have to send for this to take effect
-						}
 						packets <- nil
 					}
 				}
@@ -557,7 +635,7 @@ func TestLinkServer_receivePackets_slow(t *testing.T) {
 					gotChunks = append(gotChunks, receive{time.Now().Sub(start), chunk})
 				}
 			}()
-			tt.assertion(t, s.receivePackets(packets, newFacts, tt.args.maxChunk, tt.args.chunkPeriod))
+			tt.assertion(t, s.chunkPackets(packets, newFacts, tt.args.maxChunk, tt.args.chunkPeriod))
 			// wait for goroutines
 			<-doneSend
 			<-doneReceive

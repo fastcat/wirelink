@@ -3,7 +3,6 @@ package server
 import (
 	"fmt"
 	"strings"
-	"sync/atomic"
 
 	"github.com/fastcat/wirelink/apply"
 	"github.com/fastcat/wirelink/detect"
@@ -17,17 +16,10 @@ func (s *LinkServer) peerName(peer wgtypes.Key) string {
 	return s.config.Peers.Name(peer)
 }
 
-func (s *LinkServer) printFactsIfRequested(
-	dev *wgtypes.Device,
+func (s *LinkServer) printFacts(
 	facts []*fact.Fact,
 ) {
-	printsRequested := atomic.LoadInt32(s.printsRequested)
-	if printsRequested == 0 {
-		return
-	}
-	defer atomic.CompareAndSwapInt32(s.printsRequested, printsRequested, 0)
-
-	// not safe safe to mutate the shared facts we received
+	// print facts out in a consistent ordering
 	facts = fact.SortedCopy(facts)
 	var str strings.Builder
 	str.WriteString("Current facts:")
