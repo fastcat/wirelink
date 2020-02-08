@@ -4,16 +4,22 @@ import (
 	"context"
 	"math/rand"
 	"net"
+	"os"
+	"syscall"
 	"testing"
 	"time"
 
 	"github.com/fastcat/wirelink/internal/networking"
+	"github.com/fastcat/wirelink/internal/testutils"
+	"github.com/fastcat/wirelink/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGoUDPConn_ReadPackets(t *testing.T) {
 	now := time.Now()
+	packet1 := make([]byte, 1+rand.Intn(1400))
+	testutils.MustRandBytes(t, packet1)
 
 	type args struct {
 		maxSize int
@@ -26,16 +32,53 @@ func TestGoUDPConn_ReadPackets(t *testing.T) {
 		args      args
 		assertion require.ErrorAssertionFunc
 
+		cancelCtx   bool
+		closeSocket bool
+
 		long bool
 	}{
 		{
-			"empty",
+			"empty via close",
 			args{
 				-1,
 				[]*networking.UDPPacket{},
 				[]*networking.UDPPacket{},
 			},
 			require.NoError,
+			false, true,
+			false,
+		},
+		{
+			"empty via cancel",
+			args{
+				-1,
+				[]*networking.UDPPacket{},
+				[]*networking.UDPPacket{},
+			},
+			require.NoError,
+			true, false,
+			false,
+		},
+		{
+			"one packet via close",
+			args{
+				-1,
+				[]*networking.UDPPacket{&networking.UDPPacket{Time: now, Data: packet1}},
+				[]*networking.UDPPacket{&networking.UDPPacket{Time: now, Data: packet1}},
+			},
+			require.NoError,
+			false, true,
+			false,
+		},
+		{
+			"one packet via cancel",
+			args{
+				-1,
+				[]*networking.UDPPacket{&networking.UDPPacket{Time: now, Data: packet1}},
+				[]*networking.UDPPacket{&networking.UDPPacket{Time: now, Data: packet1}},
+			},
+			require.NoError,
+			true, false,
 			false,
 		},
 		// TODO: Add test cases.
@@ -55,21 +98,39 @@ func TestGoUDPConn_ReadPackets(t *testing.T) {
 				}
 			}
 
-			// pick a random high port, pray we can open it for listening
+			// make sockets on a couple random high ports
+			// add retries so we don't get false fails if the ports are in use
 			e := &GoEnvironment{}
-			recvAddr := &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 32768 + rand.Intn(32768)}
-			udpRecv, err := e.ListenUDP("udp", recvAddr)
-			require.NoError(t, err)
-			// make another socket to send to this one
-			// FIXME: shouldn't need to make a listen socket to send, but abstraction is missing this
-			sendAddr := &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 32768 + rand.Intn(32768)}
-			udpSend, err := e.ListenUDP("udp", sendAddr)
-			require.NoError(t, err)
+
+			randUDP := func() (*net.UDPAddr, networking.UDPConn) {
+				for {
+					addr := &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1).To4(), Port: 1024 + rand.Intn(65536-1024)}
+					udp, err := e.ListenUDP("udp", addr)
+					if oe, ok := err.(*net.OpError); ok && oe != nil {
+						if se, ok := oe.Err.(*os.SyscallError); ok && se != nil {
+							if se.Err == syscall.EADDRINUSE {
+								// retry
+								continue
+							}
+						}
+					}
+					require.NoError(t, err)
+					return addr, udp
+				}
+			}
+
+			// make a pair of sockets for sending and receiving
+			recvAddr, udpRecv := randUDP()
+			// TODO: shouldn't need a listen socket for this one, but that's all we have in the abstraction
+			sendAddr, udpSend := randUDP()
+
+			// make sure we close the sender eventually
+			defer udpSend.Close()
 
 			sendDone := make(chan struct{})
 			recvDone := make(chan struct{})
 
-			ctx := context.Background()
+			ctx, cancel := context.WithCancel(context.Background())
 			receiveChan := make(chan *networking.UDPPacket, len(tt.args.send)+len(tt.args.wantReceive))
 
 			// have to run the test code async to be concurrent with the sending
@@ -79,6 +140,7 @@ func TestGoUDPConn_ReadPackets(t *testing.T) {
 				gotErr = udpRecv.ReadPackets(ctx, tt.args.maxSize, receiveChan)
 			}()
 			// start the sender
+			sendStarted := time.Now()
 			go func() {
 				defer close(sendDone)
 				// FIXME: share this with mock UDPConn.WithPacketSequence
@@ -94,9 +156,21 @@ func TestGoUDPConn_ReadPackets(t *testing.T) {
 
 			// wait for completion
 			<-sendDone
-			// close the socket so the receiver knows to stop
-			// TODO: support ctx mode too
-			require.NoError(t, udpRecv.Close())
+			// Need to wait long enough for the packet to e received before closing/cancelling
+			// TODO: delay here is brittle, and makes all tests slow-ish
+			<-time.NewTimer(5 * time.Millisecond).C
+			if tt.closeSocket {
+				require.NoError(t, udpRecv.Close())
+			} else {
+				// well, we need to close it _eventually_!
+				defer udpRecv.Close()
+			}
+			if tt.cancelCtx {
+				cancel()
+			} else {
+				// do cancel it eventually to release resources
+				defer cancel()
+			}
 			<-recvDone
 
 			tt.assertion(t, gotErr)
@@ -105,8 +179,25 @@ func TestGoUDPConn_ReadPackets(t *testing.T) {
 			for p := range receiveChan {
 				gotReceive = append(gotReceive, p)
 			}
-			// FIXME: this is going to fail on timestamps
-			assert.Equal(t, tt.args.wantReceive, gotReceive)
+			assert.Len(t, gotReceive, len(tt.args.wantReceive))
+			// have to do custom testing because of timestamps
+			for i := 0; i < len(gotReceive) && i < len(tt.args.wantReceive); i++ {
+				want := tt.args.wantReceive[i]
+				got := gotReceive[i]
+				if want.Addr != nil {
+					want.Addr.IP = util.NormalizeIP(want.Addr.IP)
+					assert.Equal(t, want.Addr, got.Addr, "packet %d source addr", i)
+				} else {
+					assert.Equal(t, sendAddr, got.Addr, "packet %d source addr", i)
+				}
+				assert.Equal(t, want.Data, got.Data)
+
+				// see notes elsewhere about timestamp comparison issues
+				gotOffset := got.Time.Sub(sendStarted)
+				wantOffset := want.Time.Sub(now)
+				assert.GreaterOrEqual(t, int64(gotOffset), int64(wantOffset), "packet %d earliest receive time", i)
+				assert.LessOrEqual(t, int64(gotOffset), int64(wantOffset+2*time.Millisecond), "packet %d latest receive time", i)
+			}
 		})
 	}
 }
