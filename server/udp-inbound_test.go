@@ -26,10 +26,6 @@ import (
 )
 
 func TestLinkServer_readPackets(t *testing.T) {
-	// this test does timed things, so skip it when running quick tests
-	if testing.Short() {
-		t.SkipNow()
-	}
 	now := time.Now()
 	expires := now.Add(FactTTL)
 
@@ -70,6 +66,7 @@ func TestLinkServer_readPackets(t *testing.T) {
 		assertion    require.ErrorAssertionFunc
 		packets      []*networking.UDPPacket
 		wantReceived []*ReceivedFact
+		// TODO: add `long` flag for skipping tests with non-immediate timings
 	}{
 		{
 			"empty",
@@ -119,7 +116,6 @@ func TestLinkServer_readPackets(t *testing.T) {
 				},
 			},
 		},
-		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -143,7 +139,7 @@ func TestLinkServer_readPackets(t *testing.T) {
 			tt.assertion(t, s.readPackets(received))
 
 			tt.assertion(t, s.eg.Wait())
-			gotReceived := make([]*ReceivedFact, 0, len(tt.wantReceived)+len(tt.packets))
+			gotReceived := make([]*ReceivedFact, 0, len(tt.wantReceived))
 			for r := range received {
 				gotReceived = append(gotReceived, r)
 			}
@@ -470,11 +466,6 @@ func TestLinkServer_chunkPackets(t *testing.T) {
 }
 
 func TestLinkServer_chunkPackets_slow(t *testing.T) {
-	// all the tests in here have long runtimes, skip this if doing quick tests
-	if testing.Short() {
-		t.SkipNow()
-	}
-
 	timeZero := time.Now()
 	expires := timeZero.Add(FactTTL)
 
@@ -526,6 +517,7 @@ func TestLinkServer_chunkPackets_slow(t *testing.T) {
 		assertion  require.ErrorAssertionFunc
 		packets    []send
 		wantChunks []receive
+		long       bool
 	}{
 		{
 			"empty",
@@ -533,6 +525,7 @@ func TestLinkServer_chunkPackets_slow(t *testing.T) {
 			require.NoError,
 			nil,
 			[]receive{},
+			false,
 		},
 		{
 			"two quick",
@@ -545,6 +538,7 @@ func TestLinkServer_chunkPackets_slow(t *testing.T) {
 			[]receive{
 				receiveAtMs(2, 0, 1),
 			},
+			false,
 		},
 		{
 			"two delayed",
@@ -558,6 +552,7 @@ func TestLinkServer_chunkPackets_slow(t *testing.T) {
 				receiveAtMs(100, 0),
 				receiveAtMs(150, 1),
 			},
+			true,
 		},
 		{
 			"two chunks, pause after each",
@@ -575,6 +570,7 @@ func TestLinkServer_chunkPackets_slow(t *testing.T) {
 				receive{offset: 200 * time.Millisecond},
 				receiveAtMs(300, 2, 3),
 			},
+			true,
 		},
 		{
 			"buffer fill with delay",
@@ -594,10 +590,16 @@ func TestLinkServer_chunkPackets_slow(t *testing.T) {
 				receiveAtMs(100, 3),
 				receiveAtMs(200, 4, 5),
 			},
+			true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// skip long tests
+			if tt.long && testing.Short() {
+				t.SkipNow()
+			}
+
 			s := &LinkServer{}
 			// for this test, use the same limited buffer for the incoming packets as
 			// the real server
