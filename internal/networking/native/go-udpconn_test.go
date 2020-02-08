@@ -19,6 +19,7 @@ import (
 func TestGoUDPConn_ReadPackets(t *testing.T) {
 	now := time.Now()
 	packet1 := make([]byte, 1+rand.Intn(1400))
+	packet2 := make([]byte, 1+rand.Intn(1400))
 	testutils.MustRandBytes(t, packet1)
 
 	type args struct {
@@ -81,7 +82,40 @@ func TestGoUDPConn_ReadPackets(t *testing.T) {
 			true, false,
 			false,
 		},
-		// TODO: Add test cases.
+		{
+			"two packets via close",
+			args{
+				-1,
+				[]*networking.UDPPacket{
+					&networking.UDPPacket{Time: now, Data: packet1},
+					&networking.UDPPacket{Time: now.Add(100 * time.Millisecond), Data: packet2},
+				},
+				[]*networking.UDPPacket{
+					&networking.UDPPacket{Time: now, Data: packet1},
+					&networking.UDPPacket{Time: now.Add(100 * time.Millisecond), Data: packet2},
+				},
+			},
+			require.NoError,
+			false, true,
+			true,
+		},
+		{
+			"two packets via cancel",
+			args{
+				-1,
+				[]*networking.UDPPacket{
+					&networking.UDPPacket{Time: now, Data: packet1},
+					&networking.UDPPacket{Time: now.Add(100 * time.Millisecond), Data: packet2},
+				},
+				[]*networking.UDPPacket{
+					&networking.UDPPacket{Time: now, Data: packet1},
+					&networking.UDPPacket{Time: now.Add(100 * time.Millisecond), Data: packet2},
+				},
+			},
+			require.NoError,
+			true, false,
+			true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -145,10 +179,10 @@ func TestGoUDPConn_ReadPackets(t *testing.T) {
 				defer close(sendDone)
 				// FIXME: share this with mock UDPConn.WithPacketSequence
 				// this one is much simpler due to not watching a Context
-				offset := time.Now().Sub(now)
 				for i := range tt.args.send {
-					packetDeadline := tt.args.send[i].Time.Add(offset)
-					timer := time.NewTimer(time.Now().Sub(packetDeadline))
+					packetOffset := tt.args.send[i].Time.Sub(now)
+					packetDeadline := sendStarted.Add(packetOffset)
+					timer := time.NewTimer(packetDeadline.Sub(time.Now()))
 					<-timer.C
 					udpSend.WriteToUDP(tt.args.send[i].Data, recvAddr)
 				}
