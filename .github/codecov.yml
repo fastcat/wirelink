@@ -20,8 +20,8 @@ codecov:
 #   behavior: default
 #   require_changes: no
 
-  ignore:
-    # mocks are test code, don't care about coverage there
-    - './internal/mocks/**'
-    - './internal/networking/mocks/**'
-    - '*_test.go'
+ignore:
+  # mocks are test code, don't care about coverage there
+  - './internal/mocks/'
+  - './internal/networking/mocks/'
+  - '*_test.go'
