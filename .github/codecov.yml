@@ -22,6 +22,6 @@ codecov:
 
 ignore:
   # mocks are test code, don't care about coverage there
-  - "internal/mocks"
-  - "internal/networking/mocks"
+  - "internal/mocks/*.go"
+  - "internal/networking/mocks/*.go"
   - "*_test.go"
