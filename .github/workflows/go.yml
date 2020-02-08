@@ -62,6 +62,7 @@ jobs:
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         file: ./coverage.out
+        yml: ./.github/codecov.yml
 
     - name: Test with race detector
       run: make test-go-race
