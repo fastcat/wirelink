@@ -63,10 +63,9 @@ const AlivePeriod = 30 * time.Second
 // This is only meaningful if it is <= 255 seconds, since we encode the TTL as a byte
 const FactTTL = 255 * time.Second
 
-// Create starts the server up.
-// Have to take a deviceFactory instead of a Device since you can't refresh a device.
-// Will take ownership of the wg client and close it when the server is closed
-// If port <= 0, will use the wireguard device's listen port plus one
+// Create prepares a new server object, but does not start it yet.
+// Will take ownership of the wg client and close it when the server is closed.
+// The default listen port is the wireguard listen port plus one.
 func Create(ctrl internal.WgClient, config *config.Server) (*LinkServer, error) {
 	device, err := ctrl.Device(config.Iface)
 	if err != nil {
