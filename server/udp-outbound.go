@@ -63,9 +63,9 @@ func (s *LinkServer) shouldSendTo(p *wgtypes.Peer, factsByPeer map[wgtypes.Key][
 		return sendNothing
 	}
 
-	// if the peer is a router or otherwise has elevated trust, always try to send
-	// this is partly to address problems where we wake from sleep and everything is stale
-	// and we don't talk to anyone to refresh anything
+	// send everything to trusted peers and routers
+	// NOTE: this detects _current_ routers, not peers that are authorized to become
+	// routers in the future based on trusted facts that have not yet been applied
 	if s.config.Peers.Trust(p.PublicKey, trust.Untrusted) >= trust.AllowedIPs || detect.IsPeerRouter(p) {
 		return sendFacts
 	}
@@ -91,21 +91,9 @@ func (s *LinkServer) shouldSendTo(p *wgtypes.Peer, factsByPeer map[wgtypes.Key][
 		return sendFacts
 	}
 
-	// if we know some endpoint to try, try to ping to activate the handshake
-	// the fact set will go through later
-	for _, f := range factsByPeer[p.PublicKey] {
-		switch f.Attribute {
-		case fact.AttributeEndpointV4:
-			fallthrough
-		case fact.AttributeEndpointV6:
-			return sendPing
-		}
-	}
-
-	// peer is unhealthy and not likely to become so without help from someone else,
-	// don't waste time trying to send to it
-	log.Debug("Don't send to %s: unhealthy and no endpoints", s.peerName(p.PublicKey))
-	return sendNothing
+	// we have an endpoint for the peer, but it isn't healthy yet:
+	// send pings until it becomes healthy
+	return sendPing
 }
 
 // broadcastFacts tries to send every fact to every peer
