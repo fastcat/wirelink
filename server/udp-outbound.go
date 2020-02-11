@@ -36,7 +36,8 @@ func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) er
 }
 
 func (s *LinkServer) broadcastFactUpdatesOnce(newFacts []*fact.Fact, dev *wgtypes.Device) {
-	_, errs := s.broadcastFacts(dev.PublicKey, dev.Peers, newFacts, ChunkPeriod-time.Second)
+	now := time.Now()
+	_, errs := s.broadcastFacts(dev.PublicKey, dev.Peers, newFacts, now, ChunkPeriod-time.Second)
 	if errs != nil {
 		// don't print more than a handful of errors
 		if len(errs) > 5 {
@@ -98,17 +99,23 @@ func (s *LinkServer) shouldSendTo(p *wgtypes.Peer, factsByPeer map[wgtypes.Key][
 
 // broadcastFacts tries to send every fact to every peer
 // it returns the number of sends performed
-func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, facts []*fact.Fact, timeout time.Duration) (int, []error) {
+func (s *LinkServer) broadcastFacts(
+	self wgtypes.Key,
+	peers []wgtypes.Peer,
+	facts []*fact.Fact,
+	now time.Time,
+	timeout time.Duration,
+) (packetsSent int, sendErrors []error) {
 	var sg errgroup.Group
 
-	s.conn.SetWriteDeadline(time.Now().Add(timeout))
+	s.conn.SetWriteDeadline(now.Add(timeout))
 
 	errs := make(chan error)
 	pingFact := &fact.Fact{
 		Subject:   &fact.PeerSubject{Key: self},
 		Attribute: fact.AttributeAlive,
 		Value:     &fact.UUIDValue{UUID: s.bootID},
-		Expires:   time.Now().Add(FactTTL),
+		Expires:   now.Add(FactTTL),
 	}
 
 	factsByPeer := groupFactsByPeer(facts)
@@ -122,7 +129,7 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 			continue
 		}
 
-		ga := fact.NewAccumulator(fact.SignedGroupMaxSafeInnerLength)
+		ga := fact.NewAccumulator(fact.SignedGroupMaxSafeInnerLength, now)
 
 		if sendLevel >= sendFacts {
 			for _, f := range facts {
@@ -184,7 +191,7 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 
 		for j := range signedGroupFacts {
 			sg.Go(func() error {
-				err := s.sendFact(p, &signedGroupFacts[j])
+				err := s.sendFact(p, &signedGroupFacts[j], now)
 				errs <- err
 				return err
 			})
@@ -216,13 +223,14 @@ func (s *LinkServer) broadcastFacts(self wgtypes.Key, peers []wgtypes.Peer, fact
 	return int(counter), nil
 }
 
-func (s *LinkServer) sendFact(peer *wgtypes.Peer, f *fact.Fact) error {
-	wpb, err := f.MarshalBinary()
+func (s *LinkServer) sendFact(peer *wgtypes.Peer, f *fact.Fact, now time.Time) error {
+	wpb, err := f.MarshalBinaryNow(now)
 	if err != nil {
 		return err
 	}
 	addr := net.UDPAddr{
-		IP:   autopeer.AutoAddress(peer.PublicKey),
+		IP: autopeer.AutoAddress(peer.PublicKey),
+		// NOTE: we assume peers use the same port we do
 		Port: s.addr.Port,
 		Zone: s.addr.Zone,
 	}
