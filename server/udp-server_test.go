@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"net"
@@ -9,11 +10,15 @@ import (
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/config"
 	"github.com/fastcat/wirelink/internal/mocks"
+	"github.com/fastcat/wirelink/internal/networking"
+	netmocks "github.com/fastcat/wirelink/internal/networking/mocks"
 	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/fastcat/wirelink/signing"
+
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -96,4 +101,91 @@ func TestCreate(t *testing.T) {
 			ctrl.AssertExpectations(t)
 		})
 	}
+}
+
+func TestLifecycle_Empty(t *testing.T) {
+	wgIface := fmt.Sprintf("wg%d", rand.Int())
+	ethIface := fmt.Sprintf("eth%d", rand.Int())
+	port := rand.Intn(65536)
+	ethIP4 := testutils.RandIPNet(t, net.IPv4len, []byte{100}, nil, 24)
+	wgIP4 := testutils.RandIPNet(t, net.IPv4len, []byte{10}, nil, 24)
+	privateKey, publicKey := testutils.MustKeyPair(t)
+	localAutoIP := autopeer.AutoAddress(publicKey)
+
+	ctrl := &mocks.WgClient{}
+	ctrl.On("Device", wgIface).Return(
+		&wgtypes.Device{
+			Name:       wgIface,
+			PrivateKey: privateKey,
+			PublicKey:  publicKey,
+			ListenPort: port,
+			Peers:      []wgtypes.Peer{},
+		},
+		nil,
+	)
+	ctrl.On("Close").Once().Return(nil)
+
+	cfg := &config.Server{
+		Iface: wgIface,
+	}
+
+	s, err := Create(ctrl, cfg)
+	require.NoError(t, err)
+	require.NotNil(t, s)
+
+	env := &netmocks.Environment{}
+	env.On("Close").Once().Return(nil)
+
+	mockEth := env.WithInterface(ethIface)
+	mockEth.WithAddrs(ethIP4)
+
+	mockWg := env.WithInterface(wgIface)
+	mockWg.WithAddrs(wgIP4)
+	mockWg.On("AddAddr", net.IPNet{
+		IP:   localAutoIP,
+		Mask: net.CIDRMask(4*net.IPv6len, 8*net.IPv6len),
+	}).Once().Return(nil)
+
+	mockUDP := env.RegisterUDPConn(&netmocks.UDPConn{})
+	env.On("ListenUDP",
+		"udp6",
+		&net.UDPAddr{IP: localAutoIP, Port: port + 1, Zone: wgIface},
+	).Once().Return(mockUDP, nil)
+	mockUDP.On("ReadPackets",
+		// naming the context type is hard, they are private impl details
+		mock.Anything,
+		mock.AnythingOfType("int"),
+		mock.AnythingOfType("chan<- *networking.UDPPacket"),
+	).Once().Return(func(ctx context.Context, maxSize int, output chan<- *networking.UDPPacket) error {
+		// TODO: inject some packets
+		close(output)
+		return nil
+	})
+	mockUDP.On("SetWriteDeadline", mock.AnythingOfType("time.Time")).Return(nil)
+	mockUDP.On("Close").Once().Return(nil)
+
+	env.WithKnownInterfaces()
+	env.Test(t)
+	s.net = env
+
+	err = s.Start()
+	require.NoError(t, err)
+
+	assert.Regexp(t,
+		fmt.Sprintf("^Version [^ ]+ on \\{%s\\} \\[%s\\]:%d \\(leaf, quiet\\)$", wgIface, localAutoIP, port+1),
+		s.Describe(),
+	)
+	assert.Equal(t, localAutoIP, s.Address())
+	assert.Equal(t, port+1, s.Port())
+
+	s.Stop()
+	err = s.Wait()
+	assert.NoError(t, err)
+	// TODO: asserts
+
+	s.Close()
+
+	// this will propagate to all the other virtual network objects
+	env.AssertExpectations(t)
+	ctrl.AssertExpectations(t)
 }

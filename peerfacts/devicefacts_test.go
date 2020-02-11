@@ -85,14 +85,14 @@ func TestDeviceFacts(t *testing.T) {
 				env: func(t *testing.T) *mocks.Environment {
 					ret := &mocks.Environment{}
 					iface := ret.WithInterface(n2)
-					iface.WithAddrs([]net.IPNet{
+					iface.WithAddrs(
 						net.IPNet{
 							IP:   net.IPv4(127, 0, 0, 1),
 							Mask: net.CIDRMask(8, 32),
 						},
 						ipn1,
 						ipn2,
-					})
+					)
 					return ret
 				},
 			},
@@ -128,9 +128,9 @@ func TestDeviceFacts(t *testing.T) {
 				env: func(t *testing.T) *mocks.Environment {
 					ret := &mocks.Environment{}
 					iface := ret.WithInterface(n2)
-					iface.WithAddrs([]net.IPNet{ipn1})
+					iface.WithAddrs(ipn1)
 					iface = ret.WithInterface(n3)
-					iface.WithAddrs([]net.IPNet{ipn2})
+					iface.WithAddrs(ipn2)
 					return ret
 				},
 			},
@@ -158,7 +158,7 @@ func TestDeviceFacts(t *testing.T) {
 				env: func(t *testing.T) *mocks.Environment {
 					ret := &mocks.Environment{}
 					iface := ret.WithInterface(n1)
-					iface.WithAddrs([]net.IPNet{ipn1, ipn2})
+					iface.WithAddrs(ipn1, ipn2)
 					return ret
 				},
 			},

@@ -50,7 +50,7 @@ func (m *Environment) WithKnownInterfaces() {
 }
 
 // WithAddrs mocks the interface to return the given address list
-func (i *Interface) WithAddrs(addrs []net.IPNet) {
+func (i *Interface) WithAddrs(addrs ...net.IPNet) {
 	i.On("Addrs").Return(addrs, nil).Maybe()
 }
 
@@ -59,7 +59,7 @@ func (m *Environment) WithSimpleInterfaces(ifaces map[string]net.IPNet) map[stri
 	ret := make(map[string]*Interface, len(ifaces))
 	for n, ipn := range ifaces {
 		iface := m.WithInterface(n)
-		iface.WithAddrs([]net.IPNet{ipn})
+		iface.WithAddrs(ipn)
 		ret[n] = iface
 	}
 	return ret
@@ -98,13 +98,14 @@ func (m *Environment) AssertExpectations(t *testing.T) {
 
 // RegisterUDPConn records a mocked connection as being related to the environment,
 // so that calling Test or AssertExpections will propagate to it
-func (m *Environment) RegisterUDPConn(c *UDPConn) {
+func (m *Environment) RegisterUDPConn(c *UDPConn) *UDPConn {
 	td := m.TestData()
 	if td.Has(tdConnections) {
 		td.Set(tdConnections, append(td.Get(tdConnections).MustInterSlice(), c))
 	} else {
 		td.Set(tdConnections, []interface{}{c})
 	}
+	return c
 }
 
 // WithPacketSequence will mock the connection to emit the given packet sequence
