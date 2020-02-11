@@ -99,14 +99,14 @@ func (pks *peerKnowledgeSet) upsertSent(peer *wgtypes.Peer, f *fact.Fact) bool {
 	return false
 }
 
-func (pks *peerKnowledgeSet) expire() (ret int) {
+func (pks *peerKnowledgeSet) expire() (count int) {
 	now := time.Now()
 	pks.access.Lock()
 	defer pks.access.Unlock()
 	for key, value := range pks.data {
 		if now.After(value) {
 			delete(pks.data, key)
-			ret++
+			count++
 		}
 	}
 	return
@@ -152,7 +152,7 @@ func aliveKey(peer wgtypes.Key) peerKnowledgeKey {
 
 // peerAlive returns if we have received an alive fact from the peer which is going to be alive
 // for at least `maxTTL`. Commonly `maxTTL` will be set to zero.
-func (pks *peerKnowledgeSet) peerAlive(peer wgtypes.Key, maxTTL time.Duration) (bool, *uuid.UUID) {
+func (pks *peerKnowledgeSet) peerAlive(peer wgtypes.Key, maxTTL time.Duration) (alive bool, bootID *uuid.UUID) {
 	k := aliveKey(peer)
 	pks.access.RLock()
 	e, eok := pks.data[k]

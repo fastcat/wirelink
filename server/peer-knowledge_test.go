@@ -153,3 +153,214 @@ func Test_peerKnowledgeSet_upsertReceived(t *testing.T) {
 		})
 	}
 }
+
+func Test_peerKnowledgeSet_upsertSent(t *testing.T) {
+	type fields struct {
+		data    map[peerKnowledgeKey]time.Time
+		bootIDs map[wgtypes.Key]uuid.UUID
+	}
+	type args struct {
+		peer *wgtypes.Peer
+		f    *fact.Fact
+	}
+	tests := []struct {
+		name       string
+		fields     fields
+		args       args
+		want       bool
+		wantFields fields
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pks := &peerKnowledgeSet{
+				data:    tt.fields.data,
+				bootIDs: tt.fields.bootIDs,
+				access:  &sync.RWMutex{},
+			}
+			assert.Equal(t, tt.want, pks.upsertSent(tt.args.peer, tt.args.f))
+			assert.Equal(t, tt.wantFields.data, pks.data)
+			assert.Equal(t, tt.wantFields.bootIDs, pks.bootIDs)
+		})
+	}
+}
+
+func Test_peerKnowledgeSet_expire(t *testing.T) {
+	type fields struct {
+		data    map[peerKnowledgeKey]time.Time
+		bootIDs map[wgtypes.Key]uuid.UUID
+	}
+	tests := []struct {
+		name       string
+		fields     fields
+		wantCount  int
+		wantFields fields
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pks := &peerKnowledgeSet{
+				data:    tt.fields.data,
+				bootIDs: tt.fields.bootIDs,
+				access:  &sync.RWMutex{},
+			}
+			assert.Equal(t, tt.wantCount, pks.expire())
+			assert.Equal(t, tt.wantFields.data, pks.data)
+			assert.Equal(t, tt.wantFields.bootIDs, pks.bootIDs)
+		})
+	}
+}
+
+func Test_peerKnowledgeSet_peerKnows(t *testing.T) {
+	type fields struct {
+		data    map[peerKnowledgeKey]time.Time
+		bootIDs map[wgtypes.Key]uuid.UUID
+	}
+	type args struct {
+		peer       *wgtypes.Peer
+		f          *fact.Fact
+		hysteresis time.Duration
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pks := &peerKnowledgeSet{
+				data:    tt.fields.data,
+				bootIDs: tt.fields.bootIDs,
+				access:  &sync.RWMutex{},
+			}
+			assert.Equal(t, tt.want, pks.peerKnows(tt.args.peer, tt.args.f, tt.args.hysteresis))
+		})
+	}
+}
+
+func Test_peerKnowledgeSet_peerNeeds(t *testing.T) {
+	type fields struct {
+		data    map[peerKnowledgeKey]time.Time
+		bootIDs map[wgtypes.Key]uuid.UUID
+	}
+	type args struct {
+		peer   *wgtypes.Peer
+		f      *fact.Fact
+		maxTTL time.Duration
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pks := &peerKnowledgeSet{
+				data:    tt.fields.data,
+				bootIDs: tt.fields.bootIDs,
+				access:  &sync.RWMutex{},
+			}
+			assert.Equal(t, tt.want, pks.peerNeeds(tt.args.peer, tt.args.f, tt.args.maxTTL))
+		})
+	}
+}
+
+func Test_peerKnowledgeSet_peerAlive(t *testing.T) {
+	type fields struct {
+		data    map[peerKnowledgeKey]time.Time
+		bootIDs map[wgtypes.Key]uuid.UUID
+		access  *sync.RWMutex
+	}
+	type args struct {
+		peer   wgtypes.Key
+		maxTTL time.Duration
+	}
+	tests := []struct {
+		name       string
+		fields     fields
+		args       args
+		wantAlive  bool
+		wantBootID *uuid.UUID
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pks := &peerKnowledgeSet{
+				data:    tt.fields.data,
+				bootIDs: tt.fields.bootIDs,
+				access:  tt.fields.access,
+			}
+			gotAlive, gotBootID := pks.peerAlive(tt.args.peer, tt.args.maxTTL)
+			assert.Equal(t, tt.wantAlive, gotAlive)
+			assert.Equal(t, tt.wantBootID, gotBootID)
+		})
+	}
+}
+
+func Test_peerKnowledgeSet_forcePing(t *testing.T) {
+	type fields struct {
+		data    map[peerKnowledgeKey]time.Time
+		bootIDs map[wgtypes.Key]uuid.UUID
+	}
+	type args struct {
+		self wgtypes.Key
+		peer wgtypes.Key
+	}
+	tests := []struct {
+		name       string
+		fields     fields
+		args       args
+		wantFields fields
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pks := &peerKnowledgeSet{
+				data:    tt.fields.data,
+				bootIDs: tt.fields.bootIDs,
+				access:  &sync.RWMutex{},
+			}
+			pks.forcePing(tt.args.self, tt.args.peer)
+			assert.Equal(t, tt.wantFields.data, pks.data)
+			assert.Equal(t, tt.wantFields.bootIDs, pks.bootIDs)
+		})
+	}
+}
+
+func Test_peerKnowledgeSet_peerBootID(t *testing.T) {
+	type fields struct {
+		data    map[peerKnowledgeKey]time.Time
+		bootIDs map[wgtypes.Key]uuid.UUID
+	}
+	type args struct {
+		peer wgtypes.Key
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+		want   *uuid.UUID
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pks := &peerKnowledgeSet{
+				data:    tt.fields.data,
+				bootIDs: tt.fields.bootIDs,
+				access:  &sync.RWMutex{},
+			}
+			assert.Equal(t, tt.want, pks.peerBootID(tt.args.peer))
+		})
+	}
+}
