@@ -4,6 +4,8 @@ import (
 	"net"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/util"
 
@@ -77,5 +79,15 @@ func AliveFact(peer *wgtypes.Key, expires time.Time) *fact.Fact {
 		Subject:   &fact.PeerSubject{Key: *peer},
 		Expires:   expires,
 		Value:     &fact.UUIDValue{},
+	}
+}
+
+// AliveFactFull generates an alive fact for the peer, with the given boot ID
+func AliveFactFull(peer *wgtypes.Key, expires time.Time, bootID uuid.UUID) *fact.Fact {
+	return &fact.Fact{
+		Attribute: fact.AttributeAlive,
+		Subject:   &fact.PeerSubject{Key: *peer},
+		Expires:   expires,
+		Value:     &fact.UUIDValue{UUID: bootID},
 	}
 }

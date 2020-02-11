@@ -15,20 +15,22 @@ import (
 type GroupAccumulator struct {
 	maxGroupLen int
 	groups      [][]byte
+	now         time.Time
 }
 
 // NewAccumulator initializes a new GroupAccumulator with a given max inner
 // size per group.
-func NewAccumulator(maxGroupLen int) *GroupAccumulator {
+func NewAccumulator(maxGroupLen int, now time.Time) *GroupAccumulator {
 	return &GroupAccumulator{
 		maxGroupLen: maxGroupLen,
 		groups:      make([][]byte, 1),
+		now:         now,
 	}
 }
 
 // AddFact appends the given fact into the accumulator
 func (ga *GroupAccumulator) AddFact(f *Fact) error {
-	b, err := f.MarshalBinary()
+	b, err := f.MarshalBinaryNow(ga.now)
 	if err != nil {
 		return errors.Wrapf(err, "Unable to convert fact to packet bytes")
 	}
@@ -46,7 +48,7 @@ func (ga *GroupAccumulator) AddFact(f *Fact) error {
 // AddFactIfRoom conditionally adds the fact if and only if it won't result in
 // creating a new group
 func (ga *GroupAccumulator) AddFactIfRoom(f *Fact) (added bool, err error) {
-	b, err := f.MarshalBinary()
+	b, err := f.MarshalBinaryNow(ga.now)
 	if err != nil {
 		return false, errors.Wrapf(err, "Unable to convert fact to packet bytes")
 	}

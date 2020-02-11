@@ -15,7 +15,7 @@ import (
 func TestAccumulatorLimits(t *testing.T) {
 	ef, ep := mustMockAlivePacket(t, nil, nil)
 
-	a := NewAccumulator(len(ep)*4 - 1)
+	a := NewAccumulator(len(ep)*4-1, time.Now())
 
 	for i := 0; i < 4; i++ {
 		err := a.AddFact(ef)
@@ -30,7 +30,7 @@ func TestAccumulatorLimits(t *testing.T) {
 func TestAccumulatorSigning(t *testing.T) {
 	ef, ep := mustMockAlivePacket(t, nil, nil)
 
-	a := NewAccumulator(len(ep)*4 - 1)
+	a := NewAccumulator(len(ep)*4-1, time.Now())
 	for i := 0; i < 4; i++ {
 		err := a.AddFact(ef)
 		require.Nil(t, err)
@@ -75,7 +75,7 @@ func TestGroupAccumulator_AddFactIfRoom_OneByteTooSmall(t *testing.T) {
 	}
 	b, err := f.MarshalBinary()
 	require.Nil(t, err)
-	ga := NewAccumulator(len(b)*3 - 1)
+	ga := NewAccumulator(len(b)*3-1, time.Now())
 
 	err = ga.AddFact(f)
 	require.Nil(t, err)
@@ -98,7 +98,7 @@ func TestGroupAccumulator_AddFactIfRoom_JustRight(t *testing.T) {
 	}
 	b, err := f.MarshalBinary()
 	require.Nil(t, err)
-	ga := NewAccumulator(len(b) * 2)
+	ga := NewAccumulator(len(b)*2, time.Now())
 
 	err = ga.AddFact(f)
 	require.Nil(t, err)
