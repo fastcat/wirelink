@@ -17,6 +17,13 @@ type peerKnowledgeKey struct {
 	peer wgtypes.Key
 }
 
+func keyOf(f *fact.Fact, peer wgtypes.Key) peerKnowledgeKey {
+	return peerKnowledgeKey{
+		Key:  fact.KeyOf(f),
+		peer: peer,
+	}
+}
+
 type peerKnowledgeSet struct {
 	// data maps a PKK (fact key + source peer) to its expiration time for that peer
 	data    map[peerKnowledgeKey]time.Time
@@ -32,15 +39,17 @@ func newPKS() *peerKnowledgeSet {
 	}
 }
 
+// upsertReceived records a newly received fact, noting that the peer that sent it
+// to us knows it (if the source is valid for a peer in the lookup), returning
+// true if we recorded new information, or false if the source was invalid or
+// the info was otherwise rejected (e.g. an older expiration than what we already
+// knew the peer knows).
 func (pks *peerKnowledgeSet) upsertReceived(rf *ReceivedFact, pl peerLookup) bool {
 	peer, ok := pl.get(rf.source.IP)
 	if !ok {
 		return false
 	}
-	k := peerKnowledgeKey{
-		Key:  fact.KeyOf(rf.fact),
-		peer: peer,
-	}
+	k := keyOf(rf.fact, peer)
 
 	pks.access.Lock()
 	defer pks.access.Unlock()

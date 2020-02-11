@@ -239,7 +239,7 @@ func (s *LinkServer) processOneChunk(
 		newLocalFacts = lastLocalFacts
 	}
 
-	pl := createPeerLookup(dev.Peers)
+	pl := createFromPeers(dev.Peers...)
 
 	evaluator := trust.CreateComposite(trust.FirstOnly,
 		// TODO: we can cache the config trust to avoid some re-computation
