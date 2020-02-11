@@ -184,6 +184,7 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 	now := time.Now()
 	timeout := time.Second
 	expires := now.Add(FactTTL)
+	expired := now.Add(-FactTTL)
 
 	expectSWD := func(conn *netmocks.UDPConn) *mock.Call {
 		return conn.On("SetWriteDeadline", now.Add(timeout)).Return(nil)
@@ -415,7 +416,58 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 			0,
 			nil,
 		},
-		// TODO: Add test cases.
+		{
+			"send self ep to FE peer that forgot it",
+			fields{
+				bootID,
+				&config.Server{
+					Iface: wgIface,
+					Peers: config.Peers{
+						remotePublicKey: &config.Peer{
+							FactExchanger: true,
+						},
+					},
+				},
+				func(t *testing.T) *netmocks.UDPConn {
+					ret := &netmocks.UDPConn{}
+					expectSWD(ret)
+					expectSGVOf(t, ret,
+						facts.EndpointFactFull(localEP, &localPublicKey, expires),
+						facts.AliveFactFull(&localPublicKey, expires, bootID),
+					)
+					return ret
+				},
+				net.UDPAddr{
+					Port: port,
+					Zone: wgIface,
+				},
+				func(t *testing.T) *mocks.WgClient {
+					ret := &mocks.WgClient{}
+					return ret
+				},
+				newPKS().mockPeerKnowsLocalAlive(
+					&remotePublicKey, &localPublicKey, expired, &bootID,
+				).mockPeerKnows(
+					&remotePublicKey, facts.EndpointFactFull(localEP, &localPublicKey, expired),
+				),
+				signing.New(&localPrivateKey),
+			},
+			args{
+				localPublicKey,
+				[]wgtypes.Peer{wgtypes.Peer{
+					PublicKey:         remotePublicKey,
+					Endpoint:          remoteEP1,
+					LastHandshakeTime: now,
+				}},
+				[]*fact.Fact{
+					facts.EndpointFactFull(localEP, &localPublicKey, expires),
+				},
+				now,
+				timeout,
+			},
+			1,
+			nil,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
