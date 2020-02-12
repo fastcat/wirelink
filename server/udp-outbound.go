@@ -246,7 +246,7 @@ func (s *LinkServer) sendFact(peer *wgtypes.Peer, f *fact.Fact, now time.Time) e
 		}
 	} else if sent != len(wpb) {
 		return errors.Errorf("Sent %d instead of %d", sent, len(wpb))
-	} else {
-		return nil
 	}
+	// else
+	return nil
 }
