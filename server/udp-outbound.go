@@ -241,9 +241,9 @@ func (s *LinkServer) sendFact(peer *wgtypes.Peer, f *fact.Fact, now time.Time) e
 		if sysErr, ok := opErr.Err.(*os.SyscallError); ok && sysErr.Err == syscall.EDESTADDRREQ {
 			// this is expected, ignore it
 			return nil
-		} else {
-			return errors.Wrapf(err, "Failed to send to peer %s", s.peerName(peer.PublicKey))
 		}
+		// else
+		return errors.Wrapf(err, "Failed to send to peer %s", s.peerName(peer.PublicKey))
 	} else if sent != len(wpb) {
 		return errors.Errorf("Sent %d instead of %d", sent, len(wpb))
 	}
