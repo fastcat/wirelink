@@ -46,7 +46,7 @@ FACTLOOP:
 			s.configurePeersOnce(facts, dev, startTime, now)
 
 		case <-s.printRequested:
-			s.printFacts(facts)
+			log.Info("%s", s.formatFacts(time.Now(), facts))
 		}
 	}
 

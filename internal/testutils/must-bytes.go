@@ -25,6 +25,14 @@ func MustKey(t *testing.T) (key wgtypes.Key) {
 	return
 }
 
+// MustParseKey parses the string version of a wireguard key, panicing via
+// require if it fails, returning the parsed key otherwise
+func MustParseKey(t *testing.T, s string) wgtypes.Key {
+	k, err := wgtypes.ParseKey(s)
+	require.NoError(t, err)
+	return k
+}
+
 // MustRandBytes fills the given slice with random bytes using rand.Read
 func MustRandBytes(t *testing.T, data []byte) []byte {
 	n, err := rand.Read(data)

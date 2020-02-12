@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/fastcat/wirelink/apply"
 	"github.com/fastcat/wirelink/detect"
@@ -16,9 +17,10 @@ func (s *LinkServer) peerName(peer wgtypes.Key) string {
 	return s.config.Peers.Name(peer)
 }
 
-func (s *LinkServer) printFacts(
+func (s *LinkServer) formatFacts(
+	now time.Time,
 	facts []*fact.Fact,
-) {
+) string {
 	// print facts out in a consistent ordering
 	facts = fact.SortedCopy(facts)
 	var str strings.Builder
@@ -31,7 +33,7 @@ func (s *LinkServer) printFacts(
 	}
 	for _, fact := range facts {
 		str.WriteRune('\n')
-		str.WriteString(fact.FancyString(peerNamer))
+		str.WriteString(fact.FancyString(peerNamer, now))
 	}
 	str.WriteString("\nCurrent peers:")
 	s.peerConfig.ForEach(func(k wgtypes.Key, pcs *apply.PeerConfigState) {
@@ -39,7 +41,7 @@ func (s *LinkServer) printFacts(
 	})
 	str.WriteString("\nSelf: ")
 	str.WriteString(s.Describe())
-	log.Info("%s", str.String())
+	return str.String()
 }
 
 // groupFactsByPeer takes a list of facts and groups them by the public key in
@@ -62,7 +64,7 @@ func groupFactsByPeer(facts []*fact.Fact) map[wgtypes.Key][]*fact.Fact {
 // UpdateRouterState will update `s.config.IsRouterNow` based on the device state,
 // if `s.config.AutoDetectRouter` is true.
 // The possible error return is for future use cases, it always returns `nil` for now
-func (s *LinkServer) UpdateRouterState(dev *wgtypes.Device, logChanges bool) error {
+func (s *LinkServer) UpdateRouterState(dev *wgtypes.Device, logChanges bool) {
 	if s.config.AutoDetectRouter {
 		newValue := detect.IsDeviceRouter(dev)
 		if newValue != s.config.IsRouterNow {
@@ -76,6 +78,4 @@ func (s *LinkServer) UpdateRouterState(dev *wgtypes.Device, logChanges bool) err
 			s.config.IsRouterNow = newValue
 		}
 	}
-
-	return nil
 }

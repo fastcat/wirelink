@@ -41,12 +41,15 @@ type Fact struct {
 }
 
 func (f *Fact) String() string {
-	return f.FancyString(func(s Subject) string { return s.String() })
+	return f.FancyString(func(s Subject) string { return s.String() }, time.Now())
 }
 
 // FancyString formats the fact as a string using a custom helper to format
 // the subject, most commonly to replace peer keys with names
-func (f *Fact) FancyString(subjectFormatter func(s Subject) string) string {
+func (f *Fact) FancyString(
+	subjectFormatter func(s Subject) string,
+	now time.Time,
+) string {
 	if f == nil {
 		return fmt.Sprintf("%v", nil)
 	}
@@ -55,7 +58,7 @@ func (f *Fact) FancyString(subjectFormatter func(s Subject) string) string {
 		f.Attribute,
 		subjectFormatter(f.Subject),
 		f.Value,
-		f.Expires.Sub(time.Now()).Seconds(),
+		f.Expires.Sub(now).Seconds(),
 	)
 }
 

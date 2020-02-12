@@ -139,10 +139,7 @@ func (s *LinkServer) Start() (err error) {
 		return err
 	}
 
-	err = s.UpdateRouterState(device, false)
-	if err != nil {
-		return err
-	}
+	s.UpdateRouterState(device, false)
 
 	// ok, network resources are initialized, start all the goroutines!
 
