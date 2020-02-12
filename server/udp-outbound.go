@@ -157,7 +157,7 @@ func (s *LinkServer) broadcastFacts(
 			}
 		}
 
-		addedPing := false
+		var addedPing bool
 		var addPingErr error
 		// we want alive facts to live for the normal FactTTL, but we want to send them every AlivePeriod
 		// so the "forgetting window" is the difference between those
@@ -240,13 +240,13 @@ func (s *LinkServer) sendFact(peer *wgtypes.Peer, f *fact.Fact, now time.Time) e
 		opErr := err.(*net.OpError)
 		if sysErr, ok := opErr.Err.(*os.SyscallError); ok && sysErr.Err == syscall.EDESTADDRREQ {
 			// this is expected, ignore it
-			err = nil
+			return nil
 		} else {
 			return errors.Wrapf(err, "Failed to send to peer %s", s.peerName(peer.PublicKey))
 		}
 	} else if sent != len(wpb) {
 		return errors.Errorf("Sent %d instead of %d", sent, len(wpb))
+	} else {
+		return nil
 	}
-
-	return nil
 }
