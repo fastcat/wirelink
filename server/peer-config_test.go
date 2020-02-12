@@ -678,9 +678,9 @@ func TestLinkServer_deletePeers(t *testing.T) {
 			false,
 		},
 		// TODO: don't delete when local is router
-		// TODO: don't delete when local is AddPeer
+		// TODO: don't delete when local is Membership
 		// TODO: don't delete when remote is statically valid
-		// TODO: don't delete when DelPeer is offline
+		// TODO: don't delete when Membership is offline
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

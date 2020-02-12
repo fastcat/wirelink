@@ -34,7 +34,7 @@
 * Trust delegation (i.e. implement `SetTrust` level)
 * Improved trust models
   * E.g. require a majority of trust sources to agree before adding a peer
-    (DelPeer in this mode gets a bit more complicated)
+    (`Membership` in this mode gets a bit more complicated)
   * Conflating router status with trust levels is getting confusing, consider
     removing this, or having it be a separate trust model from the config,
     and which is enabled is part of the config

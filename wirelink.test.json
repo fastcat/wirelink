@@ -3,7 +3,7 @@
 		{
 			"PublicKey": "18dCY1rwCNo4aQaWFccKFfhbqG0FGBxDkCSbyQ3awkw=",
 			"Name": "test",
-			"Trust": "AddPeer",
+			"Trust": "Membership",
 			"AllowedIPs": [
 				"100.64.2.0/24"
 			],

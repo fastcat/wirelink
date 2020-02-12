@@ -81,10 +81,9 @@ trust model. For now the default trust configuration is simple:
   peers must have an externally configured list of the other peer public keys
   with which they are willing to communicate.
 * Peers may have their default trust level overridden in the config file,
-  including marking peers that are trusted to tell us about new peers to add to
-  the local interface (`AddPeer`), and peers that form a required set, where if
-  none of them says we should have the peer, we remove it from the local
-  interface (`DelPeer`).
+  including marking peers that are trusted to tell us which peers are valid to
+  have in the network (`Membership`). If no trusted source (including the
+  static config) says a peer should be a member, it gets removed.
 
 Received facts are removed as they expire based on the given TTL value, or
 renewed as fresh versions come in from trusted sources.
