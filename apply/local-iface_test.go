@@ -36,7 +36,7 @@ func TestEnsureLocalAutoIP(t *testing.T) {
 				env: func(t *testing.T) *mocks.Environment {
 					ret := &mocks.Environment{}
 					ret.WithSimpleInterfaces(map[string]net.IPNet{
-						in1: net.IPNet{
+						in1: {
 							IP:   autopeer.AutoAddress(k1),
 							Mask: net.CIDRMask(64, 128),
 						},

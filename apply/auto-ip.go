@@ -103,7 +103,7 @@ func OnlyAutoIP(peer *wgtypes.Peer, cfg *wgtypes.PeerConfig) *wgtypes.PeerConfig
 		cfg = &wgtypes.PeerConfig{PublicKey: peer.PublicKey}
 	}
 	cfg.ReplaceAllowedIPs = true
-	cfg.AllowedIPs = []net.IPNet{net.IPNet{
+	cfg.AllowedIPs = []net.IPNet{{
 		IP:   autoaddr,
 		Mask: net.CIDRMask(8*net.IPv6len, 8*net.IPv6len),
 	}}

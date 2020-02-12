@@ -65,8 +65,8 @@ func TestGoUDPConn_ReadPackets(t *testing.T) {
 			"one packet via close",
 			args{
 				-1,
-				[]*networking.UDPPacket{&networking.UDPPacket{Time: now, Data: packet1}},
-				[]*networking.UDPPacket{&networking.UDPPacket{Time: now, Data: packet1}},
+				[]*networking.UDPPacket{{Time: now, Data: packet1}},
+				[]*networking.UDPPacket{{Time: now, Data: packet1}},
 			},
 			require.NoError,
 			false, true,
@@ -76,8 +76,8 @@ func TestGoUDPConn_ReadPackets(t *testing.T) {
 			"one packet via cancel",
 			args{
 				-1,
-				[]*networking.UDPPacket{&networking.UDPPacket{Time: now, Data: packet1}},
-				[]*networking.UDPPacket{&networking.UDPPacket{Time: now, Data: packet1}},
+				[]*networking.UDPPacket{{Time: now, Data: packet1}},
+				[]*networking.UDPPacket{{Time: now, Data: packet1}},
 			},
 			require.NoError,
 			true, false,
@@ -88,12 +88,12 @@ func TestGoUDPConn_ReadPackets(t *testing.T) {
 			args{
 				-1,
 				[]*networking.UDPPacket{
-					&networking.UDPPacket{Time: now, Data: packet1},
-					&networking.UDPPacket{Time: now.Add(100 * time.Millisecond), Data: packet2},
+					{Time: now, Data: packet1},
+					{Time: now.Add(100 * time.Millisecond), Data: packet2},
 				},
 				[]*networking.UDPPacket{
-					&networking.UDPPacket{Time: now, Data: packet1},
-					&networking.UDPPacket{Time: now.Add(100 * time.Millisecond), Data: packet2},
+					{Time: now, Data: packet1},
+					{Time: now.Add(100 * time.Millisecond), Data: packet2},
 				},
 			},
 			require.NoError,
@@ -105,12 +105,12 @@ func TestGoUDPConn_ReadPackets(t *testing.T) {
 			args{
 				-1,
 				[]*networking.UDPPacket{
-					&networking.UDPPacket{Time: now, Data: packet1},
-					&networking.UDPPacket{Time: now.Add(100 * time.Millisecond), Data: packet2},
+					{Time: now, Data: packet1},
+					{Time: now.Add(100 * time.Millisecond), Data: packet2},
 				},
 				[]*networking.UDPPacket{
-					&networking.UDPPacket{Time: now, Data: packet1},
-					&networking.UDPPacket{Time: now.Add(100 * time.Millisecond), Data: packet2},
+					{Time: now, Data: packet1},
+					{Time: now.Add(100 * time.Millisecond), Data: packet2},
 				},
 			},
 			require.NoError,

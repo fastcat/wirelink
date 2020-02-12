@@ -40,6 +40,7 @@ internal/networking/mocks/%.go: internal/networking/types.go
 
 fmt: generate
 	go fmt ./...
+	gofmt -s -w $$(find -type f -name \*.go)
 	goimports -w -l .
 compile: generate
 	go build -v ./...

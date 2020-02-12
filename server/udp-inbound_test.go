@@ -79,14 +79,14 @@ func TestLinkServer_readPackets(t *testing.T) {
 			fields{},
 			require.NoError,
 			[]*networking.UDPPacket{
-				&networking.UDPPacket{
+				{
 					Time: now,
 					Addr: properSource,
 					Data: wrapAndSign(facts.AliveFact(&remotePublicKey, expires)),
 				},
 			},
 			[]*ReceivedFact{
-				&ReceivedFact{
+				{
 					fact:   facts.AliveFact(&remotePublicKey, expires),
 					source: *properSource,
 				},
@@ -97,19 +97,19 @@ func TestLinkServer_readPackets(t *testing.T) {
 			fields{},
 			require.NoError,
 			[]*networking.UDPPacket{
-				&networking.UDPPacket{
+				{
 					Time: now,
 					Addr: properSource,
 					Data: util.MustBytes(facts.AliveFact(&randomKey, expires).MarshalBinaryNow(now)),
 				},
-				&networking.UDPPacket{
+				{
 					Time: now,
 					Addr: properSource,
 					Data: wrapAndSign(facts.AliveFact(&remotePublicKey, expires)),
 				},
 			},
 			[]*ReceivedFact{
-				&ReceivedFact{
+				{
 					fact:   facts.AliveFact(&remotePublicKey, expires),
 					source: *properSource,
 				},
@@ -559,11 +559,11 @@ func TestLinkServer_chunkPackets_slow(t *testing.T) {
 				sendAtMs(55, 1),
 				sendAtMs(250, 2),
 				sendAtMs(255, 3),
-				send{offset: 350 * time.Millisecond},
+				{offset: 350 * time.Millisecond},
 			},
 			[]receive{
 				receiveAtMs(100, 0, 1),
-				receive{offset: 200 * time.Millisecond},
+				{offset: 200 * time.Millisecond},
 				receiveAtMs(300, 2, 3),
 			},
 			true,
@@ -579,7 +579,7 @@ func TestLinkServer_chunkPackets_slow(t *testing.T) {
 				sendAtMs(40, 3),
 				sendAtMs(110, 4),
 				sendAtMs(120, 5),
-				send{offset: 210 * time.Millisecond},
+				{offset: 210 * time.Millisecond},
 			},
 			[]receive{
 				receiveAtMs(30, 0, 1, 2),
@@ -640,7 +640,7 @@ func TestLinkServer_chunkPackets_slow(t *testing.T) {
 			<-doneSend
 			<-doneReceive
 			// there's always a nil startup chunk, don't require tests to specify that
-			wantChunks := append([]receive{receive{0, nil}}, tt.wantChunks...)
+			wantChunks := append([]receive{{0, nil}}, tt.wantChunks...)
 			assert.Len(t, gotChunks, len(wantChunks))
 			for i := 0; i < len(gotChunks) && i < len(wantChunks); i++ {
 				assert.Equal(t, wantChunks[i].chunk, gotChunks[i].chunk, "Received chunk %d", i)
@@ -853,7 +853,7 @@ func TestLinkServer_processOneChunk(t *testing.T) {
 				&netmocks.Environment{},
 				mockDevice(&wgtypes.Device{
 					Peers: []wgtypes.Peer{
-						wgtypes.Peer{
+						{
 							PublicKey:  remoteKey,
 							AllowedIPs: []net.IPNet{autopeer.AutoAddressNet(remoteKey)},
 						},
@@ -879,7 +879,7 @@ func TestLinkServer_processOneChunk(t *testing.T) {
 				&netmocks.Environment{},
 				mockDevice(&wgtypes.Device{
 					Peers: []wgtypes.Peer{
-						wgtypes.Peer{
+						{
 							PublicKey:         remoteKey,
 							AllowedIPs:        []net.IPNet{autopeer.AutoAddressNet(remoteKey)},
 							Endpoint:          alternateEndpoint,
@@ -912,7 +912,7 @@ func TestLinkServer_processOneChunk(t *testing.T) {
 				&netmocks.Environment{},
 				mockDevice(&wgtypes.Device{
 					Peers: []wgtypes.Peer{
-						wgtypes.Peer{
+						{
 							PublicKey:  remoteKey,
 							AllowedIPs: []net.IPNet{autopeer.AutoAddressNet(remoteKey)},
 						},
@@ -940,7 +940,7 @@ func TestLinkServer_processOneChunk(t *testing.T) {
 				&netmocks.Environment{},
 				mockDevice(&wgtypes.Device{
 					Peers: []wgtypes.Peer{
-						wgtypes.Peer{
+						{
 							PublicKey:  remoteKey,
 							AllowedIPs: []net.IPNet{autopeer.AutoAddressNet(remoteKey)},
 						},

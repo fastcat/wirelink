@@ -188,7 +188,7 @@ func TestLinkServer_UpdateRouterState(t *testing.T) {
 				IsRouterNow:      givenRouter,
 				AutoDetectRouter: givenAuto,
 			}},
-			args{&wgtypes.Device{Peers: []wgtypes.Peer{wgtypes.Peer{
+			args{&wgtypes.Device{Peers: []wgtypes.Peer{{
 				AllowedIPs: []net.IPNet{peerAIP},
 			}}}},
 			fields{&config.Server{

@@ -147,7 +147,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 					ret := &mocks.WgClient{}
 					ret.On("ConfigureDevice", wgIface, wgtypes.Config{
 						Peers: []wgtypes.PeerConfig{
-							wgtypes.PeerConfig{
+							{
 								PublicKey:  remoteLeaf1Key,
 								AllowedIPs: []net.IPNet{autopeer.AutoAddressNet(remoteLeaf1Key)},
 								// this shouldn't matter since we're adding it, but we need to match, so it needs to be here
@@ -184,7 +184,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 					ret := &mocks.WgClient{}
 					ret.On("ConfigureDevice", wgIface, wgtypes.Config{
 						Peers: []wgtypes.PeerConfig{
-							wgtypes.PeerConfig{
+							{
 								PublicKey:  remoteLeaf1Key,
 								Endpoint:   leaf1Endpoint,
 								AllowedIPs: []net.IPNet{autopeer.AutoAddressNet(remoteLeaf1Key)},
@@ -222,7 +222,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 					ret := &mocks.WgClient{}
 					ret.On("ConfigureDevice", wgIface, wgtypes.Config{
 						Peers: []wgtypes.PeerConfig{
-							wgtypes.PeerConfig{
+							{
 								PublicKey: remoteLeaf1Key,
 								Remove:    true,
 							},
@@ -244,7 +244,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 					Name:      wgIface,
 					PublicKey: localKey,
 					Peers: []wgtypes.Peer{
-						wgtypes.Peer{
+						{
 							PublicKey: remoteLeaf1Key,
 						},
 					},
@@ -282,7 +282,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 					Name:      wgIface,
 					PublicKey: localKey,
 					Peers: []wgtypes.Peer{
-						wgtypes.Peer{
+						{
 							PublicKey:  remoteLeaf1Key,
 							AllowedIPs: []net.IPNet{autopeer.AutoAddressNet(remoteLeaf1Key)},
 							Endpoint:   leaf1Endpoint,
@@ -302,7 +302,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 					ret := &mocks.WgClient{}
 					ret.On("ConfigureDevice", wgIface, wgtypes.Config{
 						Peers: []wgtypes.PeerConfig{
-							wgtypes.PeerConfig{
+							{
 								PublicKey:  remoteLeaf1Key,
 								AllowedIPs: []net.IPNet{leaf1AIP32},
 								UpdateOnly: true,
@@ -325,7 +325,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 					Name:      wgIface,
 					PublicKey: localKey,
 					Peers: []wgtypes.Peer{
-						wgtypes.Peer{
+						{
 							PublicKey:         remoteLeaf1Key,
 							AllowedIPs:        []net.IPNet{autopeer.AutoAddressNet(remoteLeaf1Key)},
 							Endpoint:          leaf1Endpoint,
@@ -346,7 +346,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 					ret := &mocks.WgClient{}
 					ret.On("ConfigureDevice", wgIface, wgtypes.Config{
 						Peers: []wgtypes.PeerConfig{
-							wgtypes.PeerConfig{
+							{
 								PublicKey: remoteLeaf1Key,
 								// have to sort this slice to make things match consistently
 								AllowedIPs: util.SortIPNetSlice([]net.IPNet{
@@ -374,7 +374,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 					Name:      wgIface,
 					PublicKey: localKey,
 					Peers: []wgtypes.Peer{
-						wgtypes.Peer{
+						{
 							PublicKey: remoteLeaf1Key,
 							AllowedIPs: []net.IPNet{
 								autopeer.AutoAddressNet(remoteLeaf1Key),
@@ -411,7 +411,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 					Name:      wgIface,
 					PublicKey: localKey,
 					Peers: []wgtypes.Peer{
-						wgtypes.Peer{
+						{
 							PublicKey: remoteLeaf1Key,
 							AllowedIPs: []net.IPNet{
 								autopeer.AutoAddressNet(remoteLeaf1Key),
@@ -436,7 +436,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 					// expect to reconfigire peer with just auto-ip
 					ret.On("ConfigureDevice", wgIface, wgtypes.Config{
 						Peers: []wgtypes.PeerConfig{
-							wgtypes.PeerConfig{
+							{
 								PublicKey:         remoteLeaf1Key,
 								AllowedIPs:        []net.IPNet{autopeer.AutoAddressNet(remoteLeaf1Key)},
 								ReplaceAllowedIPs: true,
@@ -458,7 +458,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 					Name:      wgIface,
 					PublicKey: localKey,
 					Peers: []wgtypes.Peer{
-						wgtypes.Peer{
+						{
 							PublicKey: remoteLeaf1Key,
 							AllowedIPs: []net.IPNet{
 								autopeer.AutoAddressNet(remoteLeaf1Key),
@@ -513,7 +513,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 func deviceWithPeerSimple(key wgtypes.Key) *wgtypes.Device {
 	return &wgtypes.Device{
 		Peers: []wgtypes.Peer{
-			wgtypes.Peer{
+			{
 				PublicKey: key,
 			},
 		},
@@ -579,7 +579,7 @@ func TestLinkServer_deletePeers(t *testing.T) {
 					ret := &mocks.WgClient{}
 					ret.On("ConfigureDevice", wgIface, wgtypes.Config{
 						Peers: []wgtypes.PeerConfig{
-							wgtypes.PeerConfig{
+							{
 								PublicKey: k2,
 								Remove:    true,
 							},
@@ -610,7 +610,7 @@ func TestLinkServer_deletePeers(t *testing.T) {
 					ret := &mocks.WgClient{}
 					ret.On("ConfigureDevice", wgIface, wgtypes.Config{
 						Peers: []wgtypes.PeerConfig{
-							wgtypes.PeerConfig{
+							{
 								PublicKey: k1,
 								Remove:    true,
 							},
@@ -656,7 +656,7 @@ func TestLinkServer_deletePeers(t *testing.T) {
 					ret := &mocks.WgClient{}
 					ret.On("ConfigureDevice", wgIface, wgtypes.Config{
 						Peers: []wgtypes.PeerConfig{
-							wgtypes.PeerConfig{
+							{
 								PublicKey: k2,
 								Remove:    true,
 							},

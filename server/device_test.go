@@ -85,7 +85,7 @@ func TestLinkServer_collectFacts(t *testing.T) {
 				&peerConfigSet{
 					psm: &sync.Mutex{},
 					peerStates: map[wgtypes.Key]*apply.PeerConfigState{
-						k2: &apply.PeerConfigState{},
+						k2: {},
 					},
 				},
 			},
@@ -94,7 +94,7 @@ func TestLinkServer_collectFacts(t *testing.T) {
 				PublicKey:  k1,
 				ListenPort: p1,
 				Peers: []wgtypes.Peer{
-					wgtypes.Peer{
+					{
 						PublicKey:         k2,
 						AllowedIPs:        []net.IPNet{ipn3},
 						Endpoint:          ep1,
@@ -123,11 +123,11 @@ func TestLinkServer_collectFacts(t *testing.T) {
 					Peers: config.Peers{
 						k1: &config.Peer{
 							Endpoints: []config.PeerEndpoint{
-								config.PeerEndpoint{
+								{
 									Host: ep1.IP.String(),
 									Port: ep1.Port,
 								},
-								config.PeerEndpoint{
+								{
 									Host: ep2.IP.String(),
 									Port: ep2.Port,
 								},
@@ -143,7 +143,7 @@ func TestLinkServer_collectFacts(t *testing.T) {
 				&peerConfigSet{
 					psm: &sync.Mutex{},
 					peerStates: map[wgtypes.Key]*apply.PeerConfigState{
-						k1: &apply.PeerConfigState{},
+						k1: {},
 					},
 				},
 			},

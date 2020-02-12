@@ -58,7 +58,7 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 					ctrl := &mocks.WgClient{}
 					ctrl.On("ConfigureDevice", iface, wgtypes.Config{
 						Peers: []wgtypes.PeerConfig{
-							wgtypes.PeerConfig{
+							{
 								PublicKey:         k1,
 								ReplaceAllowedIPs: false,
 								AllowedIPs:        []net.IPNet{k1aip},
@@ -70,7 +70,7 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 				dev: &wgtypes.Device{
 					Name: iface,
 					Peers: []wgtypes.Peer{
-						wgtypes.Peer{
+						{
 							PublicKey: k1,
 						},
 					},
@@ -86,7 +86,7 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 					ctrl := &mocks.WgClient{}
 					ctrl.On("ConfigureDevice", iface, wgtypes.Config{
 						Peers: []wgtypes.PeerConfig{
-							wgtypes.PeerConfig{
+							{
 								PublicKey:         k2,
 								ReplaceAllowedIPs: false,
 								AllowedIPs:        []net.IPNet{k2aip},
@@ -98,11 +98,11 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 				dev: &wgtypes.Device{
 					Name: iface,
 					Peers: []wgtypes.Peer{
-						wgtypes.Peer{
+						{
 							PublicKey:  k1,
 							AllowedIPs: []net.IPNet{k1aip},
 						},
-						wgtypes.Peer{
+						{
 							PublicKey: k2,
 						},
 					},
@@ -117,7 +117,7 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 				ctrl: nil,
 				dev: &wgtypes.Device{
 					Peers: []wgtypes.Peer{
-						wgtypes.Peer{
+						{
 							PublicKey:  k1,
 							AllowedIPs: []net.IPNet{k1aip},
 						},
@@ -134,7 +134,7 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 					ctrl := &mocks.WgClient{}
 					ctrl.On("ConfigureDevice", iface, wgtypes.Config{
 						Peers: []wgtypes.PeerConfig{
-							wgtypes.PeerConfig{
+							{
 								PublicKey:         k1,
 								ReplaceAllowedIPs: false,
 								AllowedIPs:        []net.IPNet{k1aip},
@@ -146,7 +146,7 @@ func TestEnsurePeersAutoIP(t *testing.T) {
 				dev: &wgtypes.Device{
 					Name: iface,
 					Peers: []wgtypes.Peer{
-						wgtypes.Peer{
+						{
 							PublicKey: k1,
 						},
 					},

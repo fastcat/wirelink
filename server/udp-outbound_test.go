@@ -319,7 +319,7 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 			},
 			args{
 				localPublicKey,
-				[]wgtypes.Peer{wgtypes.Peer{
+				[]wgtypes.Peer{{
 					PublicKey:         remotePublicKey,
 					Endpoint:          remoteEP1,
 					LastHandshakeTime: now,
@@ -365,7 +365,7 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 			},
 			args{
 				localPublicKey,
-				[]wgtypes.Peer{wgtypes.Peer{
+				[]wgtypes.Peer{{
 					PublicKey:         remotePublicKey,
 					Endpoint:          remoteEP1,
 					LastHandshakeTime: now,
@@ -404,7 +404,7 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 			},
 			args{
 				localPublicKey,
-				[]wgtypes.Peer{wgtypes.Peer{
+				[]wgtypes.Peer{{
 					PublicKey:         remotePublicKey,
 					Endpoint:          remoteEP1,
 					LastHandshakeTime: now,
@@ -454,7 +454,7 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 			},
 			args{
 				localPublicKey,
-				[]wgtypes.Peer{wgtypes.Peer{
+				[]wgtypes.Peer{{
 					PublicKey:         remotePublicKey,
 					Endpoint:          remoteEP1,
 					LastHandshakeTime: now,

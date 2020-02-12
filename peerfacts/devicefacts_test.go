@@ -61,7 +61,7 @@ func TestDeviceFacts(t *testing.T) {
 				},
 			},
 			[]*fact.Fact{
-				&fact.Fact{
+				{
 					Attribute: fact.AttributeEndpointV4,
 					Subject:   &fact.PeerSubject{Key: k1},
 					Value:     &fact.IPPortValue{IP: ipn1.IP, Port: p1},
@@ -97,13 +97,13 @@ func TestDeviceFacts(t *testing.T) {
 				},
 			},
 			[]*fact.Fact{
-				&fact.Fact{
+				{
 					Attribute: fact.AttributeEndpointV4,
 					Subject:   &fact.PeerSubject{Key: k1},
 					Value:     &fact.IPPortValue{IP: ipn1.IP, Port: p1},
 					Expires:   now.Add(time.Minute),
 				},
-				&fact.Fact{
+				{
 					Attribute: fact.AttributeEndpointV6,
 					Subject:   &fact.PeerSubject{Key: k1},
 					Value:     &fact.IPPortValue{IP: ipn2.IP, Port: p1},
@@ -135,7 +135,7 @@ func TestDeviceFacts(t *testing.T) {
 				},
 			},
 			[]*fact.Fact{
-				&fact.Fact{
+				{
 					Attribute: fact.AttributeEndpointV4,
 					Subject:   &fact.PeerSubject{Key: k1},
 					Value:     &fact.IPPortValue{IP: ipn1.IP, Port: p1},
@@ -163,7 +163,7 @@ func TestDeviceFacts(t *testing.T) {
 				},
 			},
 			[]*fact.Fact{
-				&fact.Fact{
+				{
 					Attribute: fact.AttributeAllowedCidrV4,
 					Subject:   &fact.PeerSubject{Key: k1},
 					Value: &fact.IPNetValue{IPNet: net.IPNet{
@@ -172,7 +172,7 @@ func TestDeviceFacts(t *testing.T) {
 					}},
 					Expires: now.Add(time.Minute),
 				},
-				&fact.Fact{
+				{
 					Attribute: fact.AttributeAllowedCidrV6,
 					Subject:   &fact.PeerSubject{Key: k1},
 					Value: &fact.IPNetValue{IPNet: net.IPNet{

@@ -114,7 +114,7 @@ func TestServerData_Parse(t *testing.T) {
 				Iface: iface,
 				Port:  port,
 				Peers: []PeerData{
-					PeerData{
+					{
 						PublicKey: "gobbledygook",
 					},
 				},
@@ -133,7 +133,7 @@ func TestServerData_Parse(t *testing.T) {
 				ReportIfaces: []string{wan},
 				HideIfaces:   []string{docker},
 				Peers: []PeerData{
-					PeerData{
+					{
 						PublicKey:     k1.String(),
 						Name:          name,
 						Trust:         trust.Names[trust.Membership],
@@ -160,7 +160,7 @@ func TestServerData_Parse(t *testing.T) {
 						FactExchanger: fe,
 						Basic:         basic,
 						Endpoints: []PeerEndpoint{
-							PeerEndpoint{Host: "127.0.0.1", Port: 1},
+							{Host: "127.0.0.1", Port: 1},
 						},
 						AllowedIPs: []net.IPNet{
 							testutils.MakeIPv4Net(192, 0, 2, 1, 32),

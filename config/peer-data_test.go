@@ -120,7 +120,7 @@ func TestPeerData_Parse(t *testing.T) {
 			},
 			k,
 			Peer{
-				Endpoints:  []PeerEndpoint{PeerEndpoint{"localhost", 19}},
+				Endpoints:  []PeerEndpoint{{"localhost", 19}},
 				AllowedIPs: []net.IPNet{},
 			},
 			false,
@@ -133,7 +133,7 @@ func TestPeerData_Parse(t *testing.T) {
 			},
 			k,
 			Peer{
-				Endpoints:  []PeerEndpoint{PeerEndpoint{"localhost", 80}},
+				Endpoints:  []PeerEndpoint{{"localhost", 80}},
 				AllowedIPs: []net.IPNet{},
 			},
 			false,
@@ -146,7 +146,7 @@ func TestPeerData_Parse(t *testing.T) {
 			},
 			k,
 			Peer{
-				Endpoints:  []PeerEndpoint{PeerEndpoint{"example.invalid", 80}},
+				Endpoints:  []PeerEndpoint{{"example.invalid", 80}},
 				AllowedIPs: []net.IPNet{},
 			},
 			false,
