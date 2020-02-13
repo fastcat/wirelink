@@ -29,24 +29,21 @@ install-tools:
 
 GENERATED_SOURCES:=\
 	internal/version.go \
+	$(NULL)
+GOGENERATED_SOURCES:=\
 	internal/mocks/WgClient.go \
 	trust/mock_Evaluator_test.go \
 	internal/networking/mocks/Environment.go \
 	internal/networking/mocks/Interface.go \
 	internal/networking/mocks/UDPConn.go \
 	$(NULL)
-generate: $(GENERATED_SOURCES)
-#TODO: use go generate for this stuff
+generate: $(GENERATED_SOURCES) $(GOGENERATED_SOURCES)
+#TODO: use go generate for this step ... requires making a tool that duplicates the version computation above
 internal/version.go: internal/version.go.in .git/HEAD .git/index
 	cat $< | sed -e "s/__GIT_VERSION__/$(PKGVERREL)/" > $@.tmp
 	mv -f $@.tmp $@
-internal/mocks/%.go: internal/%.go
-# this assumes mockery is available in the (GO)PATH
-	mockery -dir internal/ -output internal/mocks/ -name $*
-trust/mock_Evaluator_test.go: trust/trust.go
-	mockery -dir trust/ -testonly -inpkg -name Evaluator
-internal/networking/mocks/%.go: internal/networking/types.go
-	mockery -dir internal/networking/ -output internal/networking/mocks -name $*
+$(GOGENERATED_SOURCES):
+	go generate ./...
 
 fmt: generate
 	go fmt ./...

@@ -1,5 +1,7 @@
 package mocks
 
+//go:generate mockery -dir ../ -output ./ -name "Environment|Interface|UDPConn"
+
 import (
 	"context"
 	"net"
