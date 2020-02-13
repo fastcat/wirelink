@@ -6,13 +6,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/fastcat/wirelink/internal/testutils/facts"
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
+
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // mockPeerAlive updates the peerKnowledgeSet to know that the given peer is alive
@@ -187,9 +190,14 @@ func Test_peerKnowledgeSet_upsertSent(t *testing.T) {
 }
 
 func Test_peerKnowledgeSet_expire(t *testing.T) {
+	now := time.Now()
+	expires := now.Add(FactTTL)
+	expired := now.Add(-time.Millisecond)
+	k1 := testutils.MustKey(t)
+	ep1 := testutils.RandUDP4Addr(t)
+
 	type fields struct {
-		data    map[peerKnowledgeKey]time.Time
-		bootIDs map[wgtypes.Key]uuid.UUID
+		data map[peerKnowledgeKey]time.Time
 	}
 	tests := []struct {
 		name       string
@@ -197,26 +205,65 @@ func Test_peerKnowledgeSet_expire(t *testing.T) {
 		wantCount  int
 		wantFields fields
 	}{
-		// TODO: Add test cases.
+		{
+			"empty",
+			fields{
+				map[peerKnowledgeKey]time.Time{},
+			},
+			0,
+			fields{
+				map[peerKnowledgeKey]time.Time{},
+			},
+		},
+		{
+			"nothing expired",
+			fields{
+				map[peerKnowledgeKey]time.Time{
+					keyOf(facts.EndpointFactFull(ep1, &k1, expires), k1): expires,
+				},
+			},
+			0,
+			fields{
+				map[peerKnowledgeKey]time.Time{
+					keyOf(facts.EndpointFactFull(ep1, &k1, expires), k1): expires,
+				},
+			},
+		},
+		{
+			"one thing expired",
+			fields{
+				map[peerKnowledgeKey]time.Time{
+					keyOf(facts.EndpointFactFull(ep1, &k1, expired), k1): expired,
+				},
+			},
+			1,
+			fields{
+				map[peerKnowledgeKey]time.Time{},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pks := &peerKnowledgeSet{
-				data:    tt.fields.data,
-				bootIDs: tt.fields.bootIDs,
-				access:  &sync.RWMutex{},
+				data:   tt.fields.data,
+				access: &sync.RWMutex{},
 			}
 			assert.Equal(t, tt.wantCount, pks.expire())
 			assert.Equal(t, tt.wantFields.data, pks.data)
-			assert.Equal(t, tt.wantFields.bootIDs, pks.bootIDs)
 		})
 	}
 }
 
 func Test_peerKnowledgeSet_peerKnows(t *testing.T) {
+	now := time.Now()
+	expires := now.Add(FactTTL)
+	offset := FactTTL / 2
+	k1 := testutils.MustKey(t)
+	k1p := &wgtypes.Peer{PublicKey: k1}
+	ep1 := testutils.RandUDP4Addr(t)
+
 	type fields struct {
-		data    map[peerKnowledgeKey]time.Time
-		bootIDs map[wgtypes.Key]uuid.UUID
+		data map[peerKnowledgeKey]time.Time
 	}
 	type args struct {
 		peer       *wgtypes.Peer
@@ -229,14 +276,46 @@ func Test_peerKnowledgeSet_peerKnows(t *testing.T) {
 		args   args
 		want   bool
 	}{
-		// TODO: Add test cases.
+		{
+			"empty knows nothing",
+			fields{map[peerKnowledgeKey]time.Time{}},
+			args{
+				k1p,
+				facts.EndpointFactFull(ep1, &k1, expires),
+				FactTTL,
+			},
+			false,
+		},
+		{
+			"same fact known with no hysteresis",
+			fields{map[peerKnowledgeKey]time.Time{
+				keyOf(facts.EndpointFactFull(ep1, &k1, expires), k1): expires,
+			}},
+			args{
+				k1p,
+				facts.EndpointFactFull(ep1, &k1, expires),
+				0,
+			},
+			true,
+		},
+		{
+			"old fact known with hysteresis",
+			fields{map[peerKnowledgeKey]time.Time{
+				keyOf(facts.EndpointFactFull(ep1, &k1, expires.Add(-offset)), k1): expires.Add(-offset),
+			}},
+			args{
+				k1p,
+				facts.EndpointFactFull(ep1, &k1, expires),
+				offset,
+			},
+			true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pks := &peerKnowledgeSet{
-				data:    tt.fields.data,
-				bootIDs: tt.fields.bootIDs,
-				access:  &sync.RWMutex{},
+				data:   tt.fields.data,
+				access: &sync.RWMutex{},
 			}
 			assert.Equal(t, tt.want, pks.peerKnows(tt.args.peer, tt.args.f, tt.args.hysteresis))
 		})
@@ -338,8 +417,11 @@ func Test_peerKnowledgeSet_forcePing(t *testing.T) {
 }
 
 func Test_peerKnowledgeSet_peerBootID(t *testing.T) {
+	k1 := testutils.MustKey(t)
+	k2 := testutils.MustKey(t)
+	u1 := uuid.Must(uuid.NewRandom())
+
 	type fields struct {
-		data    map[peerKnowledgeKey]time.Time
 		bootIDs map[wgtypes.Key]uuid.UUID
 	}
 	type args struct {
@@ -351,12 +433,22 @@ func Test_peerKnowledgeSet_peerBootID(t *testing.T) {
 		args   args
 		want   *uuid.UUID
 	}{
-		// TODO: Add test cases.
+		{
+			"known",
+			fields{map[wgtypes.Key]uuid.UUID{k1: u1}},
+			args{k1},
+			&u1,
+		},
+		{
+			"unknown",
+			fields{map[wgtypes.Key]uuid.UUID{k1: u1}},
+			args{k2},
+			nil,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pks := &peerKnowledgeSet{
-				data:    tt.fields.data,
 				bootIDs: tt.fields.bootIDs,
 				access:  &sync.RWMutex{},
 			}

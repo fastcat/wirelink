@@ -122,7 +122,7 @@ func (pks *peerKnowledgeSet) peerKnows(peer *wgtypes.Peer, f *fact.Fact, hystere
 	pks.access.RLock()
 	e, ok := pks.data[k]
 	pks.access.RUnlock()
-	return ok && e.Add(hysteresis).After(f.Expires)
+	return ok && !e.Add(hysteresis).Before(f.Expires)
 }
 
 // peerNeeds returns that a peer needs a fact if it either doesn't know it at all,

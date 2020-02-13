@@ -44,6 +44,10 @@ func (pcs *PeerConfigState) Clone() *PeerConfigState {
 	}
 
 	ret := *pcs
+	if ret.lastBootID != nil {
+		copy := *ret.lastBootID
+		ret.lastBootID = &copy
+	}
 	if pcs.endpointLastUsed != nil {
 		ret.endpointLastUsed = make(map[string]time.Time, len(pcs.endpointLastUsed))
 		for k, v := range pcs.endpointLastUsed {
@@ -80,16 +84,16 @@ func (pcs *PeerConfigState) Update(
 	}
 	// don't log the first boot as a reboot
 	if bootChanged && !firstBoot {
-		log.Info("Peer %s is now %s (rebooted)", name, pcs.Describe())
+		log.Info("Peer %s is now %s (rebooted)", name, pcs.Describe(now))
 	} else if changed {
-		log.Info("Peer %s is now %s", name, pcs.Describe())
+		log.Info("Peer %s is now %s", name, pcs.Describe(now))
 	}
 	return pcs
 }
 
 // Describe gives a textual summary of the state.
 // Note that this is not done as String() because it doesn't represent the whole object.
-func (pcs *PeerConfigState) Describe() string {
+func (pcs *PeerConfigState) Describe(now time.Time) string {
 	if pcs == nil {
 		return "???"
 	}
@@ -106,7 +110,7 @@ func (pcs *PeerConfigState) Describe() string {
 		// not alive is implicit here
 		stateDesc = "unhealthy"
 	}
-	hsAge := time.Now().Sub(pcs.lastHandshake)
+	hsAge := now.Sub(pcs.lastHandshake)
 	return fmt.Sprintf("%s (%v)", stateDesc, hsAge.Truncate(time.Millisecond))
 }
 

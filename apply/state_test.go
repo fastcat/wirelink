@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-
-	"github.com/stretchr/testify/assert"
 
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/internal/testutils"
@@ -17,6 +16,9 @@ import (
 	"github.com/fastcat/wirelink/util"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPeerConfigState_EnsureNotNil(t *testing.T) {
@@ -261,7 +263,7 @@ func TestPeerConfigState_Describe(t *testing.T) {
 			if tt.fields.nil {
 				pcs = nil
 			}
-			got := pcs.Describe()
+			got := pcs.Describe(now)
 			for _, substr := range tt.want {
 				assert.Contains(t, got, substr)
 			}
@@ -498,6 +500,159 @@ func TestPeerConfigState_NextEndpoint(t *testing.T) {
 				wantMap[string(util.MustBytes(factutils.EndpointValue(tt.want).MarshalBinary()))] = now
 				assert.Equal(t, wantMap, pcs.endpointLastUsed)
 			}
+		})
+	}
+}
+
+func TestPeerConfigState_Clone(t *testing.T) {
+	u1 := uuid.Must(uuid.NewRandom())
+
+	type fields struct {
+		lastHandshake    time.Time
+		lastHealthy      bool
+		lastAlive        bool
+		lastBootID       *uuid.UUID
+		aliveSince       time.Time
+		endpointLastUsed map[string]time.Time
+	}
+	tests := []struct {
+		name   string
+		fields *fields
+	}{
+		{
+			"nil",
+			nil,
+		},
+		{
+			"empty",
+			&fields{endpointLastUsed: map[string]time.Time{}},
+		},
+		{
+			"filled",
+			&fields{
+				time.Now(),
+				true,
+				true,
+				&u1,
+				time.Now(),
+				map[string]time.Time{
+					"a": time.Now(),
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var pcs *PeerConfigState
+			if tt.fields != nil {
+				pcs = &PeerConfigState{
+					lastHandshake:    tt.fields.lastHandshake,
+					lastHealthy:      tt.fields.lastHealthy,
+					lastAlive:        tt.fields.lastAlive,
+					lastBootID:       tt.fields.lastBootID,
+					aliveSince:       tt.fields.aliveSince,
+					endpointLastUsed: tt.fields.endpointLastUsed,
+				}
+			}
+			got := pcs.Clone()
+			if tt.fields == nil {
+				assert.Nil(t, got)
+				return
+			}
+			require.NotNil(t, got)
+			assert.Equal(t, pcs, got)
+			assert.False(t, pcs == got)
+			if pcs.lastBootID != nil {
+				assert.False(t, pcs.lastBootID == got.lastBootID)
+			}
+			// can't do == on maps, so have to do something else
+			assert.NotEqual(t, reflect.ValueOf(pcs.endpointLastUsed).Pointer(), reflect.ValueOf(got.endpointLastUsed).Pointer())
+			// everything else are simple values
+		})
+	}
+}
+
+func TestPeerConfigState_IsHealthy(t *testing.T) {
+	type fields struct {
+		lastHealthy bool
+	}
+	tests := []struct {
+		name   string
+		fields *fields
+		want   bool
+	}{
+		{"nil", nil, false},
+		{"unhealthy", &fields{false}, false},
+		{"healthy", &fields{true}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var pcs *PeerConfigState
+			if tt.fields != nil {
+				pcs = &PeerConfigState{
+					lastHealthy: tt.fields.lastHealthy,
+				}
+			}
+			assert.Equal(t, tt.want, pcs.IsHealthy())
+		})
+	}
+}
+
+func TestPeerConfigState_IsAlive(t *testing.T) {
+	type fields struct {
+		lastAlive bool
+	}
+	tests := []struct {
+		name   string
+		fields *fields
+		want   bool
+	}{
+		{"nil", nil, false},
+		{"not alive", &fields{false}, false},
+		{"alive", &fields{true}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var pcs *PeerConfigState
+			if tt.fields != nil {
+				pcs = &PeerConfigState{
+					lastAlive: tt.fields.lastAlive,
+				}
+			}
+			assert.Equal(t, tt.want, pcs.IsAlive())
+		})
+	}
+}
+
+func TestPeerConfigState_AliveSince(t *testing.T) {
+	now := time.Now()
+
+	type fields struct {
+		lastHealthy bool
+		lastAlive   bool
+		aliveSince  time.Time
+	}
+	tests := []struct {
+		name   string
+		fields *fields
+		want   time.Time
+	}{
+		{"nil", nil, util.TimeMax()},
+		{"unhealthy", &fields{false, true, now}, util.TimeMax()},
+		{"not alive", &fields{true, false, now}, util.TimeMax()},
+		{"healthy and alive", &fields{true, true, now}, now},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var pcs *PeerConfigState
+			if tt.fields != nil {
+				pcs = &PeerConfigState{
+					lastHealthy: tt.fields.lastHealthy,
+					lastAlive:   tt.fields.lastAlive,
+					aliveSince:  tt.fields.aliveSince,
+				}
+			}
+			assert.Equal(t, tt.want, pcs.AliveSince())
 		})
 	}
 }
