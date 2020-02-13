@@ -10,12 +10,22 @@ PKGREL=$(PKGVERREL:$(PKGVER)-%=%)
 
 DOCSFILES:=LICENSE README.md TODO.md
 
+TOOLS:=\
+	golang.org/x/tools/cmd/goimports \
+	golang.org/x/lint/golint \
+	github.com/vektra/mockery/.../ \
+	github.com/cweill/gotests/...@develop \
+	$(NULL)
+
 all: everything
 
 info:
 	@echo PKGVERREL=$(PKGVERREL)
 	@echo PKGVER=$(PKGVER)
 	@echo PKGREL=$(PKGREL)
+
+install-tools:
+	go get $(TOOLS)
 
 GENERATED_SOURCES:=\
 	internal/version.go \
@@ -117,7 +127,7 @@ clean: checkinstall-clean
 	rm -vf ./wirelink $(GENERATED_SOURCES) $(patsubst %,%.tmp,$(GENERATED_SOURCES)) ./coverage.out ./coverage.html
 #TODO: any way to clean the go cache for just this package?
 
-.PHONY: all info fmt generate compile run install everything clean
+.PHONY: all info install-tools fmt generate compile run install everything clean
 .PHONY: vet lint lint-golint test cover htmlcover
 .PHONY: test-go test-go-race test-stress test-stress-go test-stress-race
 .PHONY: checkinstall checkinstall-prep checkinstall-clean
