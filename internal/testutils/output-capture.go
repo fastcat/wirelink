@@ -15,6 +15,7 @@ func CaptureOutput(t *testing.T, f func()) []byte {
 
 	tempfile, err := ioutil.TempFile("", "wirelink-test-output-capture")
 	require.NoError(t, err)
+	defer os.Remove(tempfile.Name())
 
 	func() {
 		os.Stdout = tempfile
