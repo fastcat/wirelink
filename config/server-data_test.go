@@ -1,9 +1,12 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/fastcat/wirelink/internal"
@@ -194,6 +197,89 @@ func TestServerData_Parse(t *testing.T) {
 				require.Nil(t, err, "ServerData.Parse() error")
 			}
 			assert.Equal(t, tt.wantRet, gotRet, "ServerData.Parse()")
+		})
+	}
+}
+
+func TestServerData_Dump(t *testing.T) {
+	fakeName := "wirelink_test"
+	envArg := func(arg, value string) []string {
+		return []string{
+			strings.ToUpper(fmt.Sprintf("%s_%s", fakeName, arg)),
+			value,
+		}
+	}
+	wgIface := fmt.Sprintf("wgFake%d", rand.Int())
+	configPath := "./testdata/"
+
+	tests := []struct {
+		name     string
+		args     []string
+		env      [][]string
+		wantJSON interface{}
+	}{
+		{
+			"empty",
+			nil,
+			nil,
+			map[string]interface{}{
+				"config-path": configPath,
+				"debug":       false,
+				"iface":       "wg0",
+			},
+		},
+		{
+			"arg iface",
+			[]string{"--iface", wgIface},
+			nil,
+			map[string]interface{}{
+				"config-path": configPath,
+				"debug":       false,
+				"iface":       wgIface,
+			},
+		},
+		{
+			"env iface",
+			nil,
+			[][]string{envArg("iface", wgIface)},
+			map[string]interface{}{
+				"config-path": configPath,
+				"debug":       false,
+				"iface":       wgIface,
+			},
+		},
+		// TODO: more
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// make sure it doesn't use any real configs on the system
+			configPathKey := fmt.Sprintf("%s_%s", strings.ToUpper(fakeName), "CONFIG_PATH")
+			os.Setenv(configPathKey, configPath)
+			defer os.Unsetenv(configPathKey)
+
+			// set per-test env, clear it at the end
+			for _, envPair := range tt.env {
+				os.Setenv(envPair[0], envPair[1])
+				defer os.Unsetenv(envPair[0])
+			}
+
+			args := append([]string{fakeName}, tt.args...)
+			args = append(args, "--dump")
+			flags, vcfg := Init(args)
+			sd, err := Parse(flags, vcfg, args)
+			require.NoError(t, err)
+			require.NotNil(t, sd)
+			require.True(t, sd.Dump)
+			outputData := testutils.CaptureOutput(t, func() {
+				s, err := sd.Parse(vcfg, nil)
+				require.NoError(t, err)
+				require.Nil(t, s)
+			})
+
+			var dumpedObj interface{}
+			require.NoError(t, json.Unmarshal(outputData, &dumpedObj))
+
+			assert.Equal(t, tt.wantJSON, dumpedObj)
 		})
 	}
 }
