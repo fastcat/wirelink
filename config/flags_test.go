@@ -63,6 +63,27 @@ func TestParse(t *testing.T) {
 			nil,
 			require.Error,
 		},
+		{
+			"router",
+			[]string{"--router"},
+			nil,
+			&ServerData{Iface: "wg0", Router: boolPtr(true)},
+			require.NoError,
+		},
+		{
+			"router=true",
+			[]string{"--router=true"},
+			nil,
+			&ServerData{Iface: "wg0", Router: boolPtr(true)},
+			require.NoError,
+		},
+		{
+			"router=false",
+			[]string{"--router=false"},
+			nil,
+			&ServerData{Iface: "wg0", Router: boolPtr(false)},
+			require.NoError,
+		},
 		// TODO: more tests
 		// many will need a way to capture/sniff log output
 	}
