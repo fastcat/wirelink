@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -39,12 +40,21 @@ const ConfigPathFlag = "config-path"
 const ChattyFlag = "chatty"
 
 func programName(args []string) string {
-	return fmt.Sprintf("%s (%s)", os.Args[0], internal.Version)
+	base := path.Base(args[0])
+	ext := path.Ext(base)
+	if len(ext) > 0 {
+		base = base[:len(base)-len(ext)]
+	}
+	return base
+}
+
+func programInfo(args []string) string {
+	return fmt.Sprintf("%s (%s)", programName(args), internal.Version)
 }
 
 // Init sets up the config flags and other parsing setup
-func Init() (flags *pflag.FlagSet, vcfg *viper.Viper) {
-	flags = pflag.NewFlagSet(programName(os.Args), pflag.ContinueOnError)
+func Init(args []string) (flags *pflag.FlagSet, vcfg *viper.Viper) {
+	flags = pflag.NewFlagSet(programInfo(args), pflag.ContinueOnError)
 	vcfg = viper.New()
 
 	flags.Bool(RouterFlag, false, "Is the local device a router (bool, omit for autodetect)")
@@ -59,7 +69,7 @@ func Init() (flags *pflag.FlagSet, vcfg *viper.Viper) {
 	flags.BoolP(DebugFlag, "d", false, "Enable debug logging output")
 
 	vcfg.BindPFlags(flags)
-	vcfg.SetEnvPrefix("wirelink")
+	vcfg.SetEnvPrefix(programName(args))
 	vcfg.AutomaticEnv()
 	// hard to set env vars with hyphens, bash doesn't like it
 	vcfg.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
@@ -68,8 +78,8 @@ func Init() (flags *pflag.FlagSet, vcfg *viper.Viper) {
 }
 
 // Parse reads flags and configs
-func Parse(flags *pflag.FlagSet, vcfg *viper.Viper) (ret *ServerData, err error) {
-	err = flags.Parse(os.Args[1:])
+func Parse(flags *pflag.FlagSet, vcfg *viper.Viper, args []string) (ret *ServerData, err error) {
+	err = flags.Parse(args[1:])
 	if err != nil {
 		// TODO: this causes the error to be printed twice: once by flags and once by `main`
 		// TODO: this also causes an error to be printed & returned when run with `--help`
@@ -86,12 +96,12 @@ func Parse(flags *pflag.FlagSet, vcfg *viper.Viper) (ret *ServerData, err error)
 		// have to do this by hand here for now as can't write a Usage
 		// func that can see flags.output
 		flags.SetOutput(os.Stdout)
-		fmt.Fprintf(os.Stdout, "Usage of %s:\n", programName(os.Args))
+		fmt.Fprintf(os.Stdout, "Usage of %s:\n", programInfo(args))
 		flags.PrintDefaults()
 		return nil, nil
 	}
 	if version, _ := flags.GetBool(VersionFlag); version {
-		_, err = fmt.Printf("%s\n", programName(os.Args))
+		_, err = fmt.Printf("%s\n", programInfo(args))
 		return nil, err
 	}
 
@@ -114,7 +124,7 @@ func Parse(flags *pflag.FlagSet, vcfg *viper.Viper) (ret *ServerData, err error)
 	// load peer configurations
 	ret = new(ServerData)
 	if err = vcfg.UnmarshalExact(ret); err != nil {
-		fmt.Fprintf(os.Stderr, "Usage of %s:\n", programName(os.Args))
+		fmt.Fprintf(os.Stderr, "Usage of %s:\n", programInfo(args))
 		flags.PrintDefaults()
 		return nil, errors.Wrapf(err, "Unable to parse config")
 	}

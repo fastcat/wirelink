@@ -18,7 +18,7 @@ import (
 )
 
 func main() {
-	err := realMain()
+	err := realMain(os.Args)
 	// don't print on error just because help was requested
 	if err != nil && err != pflag.ErrHelp {
 		fmt.Fprintf(os.Stderr, "Fatal error: %v", err)
@@ -26,15 +26,15 @@ func main() {
 	}
 }
 
-func realMain() error {
+func realMain(args []string) error {
 	wgc, err := wgctrl.New()
 	if err != nil {
 		return errors.Wrapf(err, "Unable to initialize wgctrl")
 	}
 
-	flags, vcfg := config.Init()
+	flags, vcfg := config.Init(args)
 	var configData *config.ServerData
-	if configData, err = config.Parse(flags, vcfg); err != nil {
+	if configData, err = config.Parse(flags, vcfg, args); err != nil {
 		return errors.Wrapf(err, "Failed to load config")
 	}
 	// configData comes back nil if we ran --help or --version
