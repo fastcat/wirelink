@@ -39,7 +39,7 @@ type UDPConn interface {
 	WriteToUDP(p []byte, addr *net.UDPAddr) (n int, err error)
 
 	// ReadPackets reads packets from the connection until it is either closed,
-	// or the passed context is canceled.
+	// or the passed context is cancelled.
 	// Packets or errors (other than the connection being closed) will be sent
 	// to the output channel, which will be closed when this routine finishes.
 	// Closing the connection is always the responsibility of the caller.

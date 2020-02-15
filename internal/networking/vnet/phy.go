@@ -38,14 +38,20 @@ func (i *PhysicalInterface) AttachToNetwork(n *Network) {
 }
 
 // OutboundPacket enqueues the packet to be sent out the interface into the
-// network
-func (i *PhysicalInterface) OutboundPacket(p *Packet) {
+// network, if possible
+func (i *PhysicalInterface) OutboundPacket(p *Packet) bool {
 	i.m.Lock()
+	// no routing in this model, if the destination is not on a connected subnet,
+	// not going to send it
+	if !destinationAddrMatch(p, i.addrs) {
+		i.m.Unlock()
+		return false
+	}
+	// TODO: bogon detection (src addr match)?
 	n := i.network
 	i.m.Unlock()
 	if n == nil {
-		return
+		return false
 	}
-	// TODO: bogon detection?
-	n.EnqueuePacket(p)
+	return n.EnqueuePacket(p)
 }

@@ -5,12 +5,17 @@ import (
 	"sync"
 )
 
+// A SocketOwner can send packets
+type SocketOwner interface {
+	OutboundPacket(*Packet) bool
+	DelSocket(*Socket)
+}
+
 // An Interface is any network interface, whether physical or virtual, attached
 // to a Host, which can be used to send and receive Packets.
 type Interface interface {
+	SocketOwner
 	DetachFromNetwork()
-	OutboundPacket(*Packet)
-	DelSocket(*Socket)
 }
 
 // BaseInterface handles the common elements of both physical and tunnel
@@ -38,9 +43,8 @@ func (i *BaseInterface) AddAddr(a net.IPNet) {
 // AddSocket creates a new socket on the interface
 func (i *BaseInterface) AddSocket(a *net.UDPAddr) *Socket {
 	ret := &Socket{
-		iface:   i.self,
-		addr:    a,
-		inbound: make(chan *Packet),
+		sender: i.self,
+		addr:   a,
 	}
 	i.m.Lock()
 	// TODO: validate addr is unique-ish
@@ -61,30 +65,25 @@ func (i *BaseInterface) DelSocket(s *Socket) {
 // InboundPacket inspects the packet to see if its destination matches any
 // address on the interface and any listening socket, and if so enqueues it
 // for that listener
-func (i *BaseInterface) InboundPacket(p *Packet) {
+func (i *BaseInterface) InboundPacket(p *Packet) bool {
 	i.m.Lock()
 	var rs *Socket
-FIND_RS:
-	for _, a := range i.addrs {
-		am := a.IP.Mask(a.Mask)
-		pm := p.dest.IP.Mask(a.Mask)
-		if !am.Equal(pm) {
-			continue
-		}
-		for _, s := range i.sockets {
-			if s.addr.Port != p.dest.Port {
-				continue
-			}
-			if s.addr.IP.Equal(net.IPv4zero) || s.addr.IP.Equal(net.IPv6zero) || s.addr.IP.Equal(p.dest.IP) {
-				// TODO: differentiate v4 and v6 any addresses here
-				rs = s
-				break FIND_RS
-			}
-		}
+	if !destinationAddrMatch(p, i.addrs) {
+		// not for this interface, not implementing forwarding, so drop it
+		i.m.Unlock()
+		return false
 	}
+	rs = destinationSocket(p, i.sockets)
+	h := i.host
 	i.m.Unlock()
-	if rs == nil {
-		return
+
+	// if we found an interface-specific socket that matched, send it there,
+	// else forward it to the host to try non-specific sockets
+	if rs != nil {
+		return rs.InboundPacket(p)
 	}
-	rs.InboundPacket(p)
+	if h != nil {
+		return h.InboundPacket(p)
+	}
+	return false
 }
