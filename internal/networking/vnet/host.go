@@ -20,12 +20,13 @@ type Host struct {
 
 func (h *Host) createBaseIface(name string) *BaseInterface {
 	return &BaseInterface{
-		m:     &sync.Mutex{},
-		id:    fmt.Sprintf("%s:%s", h.id, name),
-		name:  name,
-		world: h.world,
-		host:  h,
-		addrs: map[string]net.IPNet{},
+		m:       &sync.Mutex{},
+		id:      fmt.Sprintf("%s:%s", h.id, name),
+		name:    name,
+		world:   h.world,
+		host:    h,
+		addrs:   map[string]net.IPNet{},
+		sockets: map[string]*Socket{},
 	}
 	// caller has to fill in self
 }

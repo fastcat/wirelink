@@ -1,5 +1,7 @@
 package vnet
 
+import "net"
+
 // An PhysicalInterface represents a network interface on a Host that is part of
 // some World. The interface may be attached and detached from various Networks
 // in the World.
@@ -48,9 +50,21 @@ func (i *PhysicalInterface) OutboundPacket(p *Packet) bool {
 	}
 	// TODO: bogon detection (src addr match)?
 	n := i.network
-	i.m.Unlock()
 	if n == nil {
+		i.m.Unlock()
 		return false
 	}
+
+	// fixup source addr
+	if n != nil && (p.src.IP.Equal(net.IPv4zero) || p.src.IP.Equal(net.IPv6zero)) {
+		// FIXME: makes assumptions about multiple addrs on interface
+		for _, addr := range i.addrs {
+			p.src.IP = addr.IP
+			break
+		}
+	}
+
+	i.m.Unlock()
+
 	return n.EnqueuePacket(p)
 }

@@ -48,16 +48,33 @@ func (t *Tunnel) Listen(port int) {
 	t.m.Unlock()
 }
 
+// AddPeer defines a new valid peer for communicating over the tunnel
+func (t *Tunnel) AddPeer(id string, endpoint *net.UDPAddr, addrs []net.IPNet) *TunPeer {
+	p := &TunPeer{
+		id:       id,
+		endpoint: endpoint,
+		addrs:    map[string]net.IPNet{},
+	}
+	for _, a := range addrs {
+		p.addrs[a.String()] = a
+	}
+	t.m.Lock()
+	t.peers[id] = p
+	t.m.Unlock()
+	return p
+}
+
 func (t *Tunnel) receiveEncapsulated(p *Packet) bool {
 	if p.encapsulated == nil {
 		return false
 	}
+	// TODO: include src & dest tun ids in the packet and verify those match
 
 	t.m.Lock()
 	var srcPeer *TunPeer
 	// find a peer with an addr that matches the packet source
 	for _, peer := range t.peers {
-		if sourceSubnetMatch(p, peer.addrs) {
+		if sourceSubnetMatch(p.encapsulated, peer.addrs) {
 			srcPeer = peer
 			break
 		}
@@ -72,7 +89,7 @@ func (t *Tunnel) receiveEncapsulated(p *Packet) bool {
 	t.m.Unlock()
 
 	// try to deliver it to a socket
-	return t.InboundPacket(p)
+	return t.InboundPacket(p.encapsulated)
 }
 
 // OutboundPacket implements Interface
