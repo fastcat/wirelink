@@ -41,9 +41,8 @@ func (i *PhysicalInterface) AttachToNetwork(n *Network) {
 // network, if possible
 func (i *PhysicalInterface) OutboundPacket(p *Packet) bool {
 	i.m.Lock()
-	// no routing in this model, if the destination is not on a connected subnet,
-	// not going to send it
-	if !destinationAddrMatch(p, i.addrs) {
+	// we assume connectivity based on the network, don't really care about ip subnets
+	if !destinationSubnetMatch(p, i.addrs) {
 		i.m.Unlock()
 		return false
 	}

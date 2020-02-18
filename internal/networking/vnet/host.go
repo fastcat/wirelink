@@ -114,6 +114,7 @@ func (h *Host) OutboundPacket(p *Packet) bool {
 	h.m.Lock()
 	for _, iface := range h.interfaces {
 		if iface.OutboundPacket(p) {
+			h.m.Unlock()
 			return true
 		}
 	}

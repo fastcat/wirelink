@@ -2,7 +2,7 @@ package vnet
 
 import "net"
 
-func addrMatch(ip net.IP, addrs map[string]net.IPNet) bool {
+func subnetMatch(ip net.IP, addrs map[string]net.IPNet) bool {
 	for _, a := range addrs {
 		am := a.IP.Mask(a.Mask)
 		pm := ip.Mask(a.Mask)
@@ -14,11 +14,21 @@ func addrMatch(ip net.IP, addrs map[string]net.IPNet) bool {
 }
 
 func destinationAddrMatch(p *Packet, addrs map[string]net.IPNet) bool {
-	return addrMatch(p.dest.IP, addrs)
+	ip := p.dest.IP
+	for _, a := range addrs {
+		if ip.Equal(a.IP) {
+			return true
+		}
+	}
+	return false
 }
 
-func sourceAddrMatch(p *Packet, addrs map[string]net.IPNet) bool {
-	return addrMatch(p.src.IP, addrs)
+func destinationSubnetMatch(p *Packet, addrs map[string]net.IPNet) bool {
+	return subnetMatch(p.dest.IP, addrs)
+}
+
+func sourceSubnetMatch(p *Packet, addrs map[string]net.IPNet) bool {
+	return subnetMatch(p.src.IP, addrs)
 }
 
 func destinationSocket(p *Packet, sockets map[string]*Socket) *Socket {

@@ -50,6 +50,7 @@ func (w *World) CreateEmptyHost(id string) *Host {
 		id:         id,
 		world:      w,
 		interfaces: map[string]Interface{},
+		sockets:    map[string]*Socket{},
 	}
 	// TODO: more host initialization
 	w.hosts[id] = ret

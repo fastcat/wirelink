@@ -57,7 +57,7 @@ func (t *Tunnel) receiveEncapsulated(p *Packet) bool {
 	var srcPeer *TunPeer
 	// find a peer with an addr that matches the packet source
 	for _, peer := range t.peers {
-		if sourceAddrMatch(p, peer.addrs) {
+		if sourceSubnetMatch(p, peer.addrs) {
 			srcPeer = peer
 			break
 		}
@@ -85,7 +85,7 @@ func (t *Tunnel) OutboundPacket(p *Packet) bool {
 	}
 	// no routing in this model, if the destination is not on a connected subnet,
 	// not going to send it
-	if !destinationAddrMatch(p, t.addrs) {
+	if !destinationSubnetMatch(p, t.addrs) {
 		t.m.Unlock()
 		return false
 	}
@@ -93,7 +93,7 @@ func (t *Tunnel) OutboundPacket(p *Packet) bool {
 
 	var dest *net.UDPAddr
 	for _, peer := range t.peers {
-		if peer.endpoint != nil && destinationAddrMatch(p, peer.addrs) {
+		if peer.endpoint != nil && destinationSubnetMatch(p, peer.addrs) {
 			dest = peer.endpoint
 			break
 		}
