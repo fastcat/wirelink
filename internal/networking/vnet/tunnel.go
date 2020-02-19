@@ -2,6 +2,7 @@ package vnet
 
 import (
 	"net"
+	"time"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -63,10 +64,11 @@ func (t *Tunnel) GenerateKeys() (privateKey, publicKey wgtypes.Key) {
 // TunPeer represents a simplified version of a wireguard peer,
 // with a remote endpoint and a list of IPNets within the tunnel
 type TunPeer struct {
-	id        string
-	publicKey wgtypes.Key
-	endpoint  *net.UDPAddr
-	addrs     map[string]net.IPNet
+	name        string
+	publicKey   wgtypes.Key
+	endpoint    *net.UDPAddr
+	lastReceive time.Time
+	addrs       map[string]net.IPNet
 }
 
 // DetachFromNetwork implements Interface
@@ -95,9 +97,9 @@ func (t *Tunnel) Listen(port int) {
 }
 
 // AddPeer defines a new valid peer for communicating over the tunnel
-func (t *Tunnel) AddPeer(id string, publicKey wgtypes.Key, endpoint *net.UDPAddr, addrs []net.IPNet) *TunPeer {
+func (t *Tunnel) AddPeer(name string, publicKey wgtypes.Key, endpoint *net.UDPAddr, addrs []net.IPNet) *TunPeer {
 	p := &TunPeer{
-		id:        id,
+		name:      name,
 		publicKey: publicKey,
 		endpoint:  endpoint,
 		addrs:     map[string]net.IPNet{},
@@ -106,9 +108,16 @@ func (t *Tunnel) AddPeer(id string, publicKey wgtypes.Key, endpoint *net.UDPAddr
 		p.addrs[a.String()] = a
 	}
 	t.m.Lock()
-	t.peers[id] = p
+	t.peers[publicKey.String()] = p
 	t.m.Unlock()
 	return p
+}
+
+// DelPeer deletes the peer with the given id (String() of its PublicKey) from the tunnel
+func (t *Tunnel) DelPeer(id string) {
+	t.m.Lock()
+	delete(t.peers, id)
+	t.m.Unlock()
 }
 
 func (t *Tunnel) receiveEncapsulated(p *Packet) bool {
@@ -133,6 +142,7 @@ func (t *Tunnel) receiveEncapsulated(p *Packet) bool {
 
 	// update the peer's source endpoint like wireguard does
 	srcPeer.endpoint = p.src
+	srcPeer.lastReceive = time.Now()
 	t.m.Unlock()
 
 	// try to deliver it to a socket

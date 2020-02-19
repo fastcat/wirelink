@@ -86,9 +86,9 @@ func Test_Cmd_VNet1(t *testing.T) {
 	client2 := addClient(2)
 	defer client2.Close()
 
-	host1cmd := New([]string{"wirevlink", "--iface=wg0", "--router=true"})
-	client1cmd := New([]string{"wirevlink", "--iface=wg1", "--router=false"})
-	client2cmd := New([]string{"wirevlink", "--iface=wg1", "--router=false"})
+	host1cmd := New([]string{"wirevlink", "--iface=wg0", "--router=true", "--debug"})
+	client1cmd := New([]string{"wirevlink", "--iface=wg1", "--router=false", "--debug"})
+	client2cmd := New([]string{"wirevlink", "--iface=wg1", "--router=false", "--debug"})
 
 	require.NoError(t, host1cmd.Init(host1.Wrap()))
 	require.NoError(t, client1cmd.Init(client1.Wrap()))
@@ -113,7 +113,7 @@ func Test_Cmd_VNet1(t *testing.T) {
 		Trust: trust.Ptr(trust.Membership),
 		Endpoints: []config.PeerEndpoint{{
 			Host: "100.1.1.1",
-			Port: wgPort + 1,
+			Port: wgPort,
 		}},
 	}
 	client2cmd.Config.Peers[h1w0.PublicKey()] = &config.Peer{
@@ -121,7 +121,7 @@ func Test_Cmd_VNet1(t *testing.T) {
 		Trust: trust.Ptr(trust.Membership),
 		Endpoints: []config.PeerEndpoint{{
 			Host: "100.1.1.1",
-			Port: wgPort + 1,
+			Port: wgPort,
 		}},
 	}
 
@@ -130,12 +130,29 @@ func Test_Cmd_VNet1(t *testing.T) {
 	eg.Go(client1cmd.Run)
 	eg.Go(client2cmd.Run)
 
-	<-time.After(1 * time.Second)
+	time.Sleep(time.Second)
 	host1cmd.Server.RequestPrint()
 	client1cmd.Server.RequestPrint()
 	client2cmd.Server.RequestPrint()
 
-	<-time.After(1 * time.Second)
+	// connect the clients to the internet after a delay
+	client1.Interface("eth0").(*vnet.PhysicalInterface).AttachToNetwork(internet)
+	client2.Interface("eth0").(*vnet.PhysicalInterface).AttachToNetwork(internet)
+
+	time.Sleep(5 * time.Second)
+	t.Log("Printing state 1: server should be connected to clients")
+	host1cmd.Server.RequestPrint()
+	client1cmd.Server.RequestPrint()
+	client2cmd.Server.RequestPrint()
+
+	time.Sleep(5 * time.Second)
+	t.Log("Printing state 2: clients should be connected to each other")
+	host1cmd.Server.RequestPrint()
+	client1cmd.Server.RequestPrint()
+	client2cmd.Server.RequestPrint()
+
+	time.Sleep(time.Second)
+	t.Log("Stopping servers")
 	host1cmd.Server.RequestStop()
 	client1cmd.Server.RequestStop()
 	client2cmd.Server.RequestStop()
