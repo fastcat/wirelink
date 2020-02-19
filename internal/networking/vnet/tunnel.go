@@ -2,6 +2,8 @@ package vnet
 
 import (
 	"net"
+
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 // A Tunnel represents a Wireguard interface, which encapsulates packets
@@ -9,18 +11,55 @@ import (
 type Tunnel struct {
 	BaseInterface
 
-	upstream *Socket
-	peers    map[string]*TunPeer
+	privateKey, publicKey wgtypes.Key
+	upstream              *Socket
+	peers                 map[string]*TunPeer
 }
 
 var _ Interface = &Tunnel{}
 
+// UseKey loads the given private key into the tunnel along with its computed
+// public key
+func (t *Tunnel) UseKey(privateKey wgtypes.Key) {
+	pub := privateKey.PublicKey()
+	t.m.Lock()
+	t.publicKey = pub
+	t.privateKey = privateKey
+	t.m.Unlock()
+}
+
+// Keys returns the local private and public keys for the tunnel
+func (t *Tunnel) Keys() (privateKey, publicKey wgtypes.Key) {
+	t.m.Lock()
+	privateKey = t.privateKey
+	publicKey = t.publicKey
+	t.m.Unlock()
+	return
+}
+
+// GenerateKeys makes a new key pair for the tunnel and uses it,
+// panicing if generation fails
+func (t *Tunnel) GenerateKeys() (privateKey, publicKey wgtypes.Key) {
+	var err error
+	privateKey, err = wgtypes.GeneratePrivateKey()
+	if err != nil {
+		panic(err)
+	}
+	publicKey = privateKey.PublicKey()
+	t.m.Lock()
+	t.privateKey = privateKey
+	t.publicKey = publicKey
+	t.m.Unlock()
+	return
+}
+
 // TunPeer represents a simplified version of a wireguard peer,
 // with a remote endpoint and a list of IPNets within the tunnel
 type TunPeer struct {
-	id       string
-	endpoint *net.UDPAddr
-	addrs    map[string]net.IPNet
+	id        string
+	publicKey wgtypes.Key
+	endpoint  *net.UDPAddr
+	addrs     map[string]net.IPNet
 }
 
 // DetachFromNetwork implements Interface
@@ -49,11 +88,12 @@ func (t *Tunnel) Listen(port int) {
 }
 
 // AddPeer defines a new valid peer for communicating over the tunnel
-func (t *Tunnel) AddPeer(id string, endpoint *net.UDPAddr, addrs []net.IPNet) *TunPeer {
+func (t *Tunnel) AddPeer(id string, publicKey wgtypes.Key, endpoint *net.UDPAddr, addrs []net.IPNet) *TunPeer {
 	p := &TunPeer{
-		id:       id,
-		endpoint: endpoint,
-		addrs:    map[string]net.IPNet{},
+		id:        id,
+		publicKey: publicKey,
+		endpoint:  endpoint,
+		addrs:     map[string]net.IPNet{},
 	}
 	for _, a := range addrs {
 		p.addrs[a.String()] = a

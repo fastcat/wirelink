@@ -2,7 +2,6 @@ package vnet
 
 import (
 	"github.com/fastcat/wirelink/internal"
-	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/fastcat/wirelink/util"
 	"github.com/pkg/errors"
 
@@ -51,17 +50,16 @@ func (hc *hostWgClient) Device(name string) (*wgtypes.Device, error) {
 		Name:       name,
 		ListenPort: -1,
 		Type:       wgtypes.Unknown, // this is not a real device
-		// FIXME: PublicKey
-		// FIXME: PrivateKey
+		PrivateKey: t.privateKey,
+		PublicKey:  t.publicKey,
 	}
 	if t.upstream != nil {
 		ret.ListenPort = t.upstream.addr.Port
 	}
 
-	for id, p := range t.peers {
+	for _, p := range t.peers {
 		peer := wgtypes.Peer{
-			// FIXME: testing.T reference
-			PublicKey:  testutils.MustParseKey(nil, id),
+			PublicKey:  p.publicKey,
 			Endpoint:   util.CloneUDPAddr(p.endpoint),
 			AllowedIPs: nil, // below
 			// TODO: LastHandshakeTime

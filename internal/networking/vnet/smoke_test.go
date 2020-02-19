@@ -24,7 +24,7 @@ type smokeSetup struct {
 	host1wg0p1, host2wg0p1   *TunPeer
 }
 
-func initSmoke() *smokeSetup {
+func initSmoke(t *testing.T) *smokeSetup {
 	ss := &smokeSetup{
 		w: NewWorld(),
 
@@ -69,17 +69,22 @@ func initSmoke() *smokeSetup {
 	ss.host1eth1.AttachToNetwork(ss.lan1)
 	ss.host2eth1.AttachToNetwork(ss.lan2)
 
+	_, host1pub := testutils.MustKeyPair(t)
+	_, host2pub := testutils.MustKeyPair(t)
+
 	ss.host1wg0 = ss.host1.AddTun("wg0")
 	ss.host1wg0.AddAddr(net.IPNet{IP: ss.host1wg0ip, Mask: net.CIDRMask(24, 32)})
 	ss.host2wg0 = ss.host2.AddTun("wg0")
 	ss.host2wg0.AddAddr(net.IPNet{IP: ss.host2wg0ip, Mask: net.CIDRMask(24, 32)})
 	ss.host1wg0p1 = ss.host1wg0.AddPeer(
 		"peer:host2wg0",
+		host2pub,
 		&net.UDPAddr{IP: ss.host2eth0ip, Port: wgPort},
 		[]net.IPNet{{IP: ss.host2wg0ip, Mask: net.CIDRMask(32, 32)}},
 	)
 	ss.host2wg0p1 = ss.host2wg0.AddPeer(
 		"peer:host1wg0",
+		host1pub,
 		&net.UDPAddr{IP: ss.host1eth0ip, Port: wgPort},
 		[]net.IPNet{{IP: ss.host1wg0ip, Mask: net.CIDRMask(32, 32)}},
 	)
@@ -101,7 +106,7 @@ func (s *smokeSetup) Close() {
 }
 
 func Test_Smoke_Direct(t *testing.T) {
-	ss := initSmoke()
+	ss := initSmoke(t)
 	defer ss.Close()
 
 	// verify host-to-host communication over "internet"
@@ -133,7 +138,7 @@ func Test_Smoke_Direct(t *testing.T) {
 }
 
 func Test_Smoke_Tunnel(t *testing.T) {
-	ss := initSmoke()
+	ss := initSmoke(t)
 	defer ss.Close()
 
 	// verify host-to-host communication over "internet"
@@ -166,7 +171,7 @@ func Test_Smoke_Tunnel(t *testing.T) {
 }
 
 func Test_Smoke_Wrap(t *testing.T) {
-	ss := initSmoke()
+	ss := initSmoke(t)
 	defer ss.Close()
 
 	e1 := ss.host1.Wrap()

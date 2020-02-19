@@ -53,6 +53,7 @@ func Test_Cmd_VNet1(t *testing.T) {
 	h1e1.AddAddr(net.IPNet{IP: net.IPv4(10, 0, 0, 1), Mask: net.CIDRMask(24, 32)})
 	h1e1.AttachToNetwork(lan1)
 	h1w0 := host1.AddTun("wg0")
+	h1w0.GenerateKeys()
 	h1w0.AddAddr(net.IPNet{IP: net.IPv4(192, 168, 0, 1), Mask: net.CIDRMask(24, 32)})
 	h1w0.Listen(wgPort)
 	// don't add any peers, we'll do that with config
@@ -71,6 +72,7 @@ func Test_Cmd_VNet1(t *testing.T) {
 
 		// we name client interfaces wg1 to make loading the test json easier
 		cwg := client.AddTun("wg1")
+		cwg.GenerateKeys()
 		cwg.AddAddr(net.IPNet{IP: net.IPv4(192, 168, 0, byte(1+i)), Mask: net.CIDRMask(24, 32)})
 		cwg.Listen(wgPort)
 
