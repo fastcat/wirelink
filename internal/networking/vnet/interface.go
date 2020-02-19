@@ -3,11 +3,14 @@ package vnet
 import (
 	"net"
 	"sync"
+
+	"github.com/fastcat/wirelink/internal/networking"
 )
 
 // A SocketOwner can send packets
 type SocketOwner interface {
 	OutboundPacket(*Packet) bool
+	AddSocket(a *net.UDPAddr) *Socket
 	DelSocket(*Socket)
 }
 
@@ -15,7 +18,9 @@ type SocketOwner interface {
 // to a Host, which can be used to send and receive Packets.
 type Interface interface {
 	SocketOwner
+	Name() string
 	DetachFromNetwork()
+	Wrap() networking.Interface
 }
 
 // BaseInterface handles the common elements of both physical and tunnel
@@ -29,6 +34,11 @@ type BaseInterface struct {
 	addrs   map[string]net.IPNet
 	sockets map[string]*Socket
 	self    Interface
+}
+
+// Name gets the host-local name of the interface
+func (i *BaseInterface) Name() string {
+	return i.name
 }
 
 // AddAddr adds an IP address to the interface on which it can receive packets

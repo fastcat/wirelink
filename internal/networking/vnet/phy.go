@@ -1,6 +1,8 @@
 package vnet
 
-import "net"
+import (
+	"net"
+)
 
 // An PhysicalInterface represents a network interface on a Host that is part of
 // some World. The interface may be attached and detached from various Networks

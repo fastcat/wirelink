@@ -51,8 +51,8 @@ func (s *Socket) Close() {
 
 // Connect creates a SocketUDPConn wrapper for the Socket to treat it as a
 // networking.UDPConn.
-func (s *Socket) Connect() *SocketUDPConn {
-	ret := &SocketUDPConn{
+func (s *Socket) Connect() *socketUDPConn {
+	ret := &socketUDPConn{
 		s:       s,
 		inbound: make(chan *Packet, 1),
 	}

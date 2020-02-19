@@ -9,16 +9,16 @@ import (
 	"github.com/fastcat/wirelink/internal/networking"
 )
 
-// SocketUDPConn adapts a virtual socket to use as a UDPConn
-type SocketUDPConn struct {
+// socketUDPConn adapts a virtual socket to use as a UDPConn
+type socketUDPConn struct {
 	s       *Socket
 	inbound chan *Packet
 }
 
-var _ networking.UDPConn = &SocketUDPConn{}
+var _ networking.UDPConn = &socketUDPConn{}
 
 // Close implements UDPConn
-func (sc *SocketUDPConn) Close() error {
+func (sc *socketUDPConn) Close() error {
 	if sc.s == nil {
 		return &net.OpError{
 			Op:  "close",
@@ -32,17 +32,17 @@ func (sc *SocketUDPConn) Close() error {
 }
 
 // SetReadDeadline implements UDPConn
-func (sc *SocketUDPConn) SetReadDeadline(t time.Time) error {
+func (sc *socketUDPConn) SetReadDeadline(t time.Time) error {
 	panic("Not implemented")
 }
 
 // SetWriteDeadline implements UDPConn
-func (sc *SocketUDPConn) SetWriteDeadline(t time.Time) error {
+func (sc *socketUDPConn) SetWriteDeadline(t time.Time) error {
 	panic("Not implemented")
 }
 
 // ReadFromUDP implements UDPConn
-func (sc *SocketUDPConn) ReadFromUDP(b []byte) (n int, addr *net.UDPAddr, err error) {
+func (sc *socketUDPConn) ReadFromUDP(b []byte) (n int, addr *net.UDPAddr, err error) {
 	// TODO: support deadline
 	p := <-sc.inbound
 	n = copy(b, p.data)
@@ -52,10 +52,15 @@ func (sc *SocketUDPConn) ReadFromUDP(b []byte) (n int, addr *net.UDPAddr, err er
 }
 
 // WriteToUDP implements UDPConn
-func (sc *SocketUDPConn) WriteToUDP(p []byte, addr *net.UDPAddr) (n int, err error) {
+func (sc *socketUDPConn) WriteToUDP(p []byte, addr *net.UDPAddr) (n int, err error) {
+	// make copies of addrs to ensure they don't change along the way
+	dest := *addr
+	src := *sc.s.addr
+	// clear the Zone on the src, that isn't applicable to outbound packets
+	src.Zone = ""
 	packet := &Packet{
-		src:  sc.s.addr,
-		dest: addr,
+		src:  &src,
+		dest: &dest,
 		data: cloneBytes(p),
 	}
 	sent := sc.s.OutboundPacket(packet)
@@ -72,7 +77,7 @@ func (sc *SocketUDPConn) WriteToUDP(p []byte, addr *net.UDPAddr) (n int, err err
 }
 
 // ReadPackets implements UDPConn
-func (sc *SocketUDPConn) ReadPackets(
+func (sc *socketUDPConn) ReadPackets(
 	ctx context.Context,
 	maxSize int,
 	output chan<- *networking.UDPPacket,

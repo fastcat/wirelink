@@ -5,7 +5,9 @@ import (
 	"testing"
 
 	"github.com/fastcat/wirelink/internal/testutils"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const wgPort = 51820
@@ -156,6 +158,45 @@ func Test_Smoke_Tunnel(t *testing.T) {
 
 		readBuf := make([]byte, 1500)
 		n, addr, err := s2c.ReadFromUDP(readBuf)
+		assert.NoError(t, err)
+		assert.Equal(t, len(payload), n)
+		assert.Equal(t, payload, readBuf[:len(payload)])
+		assert.Equal(t, &net.UDPAddr{IP: ss.host1wg0ip, Port: wgPort + 1}, addr)
+	}
+}
+
+func Test_Smoke_Wrap(t *testing.T) {
+	ss := initSmoke()
+	defer ss.Close()
+
+	e1 := ss.host1.Wrap()
+	defer e1.Close()
+	e2 := ss.host2.Wrap()
+	defer e2.Close()
+
+	s1, err := e1.ListenUDP("udp6", &net.UDPAddr{
+		IP:   ss.host1wg0ip,
+		Port: wgPort + 1,
+		Zone: ss.host1wg0.Name(),
+	})
+	require.NoError(t, err)
+	defer s1.Close()
+
+	s2, err := e2.ListenUDP("udp6", &net.UDPAddr{
+		IP:   ss.host2wg0ip,
+		Port: wgPort + 1,
+		Zone: ss.host2wg0.Name(),
+	})
+	require.NoError(t, err)
+	defer s2.Close()
+
+	payload := testutils.MustRandBytes(t, make([]byte, 512))
+	nSent, err := s1.WriteToUDP(payload, &net.UDPAddr{IP: ss.host2wg0ip, Port: wgPort + 1})
+
+	if assert.NoError(t, err) && assert.Equal(t, len(payload), nSent) {
+
+		readBuf := make([]byte, 1500)
+		n, addr, err := s2.ReadFromUDP(readBuf)
 		assert.NoError(t, err)
 		assert.Equal(t, len(payload), n)
 		assert.Equal(t, payload, readBuf[:len(payload)])

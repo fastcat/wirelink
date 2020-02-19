@@ -112,15 +112,27 @@ func (h *Host) InboundPacket(p *Packet) bool {
 
 // OutboundPacket tries to send a packet on each interface registered on the host
 func (h *Host) OutboundPacket(p *Packet) bool {
-	// FIXME: this is a deadlock risk
 	h.m.Lock()
+	defer h.m.Unlock()
 	for _, iface := range h.interfaces {
 		if iface.OutboundPacket(p) {
-			h.m.Unlock()
 			return true
 		}
 	}
-	h.m.Unlock()
-
 	return false
+}
+
+// Close disconnects all Interfaces from the network, but does not Close Sockets
+func (h *Host) Close() {
+	h.m.Lock()
+	// make a copy we can then use outside the lock to avoid deadlocks,
+	// as the interface detach will end up trying to take the Host lock again
+	ifaces := make([]Interface, 0, len(h.interfaces))
+	for _, iface := range h.interfaces {
+		ifaces = append(ifaces, iface)
+	}
+	h.m.Unlock()
+	for _, iface := range ifaces {
+		iface.DetachFromNetwork()
+	}
 }
