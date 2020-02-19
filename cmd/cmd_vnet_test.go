@@ -162,10 +162,6 @@ func Test_Cmd_VNet1(t *testing.T) {
 	err := eg.Wait()
 	assert.NoError(t, err)
 
-	defer host1cmd.Server.Close()
-	defer client1cmd.Server.Close()
-	defer client2cmd.Server.Close()
-
 	// just to silence variable usage
 	assert.NotNil(t, lan2)
 }
