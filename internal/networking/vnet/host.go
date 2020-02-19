@@ -38,6 +38,13 @@ func (h *Host) createBaseIface(name string) *BaseInterface {
 	// caller has to fill in self
 }
 
+// Interface fetches the given interface by name
+func (h *Host) Interface(name string) Interface {
+	h.m.Lock()
+	defer h.m.Unlock()
+	return h.interfaces[name]
+}
+
 // AddPhy adds a new interface to the Host with the given name,
 // assigning it an id combining the host id with the name to ensure uniqueness
 func (h *Host) AddPhy(name string) *PhysicalInterface {

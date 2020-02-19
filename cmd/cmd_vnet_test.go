@@ -99,6 +99,14 @@ func Test_Cmd_VNet1(t *testing.T) {
 		Name:  host1.Name(),
 		Trust: trust.Ptr(trust.Membership),
 	}
+	c1pub := client1.Interface("wg1").(*vnet.Tunnel).PublicKey()
+	c2pub := client2.Interface("wg1").(*vnet.Tunnel).PublicKey()
+	host1cmd.Config.Peers[c1pub] = &config.Peer{
+		Name: client1.Name(),
+	}
+	host1cmd.Config.Peers[c2pub] = &config.Peer{
+		Name: client2.Name(),
+	}
 	// TODO: name & explicitly configure client1 & client2
 	client1cmd.Config.Peers[h1w0.PublicKey()] = &config.Peer{
 		Name:  host1.Name(),

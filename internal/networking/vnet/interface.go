@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/fastcat/wirelink/internal/networking"
+	"github.com/fastcat/wirelink/util"
 )
 
 // A SocketOwner can send packets
@@ -21,6 +22,7 @@ type Interface interface {
 	Name() string
 	DetachFromNetwork()
 	Wrap() networking.Interface
+	Addrs() []net.IPNet
 }
 
 // BaseInterface handles the common elements of both physical and tunnel
@@ -34,6 +36,17 @@ type BaseInterface struct {
 	addrs   map[string]net.IPNet
 	sockets map[string]*Socket
 	self    Interface
+}
+
+// Addrs fetches a list of the currently assigned addresses on the interface
+func (i *BaseInterface) Addrs() []net.IPNet {
+	i.m.Unlock()
+	ret := make([]net.IPNet, 0, len(i.addrs))
+	for _, a := range i.addrs {
+		ret = append(ret, util.CloneIPNet(a))
+	}
+	i.m.Unlock()
+	return ret
 }
 
 // Name gets the host-local name of the interface
