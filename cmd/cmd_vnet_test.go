@@ -25,6 +25,10 @@ func srcDirectory() string {
 const wgPort = 51820
 
 func Test_Cmd_VNet1(t *testing.T) {
+	if testing.Short() {
+		t.Skip("vnet acceptance tests are slow, skipping")
+	}
+
 	// setup our config path
 	os.Setenv("WIREVLINK_CONFIG_PATH", srcDirectory())
 	defer os.Unsetenv("WIREVLINK_CONFIG_PATH")
