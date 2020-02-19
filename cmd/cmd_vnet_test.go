@@ -144,12 +144,14 @@ func Test_Cmd_VNet1(t *testing.T) {
 	host1cmd.Server.RequestPrint()
 	client1cmd.Server.RequestPrint()
 	client2cmd.Server.RequestPrint()
+	// TODO: assert clients see servers and are healthy
 
 	time.Sleep(5 * time.Second)
 	t.Log("Printing state 2: clients should be connected to each other")
 	host1cmd.Server.RequestPrint()
 	client1cmd.Server.RequestPrint()
 	client2cmd.Server.RequestPrint()
+	// TODO: assert clients see each other and are healthy
 
 	time.Sleep(time.Second)
 	t.Log("Stopping servers")
@@ -160,5 +162,10 @@ func Test_Cmd_VNet1(t *testing.T) {
 	err := eg.Wait()
 	assert.NoError(t, err)
 
+	defer host1cmd.Server.Close()
+	defer client1cmd.Server.Close()
+	defer client2cmd.Server.Close()
+
+	// just to silence variable usage
 	assert.NotNil(t, lan2)
 }
