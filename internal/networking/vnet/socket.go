@@ -48,20 +48,3 @@ func (s *Socket) Close() {
 	}
 	s.rx = nil
 }
-
-// Connect creates a SocketUDPConn wrapper for the Socket to treat it as a
-// networking.UDPConn.
-func (s *Socket) Connect() *socketUDPConn {
-	ret := &socketUDPConn{
-		s:       s,
-		inbound: make(chan *Packet, 1),
-	}
-	rx := func(p *Packet) bool {
-		ret.inbound <- p
-		return true
-	}
-	s.m.Lock()
-	s.rx = rx
-	s.m.Unlock()
-	return ret
-}

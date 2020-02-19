@@ -17,6 +17,23 @@ type socketUDPConn struct {
 
 var _ networking.UDPConn = &socketUDPConn{}
 
+// Connect creates a SocketUDPConn wrapper for the Socket to treat it as a
+// networking.UDPConn.
+func (s *Socket) Connect() networking.UDPConn {
+	ret := &socketUDPConn{
+		s:       s,
+		inbound: make(chan *Packet, 1),
+	}
+	rx := func(p *Packet) bool {
+		ret.inbound <- p
+		return true
+	}
+	s.m.Lock()
+	s.rx = rx
+	s.m.Unlock()
+	return ret
+}
+
 // Close implements UDPConn
 func (sc *socketUDPConn) Close() error {
 	if sc.s == nil {
