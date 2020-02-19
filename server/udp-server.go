@@ -196,7 +196,6 @@ func multiplexFactChunks(input <-chan []*fact.Fact, outputs ...chan<- []*fact.Fa
 func (s *LinkServer) RequestStop() {
 	if s.cancel != nil {
 		s.cancel()
-		s.cancel = nil
 	}
 }
 
@@ -219,6 +218,8 @@ func (s *LinkServer) Stop() {
 	// leave eg & ctx around so we can inspect them after stopping
 	// s.eg = nil
 	// s.ctx = nil
+
+	s.cancel = nil
 }
 
 // Close stops the server and closes all resources
