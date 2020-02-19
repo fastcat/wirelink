@@ -76,6 +76,7 @@ func (h *Host) DelInterface(name string) Interface {
 // AddSocket creates a new socket on the interface
 func (h *Host) AddSocket(a *net.UDPAddr) *Socket {
 	ret := &Socket{
+		m:      &sync.Mutex{},
 		sender: h,
 		addr:   a,
 	}

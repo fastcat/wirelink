@@ -43,6 +43,7 @@ func (i *BaseInterface) AddAddr(a net.IPNet) {
 // AddSocket creates a new socket on the interface
 func (i *BaseInterface) AddSocket(a *net.UDPAddr) *Socket {
 	ret := &Socket{
+		m:      &sync.Mutex{},
 		sender: i.self,
 		addr:   a,
 	}

@@ -2,12 +2,13 @@ package vnet
 
 import (
 	"net"
+	"sync"
 )
 
 // A Socket represents a listening UDP socket which can send and receive
 // Packets
 type Socket struct {
-	// TODO: this needs a mutex, but locking order gets gnarly
+	m      *sync.Mutex
 	sender SocketOwner
 	addr   *net.UDPAddr
 	rx     func(*Packet) bool
@@ -16,7 +17,10 @@ type Socket struct {
 
 // InboundPacket enqueues a packet for the receive listener to process
 func (s *Socket) InboundPacket(p *Packet) bool {
+	s.m.Lock()
 	rx := s.rx
+	s.m.Unlock()
+
 	if rx == nil {
 		return false
 	}
@@ -25,14 +29,19 @@ func (s *Socket) InboundPacket(p *Packet) bool {
 
 // OutboundPacket sends a packet out the socket's interface
 func (s *Socket) OutboundPacket(p *Packet) bool {
-	if s.sender != nil {
-		return s.sender.OutboundPacket(p)
+	s.m.Lock()
+	sender := s.sender
+	s.m.Unlock()
+	if sender != nil {
+		return sender.OutboundPacket(p)
 	}
 	return false
 }
 
 // Close shuts down a socket
 func (s *Socket) Close() {
+	s.m.Lock()
+	defer s.m.Unlock()
 	if s.sender != nil {
 		s.sender.DelSocket(s)
 		s.sender = nil
@@ -47,9 +56,12 @@ func (s *Socket) Connect() *SocketUDPConn {
 		s:       s,
 		inbound: make(chan *Packet, 1),
 	}
-	s.rx = func(p *Packet) bool {
+	rx := func(p *Packet) bool {
 		ret.inbound <- p
 		return true
 	}
+	s.m.Lock()
+	s.rx = rx
+	s.m.Unlock()
 	return ret
 }
