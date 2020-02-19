@@ -1,8 +1,9 @@
 package vnet
 
 import (
-	"errors"
 	"net"
+
+	"github.com/pkg/errors"
 
 	"github.com/fastcat/wirelink/internal/networking"
 )

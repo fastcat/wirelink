@@ -78,7 +78,7 @@ func TestCreate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctrl := tt.args.ctrl(t)
 			ctrl.Test(t)
-			got, err := Create(ctrl, tt.args.config)
+			got, err := Create(nil, ctrl, tt.args.config)
 			tt.assertion(t, err)
 			if tt.want == nil {
 				assert.Nil(t, got)
@@ -129,7 +129,7 @@ func TestLifecycle_Empty(t *testing.T) {
 		Iface: wgIface,
 	}
 
-	s, err := Create(ctrl, cfg)
+	s, err := Create(nil, ctrl, cfg)
 	require.NoError(t, err)
 	require.NotNil(t, s)
 

@@ -5,6 +5,8 @@ import (
 	"io"
 	"net"
 	"time"
+
+	"github.com/fastcat/wirelink/internal"
 )
 
 // Environment represents the top level abstraction of the system's networking
@@ -18,6 +20,9 @@ type Environment interface {
 
 	// ListenUDP abstracts net.ListenUDP
 	ListenUDP(network string, laddr *net.UDPAddr) (UDPConn, error)
+
+	// NewWgClient creates a wireguard client interface for the host
+	NewWgClient() (internal.WgClient, error)
 }
 
 // Interface represents a single network interface

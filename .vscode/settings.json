@@ -10,6 +10,7 @@
 		"GOPATH",
 		"Iface",
 		"Ifaces",
+		"NICs",
 		"Newf",
 		"Typef",
 		"Unmarshaller",
@@ -49,6 +50,7 @@
 		"vnet",
 		"wgctrl",
 		"wgtypes",
+		"wirevlink",
 		"xyzzy"
 	],
 	"go.alternateTools": {

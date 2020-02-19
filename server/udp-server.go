@@ -17,7 +17,6 @@ import (
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/internal"
 	"github.com/fastcat/wirelink/internal/networking"
-	"github.com/fastcat/wirelink/internal/networking/host"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/signing"
 
@@ -66,7 +65,11 @@ const FactTTL = 255 * time.Second
 // Create prepares a new server object, but does not start it yet.
 // Will take ownership of the wg client and close it when the server is closed.
 // The default listen port is the wireguard listen port plus one.
-func Create(ctrl internal.WgClient, config *config.Server) (*LinkServer, error) {
+func Create(
+	env networking.Environment,
+	ctrl internal.WgClient,
+	config *config.Server,
+) (*LinkServer, error) {
 	device, err := ctrl.Device(config.Iface)
 	if err != nil {
 		return nil, err
@@ -88,7 +91,7 @@ func Create(ctrl internal.WgClient, config *config.Server) (*LinkServer, error) 
 	ret := &LinkServer{
 		bootID:         uuid.Must(uuid.NewRandom()),
 		config:         config,
-		net:            nil, // this will be filled in by `Start()`
+		net:            env,
 		conn:           nil, // this will be filled in by `Start()`
 		addr:           addr,
 		ctrl:           ctrl,
@@ -105,23 +108,6 @@ func Create(ctrl internal.WgClient, config *config.Server) (*LinkServer, error) 
 	return ret, nil
 }
 
-type netFactory = func() (networking.Environment, error)
-
-var netInit netFactory = host.CreateHost
-
-// UseNetworkImpl allows complex tests outside the package to override the
-// implementation of UDP networking used by objects created after this call.
-// Passing nil for the factory will reset it to the default "real" host
-// networking implementation.
-func UseNetworkImpl(factory netFactory) {
-	if factory == nil {
-		// reset to default
-		netInit = host.CreateHost
-	} else {
-		netInit = factory
-	}
-}
-
 // Start makes the server open its listen socket and start all the goroutines
 // to receive and process packets
 func (s *LinkServer) Start() (err error) {
@@ -129,13 +115,6 @@ func (s *LinkServer) Start() (err error) {
 	device, err = s.deviceState()
 	if err != nil {
 		return errors.Wrap(err, "Unable to load device state to initialize server")
-	}
-
-	if s.net == nil {
-		s.net, err = netInit()
-		if err != nil {
-			return err
-		}
 	}
 
 	// have to make sure we have the local IPv6-LL address configured before we can use it

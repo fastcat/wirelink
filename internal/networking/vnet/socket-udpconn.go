@@ -2,9 +2,10 @@ package vnet
 
 import (
 	"context"
-	"errors"
 	"net"
 	"time"
+
+	"github.com/pkg/errors"
 
 	"github.com/fastcat/wirelink/internal/networking"
 )
@@ -53,9 +54,10 @@ func (sc *socketUDPConn) SetReadDeadline(t time.Time) error {
 	panic("Not implemented")
 }
 
-// SetWriteDeadline implements UDPConn
+// SetWriteDeadline implements UDPConn by always returning nil
 func (sc *socketUDPConn) SetWriteDeadline(t time.Time) error {
-	panic("Not implemented")
+	// this is a no-op as our sends are functionally instantaneous
+	return nil
 }
 
 // ReadFromUDP implements UDPConn

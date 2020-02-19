@@ -121,7 +121,7 @@ checkinstall: checkinstall-prep
 everything: fmt vet lint compile wirelink test
 
 clean: checkinstall-clean
-	rm -vf ./wirelink $(GENERATED_SOURCES) $(patsubst %,%.tmp,$(GENERATED_SOURCES)) ./coverage.out ./coverage.html
+	rm -vf ./wirelink $(GENERATED_SOURCES) $(patsubst %,%.tmp,$(GENERATED_SOURCES)) $(GOGENERATED_SOURCES) ./coverage.out ./coverage.html
 #TODO: any way to clean the go cache for just this package?
 
 .PHONY: all info install-tools fmt generate compile run install everything clean
