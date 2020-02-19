@@ -68,12 +68,6 @@ func (w *WirelinkCmd) Init(env networking.Environment) error {
 	return nil
 }
 
-// Customize provides a hook to allow tweaking the server object between Init
-// and Run, mainly for test scenarios
-func (w *WirelinkCmd) Customize(f func(*server.LinkServer)) {
-	f(w.Server)
-}
-
 // Run invokes the server
 func (w *WirelinkCmd) Run() error {
 	defer w.Server.Close()

@@ -74,5 +74,5 @@ func (hc *hostWgClient) Device(name string) (*wgtypes.Device, error) {
 }
 
 func (hc *hostWgClient) ConfigureDevice(name string, cfg wgtypes.Config) error {
-	panic("not implemented")
+	return errors.New("Not implemented")
 }

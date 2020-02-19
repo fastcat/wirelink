@@ -18,6 +18,13 @@ type Host struct {
 	sockets map[string]*Socket
 }
 
+// Name gets the Host's Name, AKA id
+func (h *Host) Name() string {
+	h.m.Lock()
+	defer h.m.Unlock()
+	return h.id
+}
+
 func (h *Host) createBaseIface(name string) *BaseInterface {
 	return &BaseInterface{
 		m:       &sync.Mutex{},

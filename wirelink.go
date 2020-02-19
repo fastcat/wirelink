@@ -17,10 +17,16 @@ func main() {
 	if err != nil && err != pflag.ErrHelp {
 		fmt.Fprintf(os.Stderr, "Fatal error: %v", err)
 		defer os.Exit(1)
+		return
+	}
+	if cmd.Server == nil {
+		// --dump or such
+		return
 	}
 	err = cmd.Run()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Fatal error: %v", err)
 		defer os.Exit(1)
+		return
 	}
 }

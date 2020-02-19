@@ -108,7 +108,7 @@ func Parse(flags *pflag.FlagSet, vcfg *viper.Viper, args []string) (ret *ServerD
 	// setup the config file -- can't do this until after we've parsed the iface flag
 	// in theory the config file can override the iface, but ... that would be bad
 	// this needs to happen _before_ the `router` processing since the config may set that
-	vcfg.SetConfigName(fmt.Sprintf("wirelink.%s", vcfg.GetString(IfaceFlag)))
+	vcfg.SetConfigName(fmt.Sprintf("%s.%s", programName(args), vcfg.GetString(IfaceFlag)))
 	// this is perversely recursive
 	vcfg.AddConfigPath(vcfg.GetString(ConfigPathFlag))
 

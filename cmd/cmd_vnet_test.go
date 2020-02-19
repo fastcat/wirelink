@@ -11,7 +11,9 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"github.com/fastcat/wirelink/config"
 	"github.com/fastcat/wirelink/internal/networking/vnet"
+	"github.com/fastcat/wirelink/trust"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -84,13 +86,36 @@ func Test_Cmd_VNet1(t *testing.T) {
 	client2 := addClient(2)
 	defer client2.Close()
 
-	host1cmd := New([]string{"wirevlink"})
-	client1cmd := New([]string{"wirevlink", "--iface", "wg1"})
-	client2cmd := New([]string{"wirevlink", "--iface", "wg1"})
+	host1cmd := New([]string{"wirevlink", "--iface=wg0", "--router=true"})
+	client1cmd := New([]string{"wirevlink", "--iface=wg1", "--router=false"})
+	client2cmd := New([]string{"wirevlink", "--iface=wg1", "--router=false"})
 
 	require.NoError(t, host1cmd.Init(host1.Wrap()))
 	require.NoError(t, client1cmd.Init(client1.Wrap()))
 	require.NoError(t, client2cmd.Init(client2.Wrap()))
+
+	// hack in configs for peers
+	host1cmd.Config.Peers[h1w0.PublicKey()] = &config.Peer{
+		Name:  host1.Name(),
+		Trust: trust.Ptr(trust.Membership),
+	}
+	// TODO: name & explicitly configure client1 & client2
+	client1cmd.Config.Peers[h1w0.PublicKey()] = &config.Peer{
+		Name:  host1.Name(),
+		Trust: trust.Ptr(trust.Membership),
+		Endpoints: []config.PeerEndpoint{{
+			Host: "100.1.1.1",
+			Port: wgPort + 1,
+		}},
+	}
+	client2cmd.Config.Peers[h1w0.PublicKey()] = &config.Peer{
+		Name:  host1.Name(),
+		Trust: trust.Ptr(trust.Membership),
+		Endpoints: []config.PeerEndpoint{{
+			Host: "100.1.1.1",
+			Port: wgPort + 1,
+		}},
+	}
 
 	eg := &errgroup.Group{}
 	eg.Go(host1cmd.Run)
@@ -107,7 +132,8 @@ func Test_Cmd_VNet1(t *testing.T) {
 	client1cmd.Server.RequestStop()
 	client2cmd.Server.RequestStop()
 
-	eg.Wait()
+	err := eg.Wait()
+	assert.NoError(t, err)
 
 	assert.NotNil(t, lan2)
 }

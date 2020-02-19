@@ -37,6 +37,13 @@ func (t *Tunnel) Keys() (privateKey, publicKey wgtypes.Key) {
 	return
 }
 
+// PublicKey returns the tunnel's public key
+func (t *Tunnel) PublicKey() wgtypes.Key {
+	t.m.Lock()
+	defer t.m.Unlock()
+	return t.publicKey
+}
+
 // GenerateKeys makes a new key pair for the tunnel and uses it,
 // panicing if generation fails
 func (t *Tunnel) GenerateKeys() (privateKey, publicKey wgtypes.Key) {
