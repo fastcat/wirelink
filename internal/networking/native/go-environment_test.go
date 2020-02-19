@@ -5,6 +5,8 @@ import (
 	"math/rand"
 	"testing"
 
+	"golang.zx2c4.com/wireguard/wgctrl"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -98,4 +100,14 @@ func TestGoEnvironment_InterfaceByName(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGoEnvironment_NewWgClient(t *testing.T) {
+	e := &GoEnvironment{}
+	got, err := e.NewWgClient()
+	require.NoError(t, err)
+	if assert.NotNil(t, got) {
+		defer got.Close()
+	}
+	assert.IsType(t, &wgctrl.Client{}, got)
 }
