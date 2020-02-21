@@ -23,6 +23,7 @@ type PeerConfigState struct {
 	lastAlive     bool
 	lastBootID    *uuid.UUID
 	aliveSince    time.Time
+	aliveUntil    time.Time
 	// the string key is really just the bytes value
 	endpointLastUsed map[string]time.Time
 }
@@ -64,6 +65,7 @@ func (pcs *PeerConfigState) Update(
 	peer *wgtypes.Peer,
 	name string,
 	newAlive bool,
+	aliveUntil time.Time,
 	bootID *uuid.UUID,
 	now time.Time,
 ) *PeerConfigState {
@@ -78,6 +80,11 @@ func (pcs *PeerConfigState) Update(
 	}
 	pcs.lastHealthy = newHealthy
 	pcs.lastAlive = newAlive
+	if newAlive {
+		pcs.aliveUntil = aliveUntil
+	} else {
+		pcs.aliveUntil = time.Time{}
+	}
 	// don't forget the last bootID if we temporarily lose the peer, only reset it when it really changes
 	if bootID != nil {
 		pcs.lastBootID = bootID
@@ -97,21 +104,18 @@ func (pcs *PeerConfigState) Describe(now time.Time) string {
 	if pcs == nil {
 		return "???"
 	}
-	var stateDesc string
+	hsAge := now.Sub(pcs.lastHandshake).Truncate(time.Millisecond)
+	aliveFor := pcs.aliveUntil.Sub(now).Truncate(time.Millisecond)
 	if pcs.lastHealthy {
 		if pcs.lastAlive {
-			stateDesc = "healthy and alive"
-		} else {
-			stateDesc = "healthy but not alive"
+			return fmt.Sprintf("%s (%v -> %v)", "healthy and alive", hsAge, aliveFor)
 		}
+		return fmt.Sprintf("%s (%s)", "healthy but not alive", hsAge)
 	} else if pcs.lastAlive {
-		stateDesc = "unhealthy but alive?"
+		return fmt.Sprintf("%s (%v -> %v)", "unhealthy but alive?", hsAge, aliveFor)
 	} else {
-		// not alive is implicit here
-		stateDesc = "unhealthy"
+		return fmt.Sprintf("%s (%s)", "unhealthy", hsAge)
 	}
-	hsAge := now.Sub(pcs.lastHandshake)
-	return fmt.Sprintf("%s (%v)", stateDesc, hsAge.Truncate(time.Millisecond))
 }
 
 // IsHealthy returns if the peer looked healthy on the last call to `Update`
@@ -132,6 +136,15 @@ func (pcs *PeerConfigState) AliveSince() time.Time {
 		return pcs.aliveSince
 	}
 	return util.TimeMax()
+}
+
+// AliveUntil gives the time until which the peer will be considered alive,
+// or zero value if it is not healthy or alive.
+func (pcs *PeerConfigState) AliveUntil() time.Time {
+	if pcs != nil && pcs.lastHealthy && pcs.lastAlive {
+		return pcs.aliveUntil
+	}
+	return time.Time{}
 }
 
 const endpointInterval = device.RekeyTimeout + device.KeepaliveTimeout

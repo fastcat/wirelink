@@ -16,8 +16,12 @@ func makePCS(t *testing.T, healthy, alive, aliveLong bool) *apply.PeerConfigStat
 	ret := &apply.PeerConfigState{}
 	now := time.Now()
 	handshake := now
+	var until time.Time
 	if !healthy {
 		handshake = now.Add(-time.Hour)
+	}
+	if alive {
+		until = now.Add(DefaultFactTTL)
 	}
 	if aliveLong {
 		now = now.Add(-DefaultFactTTL * 2)
@@ -29,6 +33,7 @@ func makePCS(t *testing.T, healthy, alive, aliveLong bool) *apply.PeerConfigStat
 		},
 		"<makePCS-Fake>",
 		alive,
+		until,
 		nil,
 		now,
 	)

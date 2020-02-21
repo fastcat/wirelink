@@ -150,9 +150,9 @@ func aliveKey(peer wgtypes.Key) peerKnowledgeKey {
 	}
 }
 
-// peerAlive returns if we have received an alive fact from the peer which is going to be alive
-// for at least `maxTTL`. Commonly `maxTTL` will be set to zero.
-func (pks *peerKnowledgeSet) peerAlive(peer wgtypes.Key, maxTTL time.Duration) (alive bool, bootID *uuid.UUID) {
+// peerAlive returns whether we have received an alive fact from the peer,
+// its expiration if so, and its last known boot id if any
+func (pks *peerKnowledgeSet) peerAlive(peer wgtypes.Key) (alive bool, until time.Time, bootID *uuid.UUID) {
 	k := aliveKey(peer)
 	pks.access.RLock()
 	e, eok := pks.data[k]
@@ -163,7 +163,7 @@ func (pks *peerKnowledgeSet) peerAlive(peer wgtypes.Key, maxTTL time.Duration) (
 		idRet = nil
 	}
 	// a peer is alive if it has sent us a null fact that is not going to expire within maxTTL
-	return eok && time.Now().Add(maxTTL).Before(e), idRet
+	return eok && time.Now().Before(e), e, idRet
 }
 
 // forcePing forgets that we have sent a ping to the peer, forcing it to be re-sent

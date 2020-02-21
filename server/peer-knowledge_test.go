@@ -359,14 +359,14 @@ func Test_peerKnowledgeSet_peerAlive(t *testing.T) {
 		access  *sync.RWMutex
 	}
 	type args struct {
-		peer   wgtypes.Key
-		maxTTL time.Duration
+		peer wgtypes.Key
 	}
 	tests := []struct {
 		name       string
 		fields     fields
 		args       args
 		wantAlive  bool
+		wantUntil  time.Time
 		wantBootID *uuid.UUID
 	}{
 		// TODO: Add test cases.
@@ -378,8 +378,9 @@ func Test_peerKnowledgeSet_peerAlive(t *testing.T) {
 				bootIDs: tt.fields.bootIDs,
 				access:  tt.fields.access,
 			}
-			gotAlive, gotBootID := pks.peerAlive(tt.args.peer, tt.args.maxTTL)
+			gotAlive, aliveUntil, gotBootID := pks.peerAlive(tt.args.peer)
 			assert.Equal(t, tt.wantAlive, gotAlive)
+			assert.Equal(t, tt.wantUntil, aliveUntil)
 			assert.Equal(t, tt.wantBootID, gotBootID)
 		})
 	}

@@ -93,9 +93,9 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 		}
 		// alive check uses 0 for the maxTTL, as we just care whether the alive fact
 		// is still valid now
-		newAlive, bootID := s.peerKnowledge.peerAlive(peer.PublicKey, 0)
+		newAlive, aliveUntil, bootID := s.peerKnowledge.peerAlive(peer.PublicKey)
 		ps, _ := s.peerConfig.Get(peer.PublicKey)
-		ps = ps.Update(peer, s.peerName(peer.PublicKey), newAlive, bootID, now)
+		ps = ps.Update(peer, s.peerName(peer.PublicKey), newAlive, aliveUntil, bootID, now)
 		s.peerConfig.Set(peer.PublicKey, ps)
 	}
 
@@ -232,13 +232,19 @@ func (s *LinkServer) deletePeers(
 		if !ok {
 			return false
 		}
-		//TODO: this can go wrong and cause us to delete peers, because facts
-		// are allowed to get very close to expiration before being renewed.
-		// AliveSince effectively encompasses IsAlive due to TimeMax handling
-		if !pcs.IsHealthy() || now.Sub(pcs.AliveSince()) < s.FactTTL+s.ChunkPeriod {
+		// don't trust a peer's info if its alive packet is nearly expired
+		if !pcs.IsHealthy() || now.Sub(pcs.AliveSince()) < s.FactTTL+s.ChunkPeriod || pcs.AliveUntil().Sub(now) <= s.ChunkPeriod {
 			return false
 		}
-		log.Debug("Healthy enough from %s: %s: %v > %v", dev.PublicKey, key, now.Sub(pcs.AliveSince()), s.FactTTL+s.ChunkPeriod)
+		log.Debug(
+			"Healthy enough from %s: %s: %v > %v && %v > %v",
+			dev.PublicKey,
+			key,
+			now.Sub(pcs.AliveSince()),
+			s.FactTTL+s.ChunkPeriod,
+			pcs.AliveUntil().Sub(now),
+			s.ChunkPeriod,
+		)
 		return true
 	}
 

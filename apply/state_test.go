@@ -59,11 +59,12 @@ func TestPeerConfigState_Update(t *testing.T) {
 		endpointLastUsed map[string]time.Time
 	}
 	type args struct {
-		peer     *wgtypes.Peer
-		name     string
-		newAlive bool
-		bootID   *uuid.UUID
-		now      time.Time
+		peer       *wgtypes.Peer
+		name       string
+		newAlive   bool
+		aliveUntil time.Time
+		bootID     *uuid.UUID
+		now        time.Time
 	}
 	tests := []struct {
 		name   string
@@ -194,7 +195,7 @@ func TestPeerConfigState_Update(t *testing.T) {
 			if tt.fields.nil {
 				pcs = nil
 			}
-			got := pcs.Update(tt.args.peer, tt.args.name, tt.args.newAlive, tt.args.bootID, tt.args.now)
+			got := pcs.Update(tt.args.peer, tt.args.name, tt.args.newAlive, tt.args.aliveUntil, tt.args.bootID, tt.args.now)
 			assert.Equal(t, tt.want, got)
 		})
 	}

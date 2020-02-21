@@ -38,6 +38,7 @@ func TestLinkServer_formatFacts(t *testing.T) {
 		&wgtypes.Peer{LastHandshakeTime: now.Add(-60 * time.Minute)},
 		"",
 		false,
+		time.Time{},
 		nil,
 		now,
 	)
