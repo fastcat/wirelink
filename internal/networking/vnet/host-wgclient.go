@@ -39,12 +39,7 @@ func (hc *hostWgClient) Devices() ([]*wgtypes.Device, error) {
 
 	ret := make([]*wgtypes.Device, 0, len(tunnels))
 	for _, t := range tunnels {
-		d, err := t.AsWgDevice()
-		if err != nil {
-			// TODO: wrap it? return successful devices?
-			return nil, err
-		}
-		ret = append(ret, d)
+		ret = append(ret, t.AsWgDevice())
 	}
 	return ret, nil
 }
@@ -66,11 +61,11 @@ func (hc *hostWgClient) Device(name string) (*wgtypes.Device, error) {
 
 	hc.h.m.Unlock()
 
-	return t.AsWgDevice()
+	return t.AsWgDevice(), nil
 }
 
 // AsWgDevice creates a view of the current tunnel state as a wireguard wgtypes.Device
-func (t *Tunnel) AsWgDevice() (*wgtypes.Device, error) {
+func (t *Tunnel) AsWgDevice() *wgtypes.Device {
 	t.m.Lock()
 	defer t.m.Unlock()
 
@@ -98,7 +93,7 @@ func (t *Tunnel) AsWgDevice() (*wgtypes.Device, error) {
 		ret.Peers = append(ret.Peers, peer)
 	}
 
-	return ret, nil
+	return ret
 }
 
 func (hc *hostWgClient) ConfigureDevice(name string, cfg wgtypes.Config) error {
