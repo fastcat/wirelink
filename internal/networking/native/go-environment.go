@@ -5,6 +5,7 @@ import (
 
 	"github.com/fastcat/wirelink/internal"
 	"github.com/fastcat/wirelink/internal/networking"
+
 	"golang.zx2c4.com/wireguard/wgctrl"
 )
 
