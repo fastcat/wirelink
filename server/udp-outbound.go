@@ -56,7 +56,7 @@ const (
 	sendFacts
 )
 
-func (s *LinkServer) shouldSendTo(p *wgtypes.Peer, factsByPeer map[wgtypes.Key][]*fact.Fact) sendLevel {
+func (s *LinkServer) shouldSendTo(p *wgtypes.Peer) sendLevel {
 	// don't try to send info to the peer if the wireguard interface doesn't have
 	// an endpoint for it: this will just get rejected by the kernel
 	if p.Endpoint == nil {
@@ -122,13 +122,11 @@ func (s *LinkServer) broadcastFacts(
 		Expires:   now.Add(s.FactTTL),
 	}
 
-	factsByPeer := groupFactsByPeer(facts)
-
 	for i := range peers {
 		// avoid closure binding problems
 		p := &peers[i]
 
-		sendLevel := s.shouldSendTo(p, factsByPeer)
+		sendLevel := s.shouldSendTo(p)
 		if sendLevel == sendNothing {
 			continue
 		}

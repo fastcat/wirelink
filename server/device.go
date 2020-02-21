@@ -36,7 +36,7 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device, now time.Time) (ret []*fa
 	localTrust := s.config.Peers.Trust(dev.PublicKey, trust.Untrusted)
 	useLocalAIPs := s.config.IsRouterNow || localTrust >= trust.AllowedIPs
 	useLocalMembership := s.config.IsRouterNow || localTrust >= trust.Membership
-	log.Debug("Using local AIP facts: %v", useLocalAIPs)
+	log.Debug("Using local AIP/membership: %v/%v", useLocalAIPs, useLocalMembership)
 	for _, peer := range dev.Peers {
 		var pf []*fact.Fact
 		pf, err = peerfacts.LocalFacts(&peer, s.FactTTL, useLocalAIPs, useLocalMembership, now)

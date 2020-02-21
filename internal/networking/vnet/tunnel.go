@@ -64,6 +64,7 @@ func (t *Tunnel) GenerateKeys() (privateKey, publicKey wgtypes.Key) {
 // TunPeer represents a simplified version of a wireguard peer,
 // with a remote endpoint and a list of IPNets within the tunnel
 type TunPeer struct {
+	t           *Tunnel
 	name        string
 	publicKey   wgtypes.Key
 	endpoint    *net.UDPAddr
@@ -73,11 +74,15 @@ type TunPeer struct {
 
 // LastReceive gets the time of the last received packet, or zero if never
 func (p *TunPeer) LastReceive() time.Time {
+	p.t.m.Lock()
+	defer p.t.m.Unlock()
 	return p.lastReceive
 }
 
 // Endpoint returns the current endpoint of the peer
 func (p *TunPeer) Endpoint() *net.UDPAddr {
+	p.t.m.Lock()
+	defer p.t.m.Unlock()
 	if p.endpoint == nil {
 		return nil
 	}
@@ -88,7 +93,8 @@ func (p *TunPeer) Endpoint() *net.UDPAddr {
 
 // Addrs gets a copy of the currently configured addrs
 func (p *TunPeer) Addrs() []net.IPNet {
-	// TODO: race risk
+	p.t.m.Lock()
+	defer p.t.m.Unlock()
 	ret := make([]net.IPNet, 0, len(p.addrs))
 	for _, a := range p.addrs {
 		ret = append(ret, a)
@@ -126,6 +132,7 @@ func (t *Tunnel) Listen(port int) {
 // AddPeer defines a new valid peer for communicating over the tunnel
 func (t *Tunnel) AddPeer(name string, publicKey wgtypes.Key, endpoint *net.UDPAddr, addrs []net.IPNet) *TunPeer {
 	p := &TunPeer{
+		t:         t,
 		name:      name,
 		publicKey: publicKey,
 		endpoint:  endpoint,
@@ -168,9 +175,12 @@ func (t *Tunnel) receiveEncapsulated(p *Packet) bool {
 	var srcPeer *TunPeer
 	// find a peer with an addr that matches the packet source
 	for _, peer := range t.peers {
+		// NOTE: this doesn't work correctly if you have a "router" peer
 		if sourceSubnetMatch(p.encapsulated, peer.addrs) {
-			srcPeer = peer
-			break
+			if srcPeer == nil {
+				srcPeer = peer
+				break
+			}
 		}
 	}
 	if srcPeer == nil {

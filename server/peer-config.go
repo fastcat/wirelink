@@ -89,6 +89,7 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 		// if we have no info about a local peer, flag it for deletion
 		if !ok && !validPeers[peer.PublicKey] {
 			removePeer[peer.PublicKey] = true
+			// log.Debug("Flagging peer %s for removal: not valid", peer.PublicKey)
 		}
 		// alive check uses 0 for the maxTTL, as we just care whether the alive fact
 		// is still valid now
@@ -107,8 +108,9 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 
 		if fact.SliceHas(factGroup, func(f *fact.Fact) bool { return f.Attribute == fact.AttributeMember }) {
 			validPeers[peer] = true
-		} else {
+		} else if peer != dev.PublicKey {
 			removePeer[peer] = true
+			// log.Debug("Flagging peer %s for removal from %s: no membership", dev.PublicKey, peer)
 		}
 	}
 
@@ -180,21 +182,27 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 		updatePeer(&wgtypes.Peer{PublicKey: peer}, true)
 	}
 
-	// if we are a trusted source of Membership, then we shouldn't have any
-	// peers to remove
-	if s.config.IsRouterNow || s.config.Peers.Trust(dev.PublicKey, trust.Untrusted) >= trust.Membership {
-		for peer, r := range removePeer {
-			if r {
-				log.Error("BUG detected: trust source wants to remove peer: %s", s.peerName(peer))
-				allowDeconfigure = false
-			}
-		}
-	}
-
 	// we may want to delete peers that we didn't want to deconfigure above
 	allowDelete := now.Sub(startTime) > s.FactTTL &&
 		!s.config.IsRouterNow &&
 		s.config.Peers.Trust(dev.PublicKey, trust.Untrusted) < trust.Membership
+	// if we are a trusted source of Membership, then we shouldn't have any
+	// peers to remove
+	if s.config.IsRouterNow || s.config.Peers.Trust(dev.PublicKey, trust.Untrusted) >= trust.Membership {
+		for peer, r := range removePeer {
+			if !r {
+				continue
+			}
+			// during tests we may remove previously valid peers,
+			// which can cause confusion as there may still be endpoint facts and such
+			// hanging around which cause the removal flag
+			if !localPeers[peer] {
+				continue
+			}
+			log.Error("BUG detected: trust source wants to remove peer: %s (%v)", s.peerName(peer))
+			allowDelete = false
+		}
+	}
 	if allowDelete {
 		eg.Go(func() error { return s.deletePeers(dev, removePeer, now) })
 	}

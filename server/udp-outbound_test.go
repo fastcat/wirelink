@@ -39,8 +39,7 @@ func TestLinkServer_shouldSendTo(t *testing.T) {
 		config *config.Server
 	}
 	type args struct {
-		p           *wgtypes.Peer
-		factsByPeer map[wgtypes.Key][]*fact.Fact
+		p *wgtypes.Peer
 	}
 	tests := []struct {
 		name   string
@@ -55,7 +54,6 @@ func TestLinkServer_shouldSendTo(t *testing.T) {
 			},
 			args{
 				&wgtypes.Peer{},
-				nil,
 			},
 			sendNothing,
 		},
@@ -66,7 +64,6 @@ func TestLinkServer_shouldSendTo(t *testing.T) {
 			}}},
 			args{
 				&wgtypes.Peer{PublicKey: k1, Endpoint: ep1},
-				nil,
 			},
 			sendFacts,
 		},
@@ -79,7 +76,6 @@ func TestLinkServer_shouldSendTo(t *testing.T) {
 					Endpoint:   ep1,
 					AllowedIPs: []net.IPNet{routerNet},
 				},
-				nil,
 			},
 			sendFacts,
 		},
@@ -93,7 +89,6 @@ func TestLinkServer_shouldSendTo(t *testing.T) {
 					PublicKey: k1,
 					Endpoint:  ep1,
 				},
-				nil,
 			},
 			sendFacts,
 		},
@@ -106,7 +101,6 @@ func TestLinkServer_shouldSendTo(t *testing.T) {
 					Endpoint:          ep1,
 					LastHandshakeTime: now,
 				},
-				nil,
 			},
 			sendFacts,
 		},
@@ -119,7 +113,6 @@ func TestLinkServer_shouldSendTo(t *testing.T) {
 					Endpoint:          ep1,
 					LastHandshakeTime: now,
 				},
-				nil,
 			},
 			sendFacts,
 		},
@@ -131,7 +124,6 @@ func TestLinkServer_shouldSendTo(t *testing.T) {
 					PublicKey: k1,
 					Endpoint:  ep1,
 				},
-				nil,
 			},
 			sendPing,
 		},
@@ -143,7 +135,6 @@ func TestLinkServer_shouldSendTo(t *testing.T) {
 					PublicKey: k1,
 					Endpoint:  ep1,
 				},
-				nil,
 			},
 			sendPing,
 		},
@@ -156,7 +147,6 @@ func TestLinkServer_shouldSendTo(t *testing.T) {
 					Endpoint:          ep1,
 					LastHandshakeTime: now,
 				},
-				nil,
 			},
 			sendPing,
 		},
@@ -167,7 +157,7 @@ func TestLinkServer_shouldSendTo(t *testing.T) {
 				config:      tt.fields.config,
 				stateAccess: &sync.Mutex{},
 			}
-			assert.Equal(t, tt.want, s.shouldSendTo(tt.args.p, tt.args.factsByPeer))
+			assert.Equal(t, tt.want, s.shouldSendTo(tt.args.p))
 		})
 	}
 }

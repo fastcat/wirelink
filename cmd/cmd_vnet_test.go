@@ -49,10 +49,11 @@ func Test_Cmd_VNet1(t *testing.T) {
 	h1e1.AddAddr(net.IPNet{IP: net.IPv4(10, 0, 0, 1), Mask: net.CIDRMask(24, 32)})
 	h1e1.AttachToNetwork(lan1)
 	h1w0 := host1.AddTun("wg0")
-	h1w0.GenerateKeys()
+	_, h1pub := h1w0.GenerateKeys()
 	h1w0.AddAddr(net.IPNet{IP: net.IPv4(192, 168, 0, 1), Mask: net.CIDRMask(24, 32)})
 	h1w0.Listen(wgPort)
 	// don't add any peers, we'll do that with config
+	log.Debug("host1 is %s", h1pub)
 
 	// clients are roaming devices that are sometimes on lan1,
 	// sometimes on lan2, sometimes maybe neither, initially nowhere
@@ -78,6 +79,8 @@ func Test_Cmd_VNet1(t *testing.T) {
 		cwg.AddAddr(net.IPNet{IP: net.IPv4(192, 168, 0, byte(1+i)), Mask: net.CIDRMask(24, 32)})
 		cwg.Listen(wgPort)
 
+		log.Debug("client%d is %s", i, cwgPub)
+
 		return client
 	}
 
@@ -100,6 +103,7 @@ func Test_Cmd_VNet1(t *testing.T) {
 	if testing.Short() {
 		// much less than this and tests start randomly failing,
 		// but this does bring the runtime for this test down from ~8.6s to ~4.3s
+		// this doesn't pass reliably if you turn on coverage or race detection however
 		chunkPeriod = 500 * time.Millisecond
 	}
 	factTTL := 3 * chunkPeriod
@@ -109,7 +113,6 @@ func Test_Cmd_VNet1(t *testing.T) {
 		c.Server.ChunkPeriod = chunkPeriod
 	}
 
-	h1pub := h1w0.PublicKey()
 	c1pub := client1.Interface("wg1").(*vnet.Tunnel).PublicKey()
 	c2pub := client2.Interface("wg1").(*vnet.Tunnel).PublicKey()
 	// hack in configs for peers
@@ -119,11 +122,11 @@ func Test_Cmd_VNet1(t *testing.T) {
 	}
 	host1cmd.Config.Peers[c1pub] = &config.Peer{
 		Name:       client1.Name(),
-		AllowedIPs: []net.IPNet{{IP: net.IPv4(192, 168, 0, 2), Mask: net.CIDRMask(24, 32)}},
+		AllowedIPs: []net.IPNet{{IP: net.IPv4(192, 168, 0, 2), Mask: net.CIDRMask(32, 32)}},
 	}
 	host1cmd.Config.Peers[c2pub] = &config.Peer{
 		Name:       client2.Name(),
-		AllowedIPs: []net.IPNet{{IP: net.IPv4(192, 168, 0, 3), Mask: net.CIDRMask(24, 32)}},
+		AllowedIPs: []net.IPNet{{IP: net.IPv4(192, 168, 0, 3), Mask: net.CIDRMask(32, 32)}},
 	}
 	// TODO: name & explicitly configure client1 & client2
 	client1cmd.Config.Peers[h1pub] = &config.Peer{
@@ -143,7 +146,6 @@ func Test_Cmd_VNet1(t *testing.T) {
 		}},
 	}
 
-	// startTime := time.Now()
 	eg := &errgroup.Group{}
 	eg.Go(host1cmd.Run)
 	eg.Go(client1cmd.Run)
@@ -166,7 +168,6 @@ func Test_Cmd_VNet1(t *testing.T) {
 	printAll("Printing state 0: startup")
 
 	// connect the clients to the internet after a delay
-	clientConnectTime := time.Now()
 	client1.Interface("eth0").(*vnet.PhysicalInterface).AttachToNetwork(internet)
 	client2.Interface("eth0").(*vnet.PhysicalInterface).AttachToNetwork(internet)
 
@@ -177,7 +178,9 @@ func Test_Cmd_VNet1(t *testing.T) {
 		if assert.Contains(t, wgp, ps, "%s: should know peer", msg) {
 			p := wgp[ps]
 			assert.NotNil(t, p.Endpoint(), "%s: should have an endpoint")
-			assert.True(t, p.LastReceive().After(clientConnectTime), "%s: should have data from peer", msg)
+			// can't use greater/less with durations nicely
+			receiveAge := time.Since(p.LastReceive())
+			assert.True(t, receiveAge < chunkPeriod, "%s: should have recent data from peer", msg)
 			if aip {
 				pa := p.Addrs()
 				require.Condition(t, func() bool {
@@ -189,6 +192,27 @@ func Test_Cmd_VNet1(t *testing.T) {
 					return false
 				}, "%s: should have an AIP added", msg)
 			}
+		}
+	}
+	assertUnhealthy := func(h *vnet.Host, iface string, peer wgtypes.Key, aip bool, msg string) {
+		wg := h.Interface(iface).(*vnet.Tunnel)
+		wgp := wg.Peers()
+		ps := peer.String()
+		if assert.Contains(t, wgp, ps, "%s: should know peer", msg) {
+			p := wgp[ps]
+			assert.NotNil(t, p.Endpoint(), "%s: should have an endpoint")
+			// can't use greater/less with durations nicely
+			receiveAge := time.Since(p.LastReceive())
+			assert.True(t, receiveAge > chunkPeriod, "%s: should not have recent data from peer", msg)
+			pa := p.Addrs()
+			require.Condition(t, func() bool {
+				for _, a := range pa {
+					if a.IP.To4() != nil {
+						return aip
+					}
+				}
+				return !aip
+			}, "%s: should AIP presence should be %v", msg, aip)
 		}
 	}
 
@@ -262,9 +286,11 @@ func Test_Cmd_VNet1(t *testing.T) {
 	assertHealthy(host1, "wg0", c1pub, true, "3: h knows c1")
 	assertNotKnows(host1, "wg0", c2pub, "3: h removed c2")
 	assertHealthy(client1, "wg1", h1pub, true, "3: c1 knows h")
-	// TODO: what should c2 think about h1 here?
+	// c2 should no longer have a healthy connection to h
+	assertUnhealthy(client2, "wg1", h1pub, false, "3: c2 blocked from h")
 	assertNotKnows(client1, "wg1", c2pub, "3: c1 removed c2")
-	// tODO: what should c2 think about c1 here?
+	// c2 no longer gets data, so it should forget c1
+	assertNotKnows(client2, "wg1", c1pub, "3: c2 lost c1")
 	assertNotKnows(client1, "wg1", badPub, "3: c1 removed badpub")
 	assertNotKnows(host1, "wg0", badPub, "3: h never knows badpub")
 	assertNotKnows(client2, "wg1", badPub, "3: c2 never knows badpub")
