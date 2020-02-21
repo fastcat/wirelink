@@ -55,18 +55,6 @@ func CloneIPNet(ipn net.IPNet) net.IPNet {
 	return ret
 }
 
-// CloneIPNetSlice makes a deep copy of the given slice
-func CloneIPNetSlice(slice []net.IPNet) []net.IPNet {
-	if slice == nil {
-		return nil
-	}
-	ret := make([]net.IPNet, len(slice))
-	for i, ipn := range slice {
-		ret[i] = CloneIPNet(ipn)
-	}
-	return ret
-}
-
 // CloneUDPAddr makes a deep copy of the given address
 func CloneUDPAddr(addr *net.UDPAddr) *net.UDPAddr {
 	if addr == nil {
