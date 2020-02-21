@@ -23,7 +23,7 @@ import (
 
 func TestLinkServer_collectFacts(t *testing.T) {
 	now := time.Now()
-	expires := now.Add(FactTTL)
+	expires := now.Add(DefaultFactTTL)
 	k1 := testutils.MustKey(t)
 	k2 := testutils.MustKey(t)
 	ifWg := fmt.Sprintf("wg%d", rand.Int())
@@ -170,6 +170,7 @@ func TestLinkServer_collectFacts(t *testing.T) {
 				config:     tt.fields.config,
 				net:        env,
 				peerConfig: tt.fields.peerConfig,
+				FactTTL:    DefaultFactTTL,
 			}
 			gotRet, err := s.collectFacts(tt.args.dev, now)
 			if tt.wantErr {

@@ -26,7 +26,7 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device, now time.Time) (ret []*fa
 	log.Debug("Collecting facts...")
 
 	// facts about the local node
-	ret, err = peerfacts.DeviceFacts(dev, now, FactTTL, s.config, s.net)
+	ret, err = peerfacts.DeviceFacts(dev, now, s.FactTTL, s.config, s.net)
 	if err != nil {
 		return
 	}
@@ -39,14 +39,14 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device, now time.Time) (ret []*fa
 	log.Debug("Using local AIP facts: %v", useLocalAIPs)
 	for _, peer := range dev.Peers {
 		var pf []*fact.Fact
-		pf, err = peerfacts.LocalFacts(&peer, FactTTL, useLocalAIPs, useLocalMembership, now)
+		pf, err = peerfacts.LocalFacts(&peer, s.FactTTL, useLocalAIPs, useLocalMembership, now)
 		if err != nil {
 			return
 		}
 		ret = append(ret, pf...)
 	}
 
-	expires := now.Add(FactTTL)
+	expires := now.Add(s.FactTTL)
 
 	// static facts from the config
 	// these may duplicate other known facts, higher layers will dedupe

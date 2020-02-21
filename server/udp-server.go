@@ -46,21 +46,26 @@ type LinkServer struct {
 
 	// channel for asking it to print out its current info
 	printRequested chan struct{}
+
+	// TODO: these should not be mutable like this
+	// this is temporary to simplify acceptance tests
+	FactTTL     time.Duration
+	ChunkPeriod time.Duration
 }
 
 // MaxChunk is the max number of packets to receive before processing them
 const MaxChunk = 100
 
-// ChunkPeriod is the max time to wait between processing chunks of received packets and expiring old ones
+// DefaultChunkPeriod is the default max time to wait between processing chunks
+// of received packets and expiring old ones
 // TODO: set this based on TTL instead
-const ChunkPeriod = 5 * time.Second
+const DefaultChunkPeriod = 5 * time.Second
 
 // AlivePeriod is how often we send "I'm here" facts to peers
 const AlivePeriod = 30 * time.Second
 
-// FactTTL is the TTL we apply to any locally generated Facts
-// This is only meaningful if it is <= 255 seconds, since we encode the TTL as a byte
-const FactTTL = 255 * time.Second
+// DefaultFactTTL is the default TTL we apply to any locally generated Facts
+const DefaultFactTTL = 255 * time.Second
 
 // Create prepares a new server object, but does not start it yet.
 // Will take ownership of the wg client and close it when the server is closed.
@@ -89,20 +94,25 @@ func Create(
 	ctx, cancel := context.WithCancel(egCtx)
 
 	ret := &LinkServer{
-		bootID:         uuid.Must(uuid.NewRandom()),
-		config:         config,
-		net:            env,
-		conn:           nil, // this will be filled in by `Start()`
-		addr:           addr,
-		ctrl:           ctrl,
-		stateAccess:    new(sync.Mutex),
-		eg:             eg,
-		ctx:            ctx,
-		cancel:         cancel,
+		bootID:      uuid.Must(uuid.NewRandom()),
+		config:      config,
+		net:         env,
+		conn:        nil, // this will be filled in by `Start()`
+		addr:        addr,
+		ctrl:        ctrl,
+		stateAccess: new(sync.Mutex),
+
+		eg:     eg,
+		ctx:    ctx,
+		cancel: cancel,
+
 		peerKnowledge:  newPKS(),
 		peerConfig:     newPeerConfigSet(),
 		signer:         signing.New(&device.PrivateKey),
 		printRequested: make(chan struct{}, 1),
+
+		FactTTL:     DefaultFactTTL,
+		ChunkPeriod: DefaultChunkPeriod,
 	}
 
 	return ret, nil
@@ -144,7 +154,7 @@ func (s *LinkServer) Start() (err error) {
 	s.eg.Go(func() error { return s.readPackets(packets) })
 
 	newFacts := make(chan []*ReceivedFact, 1)
-	s.eg.Go(func() error { return s.chunkPackets(packets, newFacts, MaxChunk, ChunkPeriod) })
+	s.eg.Go(func() error { return s.chunkPackets(packets, newFacts, MaxChunk) })
 
 	factsRefreshed := make(chan []*fact.Fact, 1)
 	factsRefreshedForBroadcast := make(chan []*fact.Fact, 1)

@@ -75,7 +75,7 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 	// longer than the fact ttl so that we don't remove config until we have a
 	// reasonable shot at having received everything from the network, or if we
 	// are a router or a source of allowed IPs
-	allowDeconfigure := now.Sub(startTime) > FactTTL &&
+	allowDeconfigure := now.Sub(startTime) > s.FactTTL &&
 		!s.config.IsRouterNow &&
 		s.config.Peers.Trust(dev.PublicKey, trust.Untrusted) < trust.AllowedIPs
 
@@ -192,7 +192,7 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 	}
 
 	// we may want to delete peers that we didn't want to deconfigure above
-	allowDelete := now.Sub(startTime) > FactTTL &&
+	allowDelete := now.Sub(startTime) > s.FactTTL &&
 		!s.config.IsRouterNow &&
 		s.config.Peers.Trust(dev.PublicKey, trust.Untrusted) < trust.Membership
 	if allowDelete {
@@ -226,7 +226,7 @@ func (s *LinkServer) deletePeers(
 		}
 		//FIXME: this can go wrong and cause us to delete peers, because facts
 		// are allowed to get very close to expiration before being renewed
-		if !pcs.IsHealthy() || now.Sub(pcs.AliveSince()) < FactTTL {
+		if !pcs.IsHealthy() || now.Sub(pcs.AliveSince()) < s.FactTTL {
 			return false
 		}
 		return true

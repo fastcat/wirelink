@@ -22,7 +22,7 @@ import (
 
 func TestLinkServer_formatFacts(t *testing.T) {
 	now := time.Now()
-	expires := now.Add(FactTTL)
+	expires := now.Add(DefaultFactTTL)
 	// constant data here so that we can have constant string asserts easily
 	k1s := "GLTtd/FIr9+BfZJ+mFlel97VK0ED33ENxDDUPV/ck3A="
 	k1 := testutils.MustParseKey(t, k1s)

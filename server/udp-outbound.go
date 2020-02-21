@@ -37,7 +37,7 @@ func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) er
 
 func (s *LinkServer) broadcastFactUpdatesOnce(newFacts []*fact.Fact, dev *wgtypes.Device) {
 	now := time.Now()
-	_, errs := s.broadcastFacts(dev.PublicKey, dev.Peers, newFacts, now, ChunkPeriod-time.Second)
+	_, errs := s.broadcastFacts(dev.PublicKey, dev.Peers, newFacts, now, s.ChunkPeriod-time.Second)
 	if errs != nil {
 		// don't print more than a handful of errors
 		if len(errs) > 5 {
@@ -115,7 +115,7 @@ func (s *LinkServer) broadcastFacts(
 		Subject:   &fact.PeerSubject{Key: self},
 		Attribute: fact.AttributeAlive,
 		Value:     &fact.UUIDValue{UUID: s.bootID},
-		Expires:   now.Add(FactTTL),
+		Expires:   now.Add(s.FactTTL),
 	}
 
 	factsByPeer := groupFactsByPeer(facts)
@@ -142,7 +142,7 @@ func (s *LinkServer) broadcastFacts(
 					continue
 				}
 				// don't tell peers other things they already know
-				if !s.peerKnowledge.peerNeeds(p, f, ChunkPeriod+time.Second) {
+				if !s.peerKnowledge.peerNeeds(p, f, s.ChunkPeriod+time.Second) {
 					continue
 				}
 				err := ga.AddFact(f)
@@ -162,7 +162,7 @@ func (s *LinkServer) broadcastFacts(
 		// we want alive facts to live for the normal FactTTL, but we want to send them every AlivePeriod
 		// so the "forgetting window" is the difference between those
 		// we don't need to add the extra ChunkPeriod+1 buffer in this case
-		if s.peerKnowledge.peerNeeds(p, pingFact, FactTTL-AlivePeriod) {
+		if s.peerKnowledge.peerNeeds(p, pingFact, s.FactTTL-AlivePeriod) {
 			log.Debug("Peer %s needs ping", s.peerName(p.PublicKey))
 			addPingErr = ga.AddFact(pingFact)
 			addedPing = true

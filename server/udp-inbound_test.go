@@ -27,7 +27,7 @@ import (
 
 func TestLinkServer_readPackets(t *testing.T) {
 	now := time.Now()
-	expires := now.Add(FactTTL)
+	expires := now.Add(DefaultFactTTL)
 
 	// need real crypto keys for this test
 	localPrivateKey, localPublicKey := testutils.MustKeyPair(t)
@@ -151,7 +151,7 @@ func TestLinkServer_readPackets(t *testing.T) {
 
 func TestLinkServer_processSignedGroup(t *testing.T) {
 	now := time.Now()
-	expires := now.Add(FactTTL)
+	expires := now.Add(DefaultFactTTL)
 
 	// this is doing crypto, so we need _real_ keys, not just random bytes
 	localPrivKey, localPubKey := testutils.MustKeyPair(t)
@@ -380,7 +380,7 @@ func TestLinkServer_processSignedGroup(t *testing.T) {
 
 func TestLinkServer_chunkPackets(t *testing.T) {
 	now := time.Now()
-	expires := now.Add(FactTTL)
+	expires := now.Add(DefaultFactTTL)
 
 	var randRfs []*ReceivedFact
 	rf := func(index int) *ReceivedFact {
@@ -440,7 +440,9 @@ func TestLinkServer_chunkPackets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &LinkServer{}
+			s := &LinkServer{
+				ChunkPeriod: tt.args.chunkPeriod,
+			}
 			// make deep channels to avoid buffering problems
 			packets := make(chan *ReceivedFact, len(tt.packets))
 			// need +1 because there is an extra empty chunk sent at start
@@ -449,7 +451,7 @@ func TestLinkServer_chunkPackets(t *testing.T) {
 				packets <- p
 			}
 			close(packets)
-			tt.assertion(t, s.chunkPackets(packets, newFacts, tt.args.maxChunk, tt.args.chunkPeriod))
+			tt.assertion(t, s.chunkPackets(packets, newFacts, tt.args.maxChunk))
 			var gotChunks [][]*ReceivedFact
 			for chunk := range newFacts {
 				gotChunks = append(gotChunks, chunk)
@@ -463,7 +465,7 @@ func TestLinkServer_chunkPackets(t *testing.T) {
 
 func TestLinkServer_chunkPackets_slow(t *testing.T) {
 	timeZero := time.Now()
-	expires := timeZero.Add(FactTTL)
+	expires := timeZero.Add(DefaultFactTTL)
 
 	var randRfs []*ReceivedFact
 	rf := func(index int) *ReceivedFact {
@@ -596,7 +598,9 @@ func TestLinkServer_chunkPackets_slow(t *testing.T) {
 				t.SkipNow()
 			}
 
-			s := &LinkServer{}
+			s := &LinkServer{
+				ChunkPeriod: tt.args.chunkPeriod,
+			}
 			// for this test, use the same limited buffer for the incoming packets as
 			// the real server
 			packets := make(chan *ReceivedFact, 1)
@@ -635,7 +639,7 @@ func TestLinkServer_chunkPackets_slow(t *testing.T) {
 					gotChunks = append(gotChunks, receive{time.Now().Sub(start), chunk})
 				}
 			}()
-			tt.assertion(t, s.chunkPackets(packets, newFacts, tt.args.maxChunk, tt.args.chunkPeriod))
+			tt.assertion(t, s.chunkPackets(packets, newFacts, tt.args.maxChunk))
 			// wait for goroutines
 			<-doneSend
 			<-doneReceive
@@ -660,7 +664,7 @@ func TestLinkServer_chunkPackets_slow(t *testing.T) {
 
 func Test_pruneRemovedLocalFacts(t *testing.T) {
 	now := time.Now()
-	expires := now.Add(FactTTL)
+	expires := now.Add(DefaultFactTTL)
 
 	k1 := testutils.MustKey(t)
 	k2 := testutils.MustKey(t)
@@ -763,7 +767,7 @@ func Test_pruneRemovedLocalFacts(t *testing.T) {
 
 func TestLinkServer_processOneChunk(t *testing.T) {
 	now := time.Now()
-	expires := now.Add(FactTTL)
+	expires := now.Add(DefaultFactTTL)
 
 	wgIface := fmt.Sprintf("wg%d", rand.Int())
 
@@ -981,6 +985,8 @@ func TestLinkServer_processOneChunk(t *testing.T) {
 				net:           tt.fields.net,
 				ctrl:          ctrl,
 				peerKnowledge: tt.fields.peerKnowledge,
+				FactTTL:       DefaultFactTTL,
+				ChunkPeriod:   DefaultChunkPeriod,
 			}
 			gotUniqueFacts, gotNewLocalFacts, err := s.processOneChunk(tt.args.currentFacts, tt.args.lastLocalFacts, tt.args.chunk, now)
 			tt.assertion(t, err)

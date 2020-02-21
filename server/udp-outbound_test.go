@@ -183,8 +183,8 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 
 	now := time.Now()
 	timeout := time.Second
-	expires := now.Add(FactTTL)
-	expired := now.Add(-FactTTL)
+	expires := now.Add(DefaultFactTTL)
+	expired := now.Add(-DefaultFactTTL)
 
 	expectSWD := func(conn *netmocks.UDPConn) *mock.Call {
 		return conn.On("SetWriteDeadline", now.Add(timeout)).Return(nil)
@@ -483,6 +483,9 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 				ctrl:          ctrl,
 				peerKnowledge: tt.fields.peerKnowledge,
 				signer:        tt.fields.signer,
+
+				FactTTL:     DefaultFactTTL,
+				ChunkPeriod: DefaultChunkPeriod,
 			}
 			gotPacketsSent, gotSendErrors := s.broadcastFacts(tt.args.self, tt.args.peers, tt.args.facts, tt.args.now, tt.args.timeout)
 			assert.Equal(t, tt.wantPacketsSent, gotPacketsSent)

@@ -102,7 +102,6 @@ func (s *LinkServer) chunkPackets(
 	packets <-chan *ReceivedFact,
 	newFacts chan<- []*ReceivedFact,
 	maxChunk int,
-	chunkPeriod time.Duration,
 ) error {
 	defer close(newFacts)
 
@@ -111,7 +110,7 @@ func (s *LinkServer) chunkPackets(
 	// TODO: using a ticker here is not ideal, as we can't reset its phase to
 	// match when we send a chunk downstream, but using a timer involves more
 	// boilerplate
-	chunkTicker := time.NewTicker(chunkPeriod)
+	chunkTicker := time.NewTicker(s.ChunkPeriod)
 	defer chunkTicker.Stop()
 
 	// send an empty chunk once at startup to prime things

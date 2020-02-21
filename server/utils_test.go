@@ -20,7 +20,7 @@ func makePCS(t *testing.T, healthy, alive, aliveLong bool) *apply.PeerConfigStat
 		handshake = now.Add(-time.Hour)
 	}
 	if aliveLong {
-		now = now.Add(-FactTTL * 2)
+		now = now.Add(-DefaultFactTTL * 2)
 	}
 	ret.Update(
 		&wgtypes.Peer{
