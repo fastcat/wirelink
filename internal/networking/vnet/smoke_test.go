@@ -175,6 +175,24 @@ func Test_Smoke_Tunnel(t *testing.T) {
 		assert.Equal(t, payload, readBuf[:len(payload)])
 		assert.Equal(t, &net.UDPAddr{IP: ss.host1wg0ip, Port: wgPort + 1}, addr)
 	}
+
+	// should fail to send if there's no peer with a matching AIP
+	// the dest here _is_ somewhere we can send "normal" packets, but only via the
+	// "normal" network interface, not via the tunnel
+	nSent, err = s1c.WriteToUDP(payload, &net.UDPAddr{IP: ss.host1eth0ip, Port: wgPort})
+	assert.Error(t, err)
+	assert.Equal(t, 0, nSent)
+	// the dest here is on the right subnet, but there's no peer there
+	// (because it's ourself)
+	nSent, err = s1c.WriteToUDP(payload, &net.UDPAddr{IP: ss.host1wg0ip, Port: wgPort + 1})
+	assert.Error(t, err)
+	assert.Equal(t, 0, nSent)
+
+	// closing the tunnel should cause the previously successful send to now fail
+	ss.host1wg0.DetachFromNetwork()
+	nSent, err = s1c.WriteToUDP(payload, &net.UDPAddr{IP: ss.host2wg0ip, Port: wgPort + 1})
+	assert.Error(t, err)
+	assert.Equal(t, 0, nSent)
 }
 
 func Test_Smoke_Wrap(t *testing.T) {

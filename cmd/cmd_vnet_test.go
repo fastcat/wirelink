@@ -15,6 +15,8 @@ import (
 	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/fastcat/wirelink/trust"
 
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -69,7 +71,13 @@ func Test_Cmd_VNet1(t *testing.T) {
 
 		// we name client interfaces wg1 to make loading the test json easier
 		cwg := client.AddTun("wg1")
-		cwg.GenerateKeys()
+		// test the other way of loading in keys
+		priv, err := wgtypes.GeneratePrivateKey()
+		require.NoError(t, err)
+		cwg.UseKey(priv)
+		cwgPriv, cwgPub := cwg.Keys()
+		assert.Equal(t, priv, cwgPriv)
+		assert.Equal(t, priv.PublicKey(), cwgPub)
 		cwg.AddAddr(net.IPNet{IP: net.IPv4(192, 168, 0, byte(1+i)), Mask: net.CIDRMask(24, 32)})
 		cwg.Listen(wgPort)
 
