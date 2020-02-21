@@ -127,8 +127,14 @@ func (h *Host) InboundPacket(p *Packet) bool {
 // OutboundPacket tries to send a packet on each interface registered on the host
 func (h *Host) OutboundPacket(p *Packet) bool {
 	h.m.Lock()
-	defer h.m.Unlock()
+	// make a copy of the possible interfaces to avoid deadlocks
+	ifaces := make([]Interface, 0, len(h.interfaces))
 	for _, iface := range h.interfaces {
+		ifaces = append(ifaces, iface)
+	}
+	h.m.Unlock()
+
+	for _, iface := range ifaces {
 		if iface.OutboundPacket(p) {
 			return true
 		}

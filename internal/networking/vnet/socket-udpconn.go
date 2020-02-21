@@ -22,8 +22,9 @@ var _ networking.UDPConn = &socketUDPConn{}
 // networking.UDPConn.
 func (s *Socket) Connect() networking.UDPConn {
 	ret := &socketUDPConn{
-		s:       s,
-		inbound: make(chan *Packet, 1),
+		s: s,
+		// make this reasonably deep to avoid accidental deadlocks
+		inbound: make(chan *Packet, 10),
 	}
 	rx := func(p *Packet) bool {
 		ret.inbound <- p

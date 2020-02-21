@@ -71,6 +71,23 @@ type TunPeer struct {
 	addrs       map[string]net.IPNet
 }
 
+// LastReceive gets the time of the last received packet, or zero if never
+func (p *TunPeer) LastReceive() time.Time {
+	return p.lastReceive
+}
+
+// Endpoint returns the current endpoint of the peer
+func (p *TunPeer) Endpoint() *net.UDPAddr {
+	if p.endpoint == nil {
+		return nil
+	}
+	// copy
+	ret := *p.endpoint
+	return &ret
+}
+
+// add more getters as needed
+
 // DetachFromNetwork implements Interface
 func (t *Tunnel) DetachFromNetwork() {
 	t.m.Lock()
@@ -111,6 +128,17 @@ func (t *Tunnel) AddPeer(name string, publicKey wgtypes.Key, endpoint *net.UDPAd
 	t.peers[publicKey.String()] = p
 	t.m.Unlock()
 	return p
+}
+
+// Peers gets a view of the peers map
+func (t *Tunnel) Peers() map[string]*TunPeer {
+	t.m.Lock()
+	ret := make(map[string]*TunPeer, len(t.peers))
+	for k, v := range t.peers {
+		ret[k] = v
+	}
+	t.m.Unlock()
+	return ret
 }
 
 // DelPeer deletes the peer with the given id (String() of its PublicKey) from the tunnel
