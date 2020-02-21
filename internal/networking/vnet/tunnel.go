@@ -86,6 +86,16 @@ func (p *TunPeer) Endpoint() *net.UDPAddr {
 	return &ret
 }
 
+// Addrs gets a copy of the currently configured addrs
+func (p *TunPeer) Addrs() []net.IPNet {
+	// TODO: race risk
+	ret := make([]net.IPNet, 0, len(p.addrs))
+	for _, a := range p.addrs {
+		ret = append(ret, a)
+	}
+	return ret
+}
+
 // add more getters as needed
 
 // DetachFromNetwork implements Interface

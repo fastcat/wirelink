@@ -13,6 +13,7 @@ import (
 	"github.com/fastcat/wirelink/config"
 	"github.com/fastcat/wirelink/internal/networking/vnet"
 	"github.com/fastcat/wirelink/internal/testutils"
+	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/trust"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -24,10 +25,6 @@ import (
 const wgPort = 51820
 
 func Test_Cmd_VNet1(t *testing.T) {
-	if testing.Short() {
-		t.Skip("vnet acceptance tests are slow, skipping")
-	}
-
 	// setup our config path
 	os.Setenv("WIREVLINK_CONFIG_PATH", testutils.SrcDirectory())
 	defer os.Unsetenv("WIREVLINK_CONFIG_PATH")
@@ -98,8 +95,15 @@ func Test_Cmd_VNet1(t *testing.T) {
 	require.NoError(t, client2cmd.Init(client2.Wrap()))
 
 	// use shortened timing for the tests
-	const factTTL = 6 * time.Second
-	const chunkPeriod = 1 * time.Second
+	chunkPeriod := 1 * time.Second
+	// or if we are running a short test, VERY short timing
+	if testing.Short() {
+		// much less than this and tests start randomly failing,
+		// but this does bring the runtime for this test down from ~8.6s to ~4.3s
+		chunkPeriod = 500 * time.Millisecond
+	}
+	factTTL := 3 * chunkPeriod
+
 	for _, c := range []*WirelinkCmd{host1cmd, client1cmd, client2cmd} {
 		c.Server.FactTTL = factTTL
 		c.Server.ChunkPeriod = chunkPeriod
@@ -114,10 +118,12 @@ func Test_Cmd_VNet1(t *testing.T) {
 		Trust: trust.Ptr(trust.Membership),
 	}
 	host1cmd.Config.Peers[c1pub] = &config.Peer{
-		Name: client1.Name(),
+		Name:       client1.Name(),
+		AllowedIPs: []net.IPNet{{IP: net.IPv4(192, 168, 0, 2), Mask: net.CIDRMask(24, 32)}},
 	}
 	host1cmd.Config.Peers[c2pub] = &config.Peer{
-		Name: client2.Name(),
+		Name:       client2.Name(),
+		AllowedIPs: []net.IPNet{{IP: net.IPv4(192, 168, 0, 3), Mask: net.CIDRMask(24, 32)}},
 	}
 	// TODO: name & explicitly configure client1 & client2
 	client1cmd.Config.Peers[h1pub] = &config.Peer{
@@ -143,25 +149,45 @@ func Test_Cmd_VNet1(t *testing.T) {
 	eg.Go(client1cmd.Run)
 	eg.Go(client2cmd.Run)
 
-	time.Sleep(time.Second)
-	host1cmd.Server.RequestPrint()
-	client1cmd.Server.RequestPrint()
-	client2cmd.Server.RequestPrint()
+	printWithSignals := false
+	printAll := func(msg string) {
+		log.Debug(msg)
+		for _, c := range []*WirelinkCmd{host1cmd, client1cmd, client2cmd} {
+			if printWithSignals {
+				c.signals <- syscall.SIGUSR1
+			} else {
+				c.Server.RequestPrint()
+			}
+			printWithSignals = !printWithSignals
+		}
+	}
+
+	time.Sleep(chunkPeriod / 2)
+	printAll("Printing state 0: startup")
 
 	// connect the clients to the internet after a delay
 	clientConnectTime := time.Now()
 	client1.Interface("eth0").(*vnet.PhysicalInterface).AttachToNetwork(internet)
 	client2.Interface("eth0").(*vnet.PhysicalInterface).AttachToNetwork(internet)
 
-	assertHealthy := func(h *vnet.Host, iface string, peer wgtypes.Key, after time.Time, msg string) {
+	assertHealthy := func(h *vnet.Host, iface string, peer wgtypes.Key, aip bool, msg string) {
 		wg := h.Interface(iface).(*vnet.Tunnel)
 		wgp := wg.Peers()
 		ps := peer.String()
 		if assert.Contains(t, wgp, ps, "%s: should know peer", msg) {
 			p := wgp[ps]
 			assert.NotNil(t, p.Endpoint(), "%s: should have an endpoint")
-			if after != (time.Time{}) {
-				assert.True(t, p.LastReceive().After(after), "%s: should have data from peer", msg)
+			assert.True(t, p.LastReceive().After(clientConnectTime), "%s: should have data from peer", msg)
+			if aip {
+				pa := p.Addrs()
+				require.Condition(t, func() bool {
+					for _, a := range pa {
+						if a.IP.To4() != nil {
+							return true
+						}
+					}
+					return false
+				}, "%s: should have an AIP added", msg)
 			}
 		}
 	}
@@ -173,31 +199,51 @@ func Test_Cmd_VNet1(t *testing.T) {
 		assert.NotContains(t, wgp, ps, "%s: should not know peer", msg)
 	}
 
-	time.Sleep(chunkPeriod * 11 / 10)
-	t.Log("Printing state 1: server should be connected to clients")
-	host1cmd.Server.RequestPrint()
-	client1cmd.Server.RequestPrint()
-	client2cmd.Server.RequestPrint()
-	assertHealthy(host1, "wg0", c1pub, clientConnectTime, "h knows c1")
-	assertHealthy(host1, "wg0", c2pub, clientConnectTime, "h knows c2")
-	assertHealthy(client1, "wg1", h1pub, clientConnectTime, "c1 knows h")
-	assertHealthy(client2, "wg1", h1pub, clientConnectTime, "c2 knows h")
+	// clients connected at 0.5c
+	// they will ping server at 1c
+	// server may not notice them and ping back until 2c
+	// server likely has AIPs for clients live here, but not vice versa
+	time.Sleep(chunkPeriod * 2) // after 2c
+	printAll("Printing state 1a: host/client handshakes")
+	assertHealthy(host1, "wg0", c1pub, false, "1a: h knows c1")
+	assertHealthy(host1, "wg0", c2pub, false, "1a: h knows c2")
+	assertHealthy(client1, "wg1", h1pub, false, "1a: c1 knows h")
+	assertHealthy(client2, "wg1", h1pub, false, "1a: c2 knows h")
 
-	time.Sleep(chunkPeriod * 21 / 10)
-	t.Log("Printing state 2: clients should be connected to each other")
-	// SIGUSR1 does the same thing as RequestPrint
-	host1cmd.signals <- syscall.SIGUSR1
-	client1cmd.signals <- syscall.SIGUSR1
-	client2cmd.signals <- syscall.SIGUSR1
-	assertHealthy(host1, "wg0", c1pub, clientConnectTime, "h knows c1")
-	assertHealthy(host1, "wg0", c2pub, clientConnectTime, "h knows c2")
-	assertHealthy(client1, "wg1", h1pub, clientConnectTime, "c1 knows h")
-	assertHealthy(client2, "wg1", h1pub, clientConnectTime, "c2 knows h")
-	assertHealthy(client1, "wg1", c2pub, clientConnectTime, "c1 knows c2")
-	assertHealthy(client2, "wg1", c1pub, clientConnectTime, "c2 knows c1")
+	// one more cycle after pings, AIPs should be alive in both directions
+	// peers should have added endpoints for each other and pinged,
+	// but may not have registered that yet, depending on race conditions
+	time.Sleep(chunkPeriod) // after 3c
+	printAll("Printing state 1b: host/client AIPs")
+	assertHealthy(host1, "wg0", c1pub, true, "1b: h knows c1")
+	assertHealthy(host1, "wg0", c2pub, true, "1b: h knows c2")
+	assertHealthy(client1, "wg1", h1pub, true, "1b: c1 knows h")
+	assertHealthy(client2, "wg1", h1pub, true, "1b: c2 knows h")
+	// assertHealthy(client1, "wg1", c2pub, false, "1b: c1 knows c2")
+	// assertHealthy(client2, "wg1", c1pub, false, "1b: c2 knows c1")
+
+	// one more cycle clients should definitely have handshakes and may have AIPs
+	time.Sleep(chunkPeriod) // after 4c
+	printAll("Printing state 2a: host/client AIPs and client/client handshakes")
+	assertHealthy(host1, "wg0", c1pub, true, "2a: h knows c1")
+	assertHealthy(host1, "wg0", c2pub, true, "2a: h knows c2")
+	assertHealthy(client1, "wg1", h1pub, true, "2a: c1 knows h")
+	assertHealthy(client2, "wg1", h1pub, true, "2a: c2 knows h")
+	assertHealthy(client1, "wg1", c2pub, false, "2a: c1 knows c2")
+	assertHealthy(client2, "wg1", c1pub, false, "2a: c2 knows c1")
+
+	// one more cycle should definitely have AIPs
+	time.Sleep(chunkPeriod) // after 5c
+	printAll("Printing state 2b: full AIPs")
+	assertHealthy(host1, "wg0", c1pub, true, "2b: h knows c1")
+	assertHealthy(host1, "wg0", c2pub, true, "2b: h knows c2")
+	assertHealthy(client1, "wg1", h1pub, true, "2b: c1 knows h")
+	assertHealthy(client2, "wg1", h1pub, true, "2b: c2 knows h")
+	assertHealthy(client1, "wg1", c2pub, true, "2b: c1 knows c2")
+	assertHealthy(client2, "wg1", c1pub, true, "2b: c2 knows c1")
 
 	// de-auth client2
-	t.Logf("Removing client2 = %s", c2pub)
+	log.Debug("Removing client2 = %s", c2pub)
 	host1.Interface("wg0").(*vnet.Tunnel).DelPeer(c2pub.String())
 	// have to remove it from the config too else it'll keep getting broadcast,
 	// and will get added back
@@ -207,29 +253,25 @@ func Test_Cmd_VNet1(t *testing.T) {
 	// coverage: add a bogus third client to client1
 	// both of these should be removed
 	_, badPub := testutils.MustKeyPair(t)
-	t.Logf("Adding bogus peer %s", badPub)
-	client1.Interface("wg1").(*vnet.Tunnel).AddPeer(
-		"badpeer",
-		badPub,
-		testutils.RandUDP4Addr(t),
-		[]net.IPNet{testutils.RandIPNet(t, net.IPv4len, []byte{192, 168, 1}, nil, 24)},
-	)
-	time.Sleep(factTTL + chunkPeriod*11/10)
-	t.Log("Printing state 3: bad/removed clients should be deleted")
-	// SIGUSR1 does the same thing as RequestPrint
-	host1cmd.signals <- syscall.SIGUSR1
-	client1cmd.signals <- syscall.SIGUSR1
-	client2cmd.signals <- syscall.SIGUSR1
-	// assert client2 and badpub have been evicted
-	assertHealthy(host1, "wg0", c1pub, clientConnectTime, "h knows c1")
-	assertNotKnows(host1, "wg0", c2pub, "h removed c2")
-	assertHealthy(client1, "wg1", h1pub, clientConnectTime, "c1 knows h")
-	// TODO: what should c2 think about h1 here?
-	assertNotKnows(client1, "wg1", c2pub, "c1 removed c2")
-	// tODO: what should c2 think about c1 here?
-	assertNotKnows(client1, "wg1", badPub, "c1 removed badpub")
+	log.Debug("Adding bogus peer %s", badPub)
+	client1.Interface("wg1").(*vnet.Tunnel).AddPeer("badpeer", badPub, nil, nil)
 
-	t.Log("Stopping servers")
+	time.Sleep(factTTL) // after 5c+1t
+	printAll("Printing state 3: delete clients")
+	// assert client2 and badpub have been evicted
+	assertHealthy(host1, "wg0", c1pub, true, "3: h knows c1")
+	assertNotKnows(host1, "wg0", c2pub, "3: h removed c2")
+	assertHealthy(client1, "wg1", h1pub, true, "3: c1 knows h")
+	// TODO: what should c2 think about h1 here?
+	assertNotKnows(client1, "wg1", c2pub, "3: c1 removed c2")
+	// tODO: what should c2 think about c1 here?
+	assertNotKnows(client1, "wg1", badPub, "3: c1 removed badpub")
+	assertNotKnows(host1, "wg0", badPub, "3: h never knows badpub")
+	assertNotKnows(client2, "wg1", badPub, "3: c2 never knows badpub")
+
+	// make sure the prints above came through
+	time.Sleep(100 * time.Millisecond)
+	log.Debug("Stopping servers")
 	// could call RequestStop on each, but testing signal handling is handy
 	host1cmd.signals <- syscall.SIGINT
 	client1cmd.signals <- syscall.SIGINT
