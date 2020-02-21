@@ -178,7 +178,7 @@ func TestGoUDPConn_ReadPackets(t *testing.T) {
 			sendStarted := time.Now()
 			go func() {
 				defer close(sendDone)
-				// FIXME: share this with mock UDPConn.WithPacketSequence
+				// TODO: share this with mock UDPConn.WithPacketSequence
 				// this one is much simpler due to not watching a Context
 				for i := range tt.args.send {
 					packetOffset := tt.args.send[i].Time.Sub(now)

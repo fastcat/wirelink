@@ -39,7 +39,6 @@ func Test_TTLClamping(t *testing.T) {
 	f = &Fact{}
 	err := f.DecodeFrom(len(p), now, bytes.NewBuffer(p))
 	if assert.Error(t, err, "Decoding fact with out of range TTL should fail") {
-		// FIXME: this is a terrible way to check the error
 		assert.Contains(t, err.Error(), "range")
 		assert.Contains(t, err.Error(), strconv.Itoa(math.MaxUint16+1))
 	}

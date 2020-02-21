@@ -224,7 +224,7 @@ func (s *LinkServer) deletePeers(
 		if !ok {
 			return false
 		}
-		//FIXME: this can go wrong and cause us to delete peers, because facts
+		//TODO: this can go wrong and cause us to delete peers, because facts
 		// are allowed to get very close to expiration before being renewed
 		if !pcs.IsHealthy() || now.Sub(pcs.AliveSince()) < s.FactTTL {
 			return false
@@ -372,7 +372,7 @@ func (s *LinkServer) configurePeer(
 
 	pcfg.UpdateOnly = !allowAdd
 
-	//FIXME: this is a hack to make test assertions stable, find a better way
+	//TODO: this is a hack to make test assertions stable, find a better way
 	if log.IsDebug() {
 		util.SortIPNetSlice(pcfg.AllowedIPs)
 	}
