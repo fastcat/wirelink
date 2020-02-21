@@ -254,4 +254,11 @@ func Test_Smoke_WgCtrl(t *testing.T) {
 
 	checkWg(d1wg, ss.host1wg0)
 	checkWg(d2, ss.host2wg0)
+
+	dbad, err := wg1.Device("xyzzy")
+	assert.Error(t, err)
+	assert.Nil(t, dbad)
+	dbad, err = wg1.Device(ss.host1eth0.Name())
+	assert.Error(t, err)
+	assert.Nil(t, dbad)
 }
