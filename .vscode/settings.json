@@ -60,4 +60,7 @@
 		// NOTE: as of 2020-02-12, this requires gotests@develop
 		"-template=testify"
 	],
+	"go.testFlags": [
+		"-short",
+	],
 }
