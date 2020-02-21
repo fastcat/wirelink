@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"path"
-	"runtime"
 	"testing"
 	"time"
 
@@ -13,16 +11,12 @@ import (
 
 	"github.com/fastcat/wirelink/config"
 	"github.com/fastcat/wirelink/internal/networking/vnet"
+	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/fastcat/wirelink/trust"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func srcDirectory() string {
-	_, filename, _, _ := runtime.Caller(1)
-	return path.Dir(filename)
-}
 
 const wgPort = 51820
 
@@ -32,7 +26,7 @@ func Test_Cmd_VNet1(t *testing.T) {
 	}
 
 	// setup our config path
-	os.Setenv("WIREVLINK_CONFIG_PATH", srcDirectory())
+	os.Setenv("WIREVLINK_CONFIG_PATH", testutils.SrcDirectory())
 	defer os.Unsetenv("WIREVLINK_CONFIG_PATH")
 
 	w := vnet.NewWorld()

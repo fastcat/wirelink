@@ -43,7 +43,7 @@ func (w *WirelinkCmd) Init(env networking.Environment) error {
 	flags, vcfg := config.Init(w.args)
 	var configData *config.ServerData
 	if configData, err = config.Parse(flags, vcfg, w.args); err != nil {
-		return errors.Wrapf(err, "Failed to load config")
+		return errors.Wrapf(err, "Unable to parse configuration")
 	}
 	// configData comes back nil if we ran --help or --version
 	if configData == nil {
