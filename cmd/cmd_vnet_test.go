@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"syscall"
 	"testing"
 	"time"
 
@@ -142,16 +143,18 @@ func Test_Cmd_VNet1(t *testing.T) {
 
 	time.Sleep(5 * time.Second)
 	t.Log("Printing state 2: clients should be connected to each other")
-	host1cmd.Server.RequestPrint()
-	client1cmd.Server.RequestPrint()
-	client2cmd.Server.RequestPrint()
+	// SIGUSR1 does the same thing as RequestPrint
+	host1cmd.signals <- syscall.SIGUSR1
+	client1cmd.signals <- syscall.SIGUSR1
+	client2cmd.signals <- syscall.SIGUSR1
 	// TODO: assert clients see each other and are healthy
 
 	time.Sleep(time.Second)
 	t.Log("Stopping servers")
-	host1cmd.Server.RequestStop()
-	client1cmd.Server.RequestStop()
-	client2cmd.Server.RequestStop()
+	// could call RequestStop on each, but testing signal handling is handy
+	host1cmd.signals <- syscall.SIGINT
+	client1cmd.signals <- syscall.SIGINT
+	client2cmd.signals <- syscall.SIGINT
 
 	err := eg.Wait()
 	assert.NoError(t, err)

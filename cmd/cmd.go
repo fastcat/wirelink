@@ -17,10 +17,11 @@ import (
 
 // WirelinkCmd represents an instance of the app command line
 type WirelinkCmd struct {
-	args   []string
-	wgc    internal.WgClient
-	Config *config.Server
-	Server *server.LinkServer
+	args    []string
+	wgc     internal.WgClient
+	Config  *config.Server
+	Server  *server.LinkServer
+	signals chan os.Signal
 }
 
 // New creates a new command instance using the given os.Args value
@@ -80,11 +81,11 @@ func (w *WirelinkCmd) Run() error {
 	log.Info("Server running: %s", w.Server.Describe())
 
 	w.Server.AddHandler(func(ctx context.Context) error {
-		signals := make(chan os.Signal, 5)
-		signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
+		w.signals = make(chan os.Signal, 5)
+		signal.Notify(w.signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
 		for {
 			select {
-			case sig := <-signals:
+			case sig := <-w.signals:
 				if sig == syscall.SIGUSR1 {
 					w.Server.RequestPrint()
 				} else {
