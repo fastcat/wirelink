@@ -5,6 +5,7 @@ package log
 import (
 	"fmt"
 	"os"
+	"time"
 )
 
 // TODO: copy efficient buffer management from core `log` package
@@ -15,6 +16,10 @@ func Info(format string, a ...interface{}) {
 	if format[len(format)-1] != '\n' {
 		format = format + "\n"
 	}
+	if debugEnabled {
+		// format = time.Now().Format(debugStampFormat) + " " + format
+		format = debugOffset() + " " + format
+	}
 	os.Stdout.WriteString(fmt.Sprintf(format, a...))
 }
 
@@ -24,14 +29,29 @@ func Error(format string, a ...interface{}) {
 	if format[len(format)-1] != '\n' {
 		format = format + "\n"
 	}
+	if debugEnabled {
+		// format = time.Now().Format(debugStampFormat) + " " + format
+		format = debugOffset() + " " + format
+	}
 	os.Stderr.WriteString(fmt.Sprintf(format, a...))
 }
 
 var debugEnabled bool
+var debugReference time.Time
+
+// similar to RFC3339
+// const debugStampFormat = "2006-01-02T15:04:05.999"
 
 // SetDebug controls whether Debug does anything
 func SetDebug(enabled bool) {
 	debugEnabled = enabled
+	if enabled {
+		debugReference = time.Now()
+	}
+}
+
+func debugOffset() string {
+	return time.Now().Sub(debugReference).Round(time.Millisecond).String()
 }
 
 // IsDebug returns whether debug logging is enabled
@@ -48,5 +68,7 @@ func Debug(format string, a ...interface{}) {
 	if format[len(format)-1] != '\n' {
 		format = format + "\n"
 	}
+	// format = time.Now().Format(debugStampFormat) + " " + format
+	format = debugOffset() + " " + format
 	os.Stdout.WriteString(fmt.Sprintf(format, a...))
 }
