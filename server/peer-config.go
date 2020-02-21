@@ -89,7 +89,7 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 		// if we have no info about a local peer, flag it for deletion
 		if !ok && !validPeers[peer.PublicKey] {
 			removePeer[peer.PublicKey] = true
-			// log.Debug("Flagging peer %s for removal: not valid", peer.PublicKey)
+			log.Debug("Flagging peer %s for removal: not valid", peer.PublicKey)
 		}
 		// alive check uses 0 for the maxTTL, as we just care whether the alive fact
 		// is still valid now
@@ -110,7 +110,7 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 			validPeers[peer] = true
 		} else if peer != dev.PublicKey {
 			removePeer[peer] = true
-			// log.Debug("Flagging peer %s for removal from %s: no membership", dev.PublicKey, peer)
+			log.Debug("Flagging peer %s for removal from %s: no membership", dev.PublicKey, peer)
 		}
 	}
 
@@ -203,7 +203,7 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 			allowDelete = false
 		}
 	}
-	if allowDelete {
+	if allowDelete && len(removePeer) > 0 {
 		eg.Go(func() error { return s.deletePeers(dev, removePeer, now) })
 	}
 
@@ -233,10 +233,12 @@ func (s *LinkServer) deletePeers(
 			return false
 		}
 		//TODO: this can go wrong and cause us to delete peers, because facts
-		// are allowed to get very close to expiration before being renewed
-		if !pcs.IsHealthy() || now.Sub(pcs.AliveSince()) < s.FactTTL {
+		// are allowed to get very close to expiration before being renewed.
+		// AliveSince effectively encompasses IsAlive due to TimeMax handling
+		if !pcs.IsHealthy() || now.Sub(pcs.AliveSince()) < s.FactTTL+s.ChunkPeriod {
 			return false
 		}
+		log.Debug("Healthy enough from %s: %s: %v > %v", dev.PublicKey, key, now.Sub(pcs.AliveSince()), s.FactTTL+s.ChunkPeriod)
 		return true
 	}
 
@@ -247,7 +249,10 @@ func (s *LinkServer) deletePeers(
 		}
 		if peerHealthyEnough(pk) {
 			doDelPeers = true
+			log.Debug("Safe to delete peers from %s: %s is healthy", dev.PublicKey, pk)
 			break
+		} else {
+			log.Debug("Maybe not safe to delete peers from %s: %s is not healthy", dev.PublicKey, pk)
 		}
 	}
 	if !doDelPeers && !s.config.Peers.AnyTrustedAt(trust.Membership) {
@@ -255,12 +260,14 @@ func (s *LinkServer) deletePeers(
 		for _, peer := range dev.Peers {
 			if detect.IsPeerRouter(&peer) && peerHealthyEnough(peer.PublicKey) {
 				doDelPeers = true
+				log.Debug("Safe to delete peers from %s: %s is healthy (router)", dev.PublicKey, peer)
 				break
 			}
 		}
 	}
 
 	if !doDelPeers {
+		log.Debug("Not safe to delete peers from %s", dev.PublicKey)
 		return
 	}
 

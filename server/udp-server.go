@@ -170,6 +170,8 @@ func (s *LinkServer) Start() (err error) {
 	s.eg.Go(func() error { return s.processChunks(newFacts, factsRefreshed) })
 
 	s.eg.Go(func() error {
+		// TODO: the multiplex / racing makes reliable acceptance tests hard,
+		// as it can cause it to take a second fact ttl for things to expire
 		return multiplexFactChunks(factsRefreshed, factsRefreshedForBroadcast, factsRefreshedForConfig)
 	})
 

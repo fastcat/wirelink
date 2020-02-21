@@ -101,12 +101,10 @@ func Test_Cmd_VNet1(t *testing.T) {
 	chunkPeriod := 1 * time.Second
 	// or if we are running a short test, VERY short timing
 	if testing.Short() {
-		// much less than this and tests start randomly failing,
-		// but this does bring the runtime for this test down from ~8.6s to ~4.3s
-		// this doesn't pass reliably if you turn on coverage or race detection however
+		// trimming this down too low causes timing issues and random test failures
 		chunkPeriod = 500 * time.Millisecond
 	}
-	factTTL := 3 * chunkPeriod
+	factTTL := chunkPeriod * 3
 
 	for _, c := range []*WirelinkCmd{host1cmd, client1cmd, client2cmd} {
 		c.Server.FactTTL = factTTL
@@ -117,33 +115,38 @@ func Test_Cmd_VNet1(t *testing.T) {
 	c2pub := client2.Interface("wg1").(*vnet.Tunnel).PublicKey()
 	// hack in configs for peers
 	host1cmd.Config.Peers[h1pub] = &config.Peer{
-		Name:  host1.Name(),
+		Name:  host1.Name() + "@self",
 		Trust: trust.Ptr(trust.Membership),
 	}
 	host1cmd.Config.Peers[c1pub] = &config.Peer{
-		Name:       client1.Name(),
+		Name:       client1.Name() + "@" + host1.Name(),
 		AllowedIPs: []net.IPNet{{IP: net.IPv4(192, 168, 0, 2), Mask: net.CIDRMask(32, 32)}},
 	}
 	host1cmd.Config.Peers[c2pub] = &config.Peer{
-		Name:       client2.Name(),
+		Name:       client2.Name() + "@" + host1.Name(),
 		AllowedIPs: []net.IPNet{{IP: net.IPv4(192, 168, 0, 3), Mask: net.CIDRMask(32, 32)}},
 	}
-	// TODO: name & explicitly configure client1 & client2
 	client1cmd.Config.Peers[h1pub] = &config.Peer{
-		Name:  host1.Name(),
+		Name:  host1.Name() + "@" + client1.Name(),
 		Trust: trust.Ptr(trust.Membership),
 		Endpoints: []config.PeerEndpoint{{
 			Host: "100.1.1.1",
 			Port: wgPort,
 		}},
 	}
+	client1cmd.Config.Peers[c1pub] = &config.Peer{
+		Name: client1.Name() + "@self",
+	}
 	client2cmd.Config.Peers[h1pub] = &config.Peer{
-		Name:  host1.Name(),
+		Name:  host1.Name() + "@" + client2.Name(),
 		Trust: trust.Ptr(trust.Membership),
 		Endpoints: []config.PeerEndpoint{{
 			Host: "100.1.1.1",
 			Port: wgPort,
 		}},
+	}
+	client2cmd.Config.Peers[c2pub] = &config.Peer{
+		Name: client2.Name() + "@self",
 	}
 
 	eg := &errgroup.Group{}
@@ -180,10 +183,10 @@ func Test_Cmd_VNet1(t *testing.T) {
 			assert.NotNil(t, p.Endpoint(), "%s: should have an endpoint")
 			// can't use greater/less with durations nicely
 			receiveAge := time.Since(p.LastReceive())
-			assert.True(t, receiveAge < chunkPeriod, "%s: should have recent data from peer", msg)
+			assert.True(t, receiveAge <= chunkPeriod, "%s: should have recent data from peer", msg)
 			if aip {
 				pa := p.Addrs()
-				require.Condition(t, func() bool {
+				assert.Condition(t, func() bool {
 					for _, a := range pa {
 						if a.IP.To4() != nil {
 							return true
@@ -205,14 +208,14 @@ func Test_Cmd_VNet1(t *testing.T) {
 			receiveAge := time.Since(p.LastReceive())
 			assert.True(t, receiveAge > chunkPeriod, "%s: should not have recent data from peer", msg)
 			pa := p.Addrs()
-			require.Condition(t, func() bool {
+			assert.Condition(t, func() bool {
 				for _, a := range pa {
 					if a.IP.To4() != nil {
 						return aip
 					}
 				}
 				return !aip
-			}, "%s: should AIP presence should be %v", msg, aip)
+			}, "%s: AIP presence should be %v", msg, aip)
 		}
 	}
 
@@ -280,17 +283,19 @@ func Test_Cmd_VNet1(t *testing.T) {
 	log.Debug("Adding bogus peer %s", badPub)
 	client1.Interface("wg1").(*vnet.Tunnel).AddPeer("badpeer", badPub, nil, nil)
 
-	time.Sleep(factTTL) // after 5c+1t
+	time.Sleep(factTTL*2 + chunkPeriod) // ...?
 	printAll("Printing state 3: delete clients")
 	// assert client2 and badpub have been evicted
 	assertHealthy(host1, "wg0", c1pub, true, "3: h knows c1")
 	assertNotKnows(host1, "wg0", c2pub, "3: h removed c2")
 	assertHealthy(client1, "wg1", h1pub, true, "3: c1 knows h")
-	// c2 should no longer have a healthy connection to h
+	// c2 should no longer have a healthy connection to h,
+	// and thus should have forgotten its AIPs, but not removed the static trust source
 	assertUnhealthy(client2, "wg1", h1pub, false, "3: c2 blocked from h")
 	assertNotKnows(client1, "wg1", c2pub, "3: c1 removed c2")
-	// c2 no longer gets data, so it should forget c1
-	assertNotKnows(client2, "wg1", c1pub, "3: c2 lost c1")
+	// c2 no longer gets data, so it shouldn't think it's safe to delete peers,
+	// but it should reset them to LL-only
+	assertUnhealthy(client2, "wg1", c1pub, false, "3: c2 retains c1")
 	assertNotKnows(client1, "wg1", badPub, "3: c1 removed badpub")
 	assertNotKnows(host1, "wg0", badPub, "3: h never knows badpub")
 	assertNotKnows(client2, "wg1", badPub, "3: c2 never knows badpub")
