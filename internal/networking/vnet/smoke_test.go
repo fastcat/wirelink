@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/fastcat/wirelink/internal/testutils"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -207,4 +208,50 @@ func Test_Smoke_Wrap(t *testing.T) {
 		assert.Equal(t, payload, readBuf[:len(payload)])
 		assert.Equal(t, &net.UDPAddr{IP: ss.host1wg0ip, Port: wgPort + 1}, addr)
 	}
+}
+
+func Test_Smoke_WgCtrl(t *testing.T) {
+	ss := initSmoke(t)
+	defer ss.Close()
+
+	e1 := ss.host1.Wrap()
+	defer e1.Close()
+	e2 := ss.host2.Wrap()
+	defer e2.Close()
+
+	wg1, err := e1.NewWgClient()
+	require.NoError(t, err)
+	require.NotNil(t, wg1)
+	defer wg1.Close()
+	wg2, err := e2.NewWgClient()
+	require.NoError(t, err)
+	require.NotNil(t, wg2)
+	defer wg2.Close()
+
+	d1, err := wg1.Devices()
+	require.NoError(t, err)
+	require.NotNil(t, d1)
+	assert.Len(t, d1, 1)
+	d1wg := d1[0]
+
+	d2, err := wg2.Device(ss.host2wg0.Name())
+	require.NoError(t, err)
+	require.NotNil(t, d2)
+
+	checkWg := func(d *wgtypes.Device, tun *Tunnel) {
+		assert.Equal(t, tun.Name(), d.Name)
+		require.Len(t, tun.peers, 1)
+		require.Len(t, d.Peers, 1)
+		dp := d.Peers[0]
+		require.Contains(t, tun.peers, dp.PublicKey.String())
+		tp := tun.peers[dp.PublicKey.String()]
+		assert.Equal(t, tp.endpoint, dp.Endpoint)
+		assert.Len(t, dp.AllowedIPs, len(tp.addrs))
+		for _, a := range tp.addrs {
+			assert.Contains(t, dp.AllowedIPs, a)
+		}
+	}
+
+	checkWg(d1wg, ss.host1wg0)
+	checkWg(d2, ss.host2wg0)
 }

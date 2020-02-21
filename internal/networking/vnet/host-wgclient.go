@@ -26,7 +26,27 @@ func (hc *hostWgClient) Close() error {
 }
 
 func (hc *hostWgClient) Devices() ([]*wgtypes.Device, error) {
-	panic("not implemented")
+	hc.h.m.Lock()
+
+	// have to queue up tunnels list since we need to switch locks when doing the wrapping
+	var tunnels []*Tunnel
+	for _, i := range hc.h.interfaces {
+		if t, ok := i.(*Tunnel); ok {
+			tunnels = append(tunnels, t)
+		}
+	}
+	hc.h.m.Unlock()
+
+	ret := make([]*wgtypes.Device, 0, len(tunnels))
+	for _, t := range tunnels {
+		d, err := t.AsWgDevice()
+		if err != nil {
+			// TODO: wrap it? return successful devices?
+			return nil, err
+		}
+		ret = append(ret, d)
+	}
+	return ret, nil
 }
 
 func (hc *hostWgClient) Device(name string) (*wgtypes.Device, error) {
@@ -45,11 +65,17 @@ func (hc *hostWgClient) Device(name string) (*wgtypes.Device, error) {
 	}
 
 	hc.h.m.Unlock()
+
+	return t.AsWgDevice()
+}
+
+// AsWgDevice creates a view of the current tunnel state as a wireguard wgtypes.Device
+func (t *Tunnel) AsWgDevice() (*wgtypes.Device, error) {
 	t.m.Lock()
 	defer t.m.Unlock()
 
 	ret := &wgtypes.Device{
-		Name:       name,
+		Name:       t.name,
 		ListenPort: -1,
 		Type:       wgtypes.Unknown, // this is not a real device
 		PrivateKey: t.privateKey,
