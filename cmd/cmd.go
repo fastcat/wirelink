@@ -78,10 +78,9 @@ func (w *WirelinkCmd) Run() error {
 		return errors.Wrapf(err, "Unable to start server for interface %s", w.Config.Iface)
 	}
 
-	log.Info("Server running: %s", w.Server.Describe())
+	w.signals = make(chan os.Signal, 5)
 
 	w.Server.AddHandler(func(ctx context.Context) error {
-		w.signals = make(chan os.Signal, 5)
 		signal.Notify(w.signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
 		for {
 			select {
@@ -98,6 +97,8 @@ func (w *WirelinkCmd) Run() error {
 			}
 		}
 	})
+
+	log.Info("Server running: %s", w.Server.Describe())
 
 	// server.Close is handled by defer above
 	return w.Server.Wait()
