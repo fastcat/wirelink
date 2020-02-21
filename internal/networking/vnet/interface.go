@@ -40,7 +40,7 @@ type BaseInterface struct {
 
 // Addrs fetches a list of the currently assigned addresses on the interface
 func (i *BaseInterface) Addrs() []net.IPNet {
-	i.m.Unlock()
+	i.m.Lock()
 	ret := make([]net.IPNet, 0, len(i.addrs))
 	for _, a := range i.addrs {
 		ret = append(ret, util.CloneIPNet(a))

@@ -110,6 +110,12 @@ func Test_Smoke_Direct(t *testing.T) {
 	ss := initSmoke(t)
 	defer ss.Close()
 
+	// some basic data checks
+	assert.Equal(t, []net.IPNet{{IP: ss.host1eth0ip, Mask: net.CIDRMask(24, 32)}}, ss.host1eth0.Addrs())
+	assert.Equal(t, []net.IPNet{{IP: ss.host2eth0ip, Mask: net.CIDRMask(24, 32)}}, ss.host2eth0.Addrs())
+	assert.Equal(t, []net.IPNet{{IP: ss.host1wg0ip, Mask: net.CIDRMask(24, 32)}}, ss.host1wg0.Addrs())
+	assert.Equal(t, []net.IPNet{{IP: ss.host2wg0ip, Mask: net.CIDRMask(24, 32)}}, ss.host2wg0.Addrs())
+
 	// verify host-to-host communication over "internet"
 	s1 := ss.host1.AddSocket(&net.UDPAddr{
 		IP:   ss.host1eth0ip,

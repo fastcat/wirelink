@@ -1,6 +1,10 @@
 package native
 
-import "net"
+import (
+	"net"
+
+	"github.com/fastcat/wirelink/log"
+)
 
 // GoInterface provides as much of Interface as the go runtime can
 type GoInterface struct {
@@ -23,17 +27,13 @@ func (i *GoInterface) Addrs() ([]net.IPNet, error) {
 	if err != nil {
 		return nil, err
 	}
-	ret := make([]net.IPNet, len(addrs))
-	for i, a := range addrs {
+	ret := make([]net.IPNet, 0, len(addrs))
+	for _, a := range addrs {
 		if ipn, ok := a.(*net.IPNet); ok {
-			ret[i] = *ipn
+			ret = append(ret, *ipn)
 		} else {
-			ip, ipn, err := net.ParseCIDR(a.String())
-			if err != nil {
-				return nil, err
-			}
-			// ParseCIDR uses the masked version of the ip in ipn, we want the unmasked one
-			ret[i] = net.IPNet{IP: ip, Mask: ipn.Mask}
+			// this should never happen
+			log.Error("Got a %T from interface.Addrs, not a net.IPNet", a)
 		}
 	}
 	return ret, nil
