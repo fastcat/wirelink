@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"net"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -163,7 +164,8 @@ func TestLinkServer_shouldSendTo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &LinkServer{
-				config: tt.fields.config,
+				config:      tt.fields.config,
+				stateAccess: &sync.Mutex{},
 			}
 			assert.Equal(t, tt.want, s.shouldSendTo(tt.args.p, tt.args.factsByPeer))
 		})
@@ -483,6 +485,8 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 				ctrl:          ctrl,
 				peerKnowledge: tt.fields.peerKnowledge,
 				signer:        tt.fields.signer,
+
+				stateAccess: &sync.Mutex{},
 
 				FactTTL:     DefaultFactTTL,
 				ChunkPeriod: DefaultChunkPeriod,

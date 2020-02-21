@@ -64,6 +64,10 @@ func (s *LinkServer) shouldSendTo(p *wgtypes.Peer, factsByPeer map[wgtypes.Key][
 		return sendNothing
 	}
 
+	// protect against tests mutating config while we read it
+	s.stateAccess.Lock()
+	defer s.stateAccess.Unlock()
+
 	// send everything to trusted peers and routers
 	// NOTE: this detects _current_ routers, not peers that are authorized to become
 	// routers in the future based on trusted facts that have not yet been applied

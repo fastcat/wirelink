@@ -135,8 +135,9 @@ func TestLinkServer_formatFacts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &LinkServer{
-				config:     tt.fields.config,
-				peerConfig: tt.fields.peerConfig,
+				config:      tt.fields.config,
+				peerConfig:  tt.fields.peerConfig,
+				stateAccess: &sync.Mutex{},
 			}
 			got := s.formatFacts(now, tt.args.facts)
 			if tt.wantRegexp {

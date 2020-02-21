@@ -118,6 +118,13 @@ func Create(
 	return ret, nil
 }
 
+// MutateConfig allows adjusting the server config with an appropriate lock held
+func (s *LinkServer) MutateConfig(f func(c *config.Server)) {
+	s.stateAccess.Lock()
+	defer s.stateAccess.Unlock()
+	f(s.config)
+}
+
 // Start makes the server open its listen socket and start all the goroutines
 // to receive and process packets
 func (s *LinkServer) Start() (err error) {
