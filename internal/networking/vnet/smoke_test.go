@@ -240,6 +240,10 @@ func Test_Smoke_WgCtrl(t *testing.T) {
 
 	checkWg := func(d *wgtypes.Device, tun *Tunnel) {
 		assert.Equal(t, tun.Name(), d.Name)
+		assert.Equal(t, d.PublicKey, tun.PublicKey())
+		pub, priv := tun.Keys()
+		assert.Equal(t, pub, d.PublicKey)
+		assert.Equal(t, priv, d.PrivateKey)
 		require.Len(t, tun.peers, 1)
 		require.Len(t, d.Peers, 1)
 		dp := d.Peers[0]
