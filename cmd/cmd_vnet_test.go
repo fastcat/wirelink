@@ -183,7 +183,7 @@ func Test_Cmd_VNet1(t *testing.T) {
 			assert.NotNil(t, p.Endpoint(), "%s: should have an endpoint")
 			// can't use greater/less with durations nicely
 			receiveAge := time.Since(p.LastReceive())
-			assert.True(t, receiveAge <= chunkPeriod, "%s: should have recent data from peer", msg)
+			assert.True(t, receiveAge <= chunkPeriod, "%s: should have recent data from peer: %v > %v", msg, receiveAge, chunkPeriod)
 			if aip {
 				pa := p.Addrs()
 				assert.Condition(t, func() bool {
@@ -289,13 +289,16 @@ func Test_Cmd_VNet1(t *testing.T) {
 	assertHealthy(host1, "wg0", c1pub, true, "3: h knows c1")
 	assertNotKnows(host1, "wg0", c2pub, "3: h removed c2")
 	assertHealthy(client1, "wg1", h1pub, true, "3: c1 knows h")
-	// c2 should no longer have a healthy connection to h,
-	// and thus should have forgotten its AIPs, but not removed the static trust source
-	assertUnhealthy(client2, "wg1", h1pub, false, "3: c2 blocked from h")
+	// c2 should no longer have an alive connection to h,
+	// and thus should have forgotten its AIPs, but not removed the static trust source.
+	// however, because h is healthy (HandshakeValidity is not adjusted for the test timing here),
+	// it won't have reconfigured it to remove the AIPs from the device
+	assertUnhealthy(client2, "wg1", h1pub, true, "3: c2 blocked from h")
 	assertNotKnows(client1, "wg1", c2pub, "3: c1 removed c2")
 	// c2 no longer gets data, so it shouldn't think it's safe to delete peers,
 	// but it should reset them to LL-only
-	assertUnhealthy(client2, "wg1", c1pub, false, "3: c2 retains c1")
+	// same HandshakeValidity notes apply here
+	assertUnhealthy(client2, "wg1", c1pub, true, "3: c2 retains c1")
 	assertNotKnows(client1, "wg1", badPub, "3: c1 removed badpub")
 	assertNotKnows(host1, "wg0", badPub, "3: h never knows badpub")
 	assertNotKnows(client2, "wg1", badPub, "3: c2 never knows badpub")

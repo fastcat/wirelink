@@ -162,7 +162,7 @@ func (pks *peerKnowledgeSet) peerAlive(peer wgtypes.Key) (alive bool, until time
 	if !idOk {
 		idRet = nil
 	}
-	// a peer is alive if it has sent us a null fact that is not going to expire within maxTTL
+	// a peer is alive if it has sent us a null fact that has not expired
 	return eok && time.Now().Before(e), e, idRet
 }
 

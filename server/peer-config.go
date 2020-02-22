@@ -233,7 +233,9 @@ func (s *LinkServer) deletePeers(
 			return false
 		}
 		// don't trust a peer's info if its alive packet is nearly expired
-		if !pcs.IsHealthy() || now.Sub(pcs.AliveSince()) < s.FactTTL+s.ChunkPeriod || pcs.AliveUntil().Sub(now) <= s.ChunkPeriod {
+		if !pcs.IsHealthy() ||
+			now.Sub(pcs.AliveSince()) < s.FactTTL+s.ChunkPeriod ||
+			pcs.AliveUntil().Sub(now) <= s.ChunkPeriod*3/2 {
 			return false
 		}
 		log.Debug(
@@ -243,7 +245,7 @@ func (s *LinkServer) deletePeers(
 			now.Sub(pcs.AliveSince()),
 			s.FactTTL+s.ChunkPeriod,
 			pcs.AliveUntil().Sub(now),
-			s.ChunkPeriod,
+			s.ChunkPeriod*3/2,
 		)
 		return true
 	}
@@ -335,7 +337,7 @@ func (s *LinkServer) configurePeer(
 		// It is intentional that `healthy && !alive` results in doing nothing:
 		// this is a transient state that should clear soon, and so we leave it as
 		// hysteresis, esp. in case we miss alive pings a little.
-		if state.IsAlive() || s.config.Peers.IsBasic(peer.PublicKey) {
+		if now.Add(s.ChunkPeriod/2).Before(state.AliveUntil()) || s.config.Peers.IsBasic(peer.PublicKey) {
 			pcfg = apply.EnsureAllowedIPs(peer, facts, pcfg, allowDeconfigure)
 			if pcfg != nil && (len(pcfg.AllowedIPs) > 0 || pcfg.ReplaceAllowedIPs) {
 				if pcfg.ReplaceAllowedIPs {
