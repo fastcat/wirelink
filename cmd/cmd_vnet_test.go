@@ -200,7 +200,7 @@ func Test_Cmd_VNet1(t *testing.T) {
 			}
 		}
 	}
-	assertUnhealthy := func(h *vnet.Host, iface string, peer wgtypes.Key, aip bool, msg string) {
+	assertUnhealthy := func(h *vnet.Host, iface string, peer wgtypes.Key, aip *bool, msg string) {
 		wg := h.Interface(iface).(*vnet.Tunnel)
 		wgp := wg.Peers()
 		ps := peer.String()
@@ -211,14 +211,16 @@ func Test_Cmd_VNet1(t *testing.T) {
 			receiveAge := time.Since(p.LastReceive())
 			assert.True(t, receiveAge > chunkPeriod, "%s: should not have recent data from peer", msg)
 			pa := p.Addrs()
-			assert.Condition(t, func() bool {
-				for _, a := range pa {
-					if a.IP.To4() != nil {
-						return aip
+			if aip != nil {
+				assert.Condition(t, func() bool {
+					for _, a := range pa {
+						if a.IP.To4() != nil {
+							return *aip
+						}
 					}
-				}
-				return !aip
-			}, "%s: AIP presence should be %v", msg, aip)
+					return !*aip
+				}, "%s: AIP presence should be %v", msg, aip)
+			}
 		}
 	}
 
@@ -295,13 +297,17 @@ func Test_Cmd_VNet1(t *testing.T) {
 	// c2 should no longer have an alive connection to h,
 	// and thus should have forgotten its AIPs, but not removed the static trust source.
 	// however, because h is healthy (HandshakeValidity is not adjusted for the test timing here),
-	// it won't have reconfigured it to remove the AIPs from the device
-	assertUnhealthy(client2, "wg1", h1pub, true, "3: c2 blocked from h")
+	// it may or may not have reconfigured it to remove the AIPs from the device
+	// which way it goes is a race condition of precise results from time.Now()
+	// due to this expiring at exactly the same time, so we ignore the results in this case
+	// in the real world, eventually the handshake would expire and h@c2 would be
+	// reset to LL-only mode
+	assertUnhealthy(client2, "wg1", h1pub, nil, "3: c2 blocked from h")
 	assertNotKnows(client1, "wg1", c2pub, "3: c1 removed c2")
 	// c2 no longer gets data, so it shouldn't think it's safe to delete peers,
 	// but it should reset them to LL-only
 	// same HandshakeValidity notes apply here
-	assertUnhealthy(client2, "wg1", c1pub, true, "3: c2 retains c1")
+	assertUnhealthy(client2, "wg1", c1pub, boolPtr(true), "3: c2 retains c1")
 	assertNotKnows(client1, "wg1", badPub, "3: c1 removed badpub")
 	assertNotKnows(host1, "wg0", badPub, "3: h never knows badpub")
 	assertNotKnows(client2, "wg1", badPub, "3: c2 never knows badpub")
@@ -319,4 +325,8 @@ func Test_Cmd_VNet1(t *testing.T) {
 
 	// just to silence variable usage
 	assert.NotNil(t, lan2)
+}
+
+func boolPtr(value bool) *bool {
+	return &value
 }
