@@ -236,6 +236,17 @@ func (s *LinkServer) deletePeers(
 		if !pcs.IsHealthy() ||
 			now.Sub(pcs.AliveSince()) < s.FactTTL+s.ChunkPeriod ||
 			pcs.AliveUntil().Sub(now) <= s.ChunkPeriod*3/2 {
+			log.Debug(
+				"Maybe not safe to delete peers from %s: %s is not healthy (!%v {%v}, %v <? %v, %v <=? %v)",
+				dev.PublicKey,
+				key,
+				pcs.IsHealthy(),
+				pcs.IsAlive(),
+				now.Sub(pcs.AliveSince()),
+				s.FactTTL+s.ChunkPeriod,
+				pcs.AliveUntil().Sub(now),
+				s.ChunkPeriod*3/2,
+			)
 			return false
 		}
 		log.Debug(
@@ -260,7 +271,6 @@ func (s *LinkServer) deletePeers(
 			log.Debug("Safe to delete peers from %s: %s is healthy", dev.PublicKey, pk)
 			break
 		} else {
-			log.Debug("Maybe not safe to delete peers from %s: %s is not healthy", dev.PublicKey, pk)
 		}
 	}
 	if !doDelPeers && !s.config.Peers.AnyTrustedAt(trust.Membership) {

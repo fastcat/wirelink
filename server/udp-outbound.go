@@ -164,7 +164,7 @@ func (s *LinkServer) broadcastFacts(
 		// we want alive facts to live for the normal FactTTL, but we want to send them every AlivePeriod
 		// so the "forgetting window" is the difference between those
 		// we don't need to add the extra ChunkPeriod+1 buffer in this case
-		if s.peerKnowledge.peerNeeds(p, pingFact, s.FactTTL-AlivePeriod) {
+		if s.peerKnowledge.peerNeeds(p, pingFact, s.FactTTL-s.AlivePeriod) {
 			log.Debug("Peer %s needs ping", s.peerName(p.PublicKey))
 			addPingErr = ga.AddFact(pingFact)
 			addedPing = true

@@ -51,6 +51,7 @@ type LinkServer struct {
 	// this is temporary to simplify acceptance tests
 	FactTTL     time.Duration
 	ChunkPeriod time.Duration
+	AlivePeriod time.Duration
 }
 
 // MaxChunk is the max number of packets to receive before processing them
@@ -61,8 +62,8 @@ const MaxChunk = 100
 // TODO: set this based on TTL instead
 const DefaultChunkPeriod = 5 * time.Second
 
-// AlivePeriod is how often we send "I'm here" facts to peers
-const AlivePeriod = 30 * time.Second
+// DefaultAlivePeriod is how often we send "I'm here" facts to peers
+const DefaultAlivePeriod = 30 * time.Second
 
 // DefaultFactTTL is the default TTL we apply to any locally generated Facts
 const DefaultFactTTL = 255 * time.Second
@@ -113,6 +114,7 @@ func Create(
 
 		FactTTL:     DefaultFactTTL,
 		ChunkPeriod: DefaultChunkPeriod,
+		AlivePeriod: DefaultAlivePeriod,
 	}
 
 	return ret, nil

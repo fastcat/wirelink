@@ -98,17 +98,20 @@ func Test_Cmd_VNet1(t *testing.T) {
 	require.NoError(t, client2cmd.Init(client2.Wrap()))
 
 	// use shortened timing for the tests
-	chunkPeriod := 1 * time.Second
+	// we need the TTL to be integer seconds for things to work properly
+	factTTL := 3 * time.Second
 	// or if we are running a short test, VERY short timing
 	if testing.Short() {
-		// trimming this down too low causes timing issues and random test failures
-		chunkPeriod = 500 * time.Millisecond
+		// trimming this down below 2 seconds causes failures
+		factTTL = 2 * time.Second
 	}
-	factTTL := chunkPeriod * 3
+	chunkPeriod := factTTL / 3
 
 	for _, c := range []*WirelinkCmd{host1cmd, client1cmd, client2cmd} {
 		c.Server.FactTTL = factTTL
 		c.Server.ChunkPeriod = chunkPeriod
+		// send alive packets aggressively so our connectivity assertions are simple
+		c.Server.AlivePeriod = chunkPeriod / 2
 	}
 
 	c1pub := client1.Interface("wg1").(*vnet.Tunnel).PublicKey()
