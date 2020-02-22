@@ -24,6 +24,9 @@
     internet EPs, and M>n for non-matching LAN IPs?
 * Router detection: Inspect the `AllowedIP` facts other peers send about
   ourselves (need to change `broadcastFacts` so they send those to us)
+* Adjust fact sending and TTL behavior so that alive facts reliably expire
+  before other facts, avoiding inconsistent behavior around trust and link
+  resets.
 
 ## Security
 
@@ -61,4 +64,6 @@
   * All of these are a bit tricky as they mostly need to be consistent
     across the network for things to work well (or in the case of the port,
     at all)
+  * Some internal capability for this is present now to support time
+    acceleration in tests, but it is not yet configurable.
 * Better logger, at least add some basic filtering support for debug mode
