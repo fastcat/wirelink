@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/fastcat/wirelink/internal/networking"
+	"github.com/fastcat/wirelink/util"
 )
 
 // socketUDPConn adapts a virtual socket to use as a UDPConn
@@ -27,6 +28,12 @@ func (s *Socket) Connect() networking.UDPConn {
 		inbound: make(chan *Packet, 10),
 	}
 	rx := func(p *Packet) bool {
+		s.m.Lock()
+		inbound := ret.inbound
+		s.m.Unlock()
+		if inbound == nil {
+			return false
+		}
 		ret.inbound <- p
 		return true
 	}
@@ -45,8 +52,12 @@ func (sc *socketUDPConn) Close() error {
 		}
 	}
 	sc.s.Close()
-	// TODO: this is a panic risk -- might be an rx instance running about to send on this channel
-	close(sc.inbound)
+	sc.s.m.Lock()
+	if sc.inbound != nil {
+		close(sc.inbound)
+		sc.inbound = nil
+	}
+	sc.s.m.Unlock()
 	return nil
 }
 
@@ -64,6 +75,13 @@ func (sc *socketUDPConn) SetWriteDeadline(t time.Time) error {
 // ReadFromUDP implements UDPConn
 func (sc *socketUDPConn) ReadFromUDP(b []byte) (n int, addr *net.UDPAddr, err error) {
 	// TODO: support deadline
+	sc.s.m.Lock()
+	inbound := sc.inbound
+	sc.s.m.Unlock()
+	if inbound == nil {
+		err = errors.New(util.NetClosingErrorString)
+		return
+	}
 	p := <-sc.inbound
 	n = copy(b, p.data)
 	addr = p.src
