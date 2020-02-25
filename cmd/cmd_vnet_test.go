@@ -11,6 +11,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/fastcat/wirelink/config"
+	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/internal/networking/vnet"
 	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/fastcat/wirelink/log"
@@ -25,6 +26,11 @@ import (
 const wgPort = 51820
 
 func Test_Cmd_VNet1(t *testing.T) {
+	// use a 100ms time quantum for this test so we can run things on shorter timers
+	fact.ScaleExpirationQuantumForTests(20) // 50ms quantum
+	quantum := time.Second / 20
+	defer fact.ScaleExpirationQuantumForTests(1)
+
 	// setup our config path
 	os.Setenv("WIREVLINK_CONFIG_PATH", testutils.SrcDirectory())
 	defer os.Unsetenv("WIREVLINK_CONFIG_PATH")
@@ -98,14 +104,10 @@ func Test_Cmd_VNet1(t *testing.T) {
 	require.NoError(t, client2cmd.Init(client2.Wrap()))
 
 	// use shortened timing for the tests
-	// we need the TTL to be integer seconds for things to work properly
-	factTTL := 3 * time.Second
-	// or if we are running a short test, VERY short timing
-	if testing.Short() {
-		// trimming this down below 2 seconds causes failures
-		factTTL = 2 * time.Second
-	}
-	chunkPeriod := factTTL / 3
+	// in order for things to work properly, we need the chunk period, the fact ttl,
+	// and the expiration quantum to all be integer multiples with quantum < period < ttl
+	chunkPeriod := 3 * quantum // 150ms
+	factTTL := 3 * chunkPeriod // 450ms
 
 	for _, c := range []*WirelinkCmd{host1cmd, client1cmd, client2cmd} {
 		c.Server.FactTTL = factTTL
