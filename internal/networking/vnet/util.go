@@ -43,12 +43,3 @@ func destinationSocket(p *Packet, sockets map[string]*Socket) *Socket {
 	}
 	return nil
 }
-
-func cloneBytes(p []byte) []byte {
-	if p == nil {
-		return nil
-	}
-	r := make([]byte, len(p))
-	copy(r, p)
-	return r
-}

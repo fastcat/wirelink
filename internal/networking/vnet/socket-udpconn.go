@@ -99,7 +99,7 @@ func (sc *socketUDPConn) WriteToUDP(p []byte, addr *net.UDPAddr) (n int, err err
 	packet := &Packet{
 		src:  &src,
 		dest: &dest,
-		data: cloneBytes(p),
+		data: util.CloneBytes(p),
 	}
 	sent := sc.s.OutboundPacket(packet)
 	if sent {
