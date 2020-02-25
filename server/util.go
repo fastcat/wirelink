@@ -31,6 +31,9 @@ func (s *LinkServer) formatFacts(
 		}
 		return fs.String()
 	}
+	// protect against tests mutating config while we read it
+	s.stateAccess.Lock()
+	defer s.stateAccess.Unlock()
 	for _, fact := range facts {
 		str.WriteRune('\n')
 		str.WriteString(fact.FancyString(peerNamer, now))

@@ -17,7 +17,6 @@ import (
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/internal"
 	"github.com/fastcat/wirelink/internal/networking"
-	"github.com/fastcat/wirelink/internal/networking/host"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/signing"
 
@@ -47,26 +46,36 @@ type LinkServer struct {
 
 	// channel for asking it to print out its current info
 	printRequested chan struct{}
+
+	// TODO: these should not be exported like this
+	// this is temporary to simplify acceptance tests
+	FactTTL     time.Duration
+	ChunkPeriod time.Duration
+	AlivePeriod time.Duration
 }
 
 // MaxChunk is the max number of packets to receive before processing them
 const MaxChunk = 100
 
-// ChunkPeriod is the max time to wait between processing chunks of received packets and expiring old ones
+// DefaultChunkPeriod is the default max time to wait between processing chunks
+// of received packets and expiring old ones
 // TODO: set this based on TTL instead
-const ChunkPeriod = 5 * time.Second
+const DefaultChunkPeriod = 5 * time.Second
 
-// AlivePeriod is how often we send "I'm here" facts to peers
-const AlivePeriod = 30 * time.Second
+// DefaultAlivePeriod is how often we send "I'm here" facts to peers
+const DefaultAlivePeriod = 30 * time.Second
 
-// FactTTL is the TTL we apply to any locally generated Facts
-// This is only meaningful if it is <= 255 seconds, since we encode the TTL as a byte
-const FactTTL = 255 * time.Second
+// DefaultFactTTL is the default TTL we apply to any locally generated Facts
+const DefaultFactTTL = 255 * time.Second
 
 // Create prepares a new server object, but does not start it yet.
 // Will take ownership of the wg client and close it when the server is closed.
 // The default listen port is the wireguard listen port plus one.
-func Create(ctrl internal.WgClient, config *config.Server) (*LinkServer, error) {
+func Create(
+	env networking.Environment,
+	ctrl internal.WgClient,
+	config *config.Server,
+) (*LinkServer, error) {
 	device, err := ctrl.Device(config.Iface)
 	if err != nil {
 		return nil, err
@@ -86,23 +95,36 @@ func Create(ctrl internal.WgClient, config *config.Server) (*LinkServer, error) 
 	ctx, cancel := context.WithCancel(egCtx)
 
 	ret := &LinkServer{
-		bootID:         uuid.Must(uuid.NewRandom()),
-		config:         config,
-		net:            nil, // this will be filled in by `Start()`
-		conn:           nil, // this will be filled in by `Start()`
-		addr:           addr,
-		ctrl:           ctrl,
-		stateAccess:    new(sync.Mutex),
-		eg:             eg,
-		ctx:            ctx,
-		cancel:         cancel,
+		bootID:      uuid.Must(uuid.NewRandom()),
+		config:      config,
+		net:         env,
+		conn:        nil, // this will be filled in by `Start()`
+		addr:        addr,
+		ctrl:        ctrl,
+		stateAccess: new(sync.Mutex),
+
+		eg:     eg,
+		ctx:    ctx,
+		cancel: cancel,
+
 		peerKnowledge:  newPKS(),
 		peerConfig:     newPeerConfigSet(),
 		signer:         signing.New(&device.PrivateKey),
 		printRequested: make(chan struct{}, 1),
+
+		FactTTL:     DefaultFactTTL,
+		ChunkPeriod: DefaultChunkPeriod,
+		AlivePeriod: DefaultAlivePeriod,
 	}
 
 	return ret, nil
+}
+
+// MutateConfig allows adjusting the server config with an appropriate lock held
+func (s *LinkServer) MutateConfig(f func(c *config.Server)) {
+	s.stateAccess.Lock()
+	defer s.stateAccess.Unlock()
+	f(s.config)
 }
 
 // Start makes the server open its listen socket and start all the goroutines
@@ -115,12 +137,6 @@ func (s *LinkServer) Start() (err error) {
 	}
 
 	// have to make sure we have the local IPv6-LL address configured before we can use it
-	if s.net == nil {
-		s.net, err = host.CreateHost()
-		if err != nil {
-			return err
-		}
-	}
 	if setLL, err := apply.EnsureLocalAutoIP(s.net, device); err != nil {
 		return err
 	} else if setLL {
@@ -147,7 +163,7 @@ func (s *LinkServer) Start() (err error) {
 	s.eg.Go(func() error { return s.readPackets(packets) })
 
 	newFacts := make(chan []*ReceivedFact, 1)
-	s.eg.Go(func() error { return s.chunkPackets(packets, newFacts, MaxChunk, ChunkPeriod) })
+	s.eg.Go(func() error { return s.chunkPackets(packets, newFacts, MaxChunk) })
 
 	factsRefreshed := make(chan []*fact.Fact, 1)
 	factsRefreshedForBroadcast := make(chan []*fact.Fact, 1)
@@ -156,6 +172,8 @@ func (s *LinkServer) Start() (err error) {
 	s.eg.Go(func() error { return s.processChunks(newFacts, factsRefreshed) })
 
 	s.eg.Go(func() error {
+		// TODO: the multiplex / racing makes reliable acceptance tests hard,
+		// as it can cause it to take a second fact ttl for things to expire
 		return multiplexFactChunks(factsRefreshed, factsRefreshedForBroadcast, factsRefreshedForConfig)
 	})
 
@@ -199,7 +217,6 @@ func multiplexFactChunks(input <-chan []*fact.Fact, outputs ...chan<- []*fact.Fa
 func (s *LinkServer) RequestStop() {
 	if s.cancel != nil {
 		s.cancel()
-		s.cancel = nil
 	}
 }
 
@@ -222,6 +239,8 @@ func (s *LinkServer) Stop() {
 	// leave eg & ctx around so we can inspect them after stopping
 	// s.eg = nil
 	// s.ctx = nil
+
+	s.cancel = nil
 }
 
 // Close stops the server and closes all resources

@@ -5,6 +5,8 @@ import (
 	"io"
 	"net"
 	"time"
+
+	"github.com/fastcat/wirelink/internal"
 )
 
 // Environment represents the top level abstraction of the system's networking
@@ -18,6 +20,9 @@ type Environment interface {
 
 	// ListenUDP abstracts net.ListenUDP
 	ListenUDP(network string, laddr *net.UDPAddr) (UDPConn, error)
+
+	// NewWgClient creates a wireguard client interface for the host
+	NewWgClient() (internal.WgClient, error)
 }
 
 // Interface represents a single network interface
@@ -39,7 +44,7 @@ type UDPConn interface {
 	WriteToUDP(p []byte, addr *net.UDPAddr) (n int, err error)
 
 	// ReadPackets reads packets from the connection until it is either closed,
-	// or the passed context is canceled.
+	// or the passed context is cancelled.
 	// Packets or errors (other than the connection being closed) will be sent
 	// to the output channel, which will be closed when this routine finishes.
 	// Closing the connection is always the responsibility of the caller.

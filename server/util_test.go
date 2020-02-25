@@ -22,7 +22,7 @@ import (
 
 func TestLinkServer_formatFacts(t *testing.T) {
 	now := time.Now()
-	expires := now.Add(FactTTL)
+	expires := now.Add(DefaultFactTTL)
 	// constant data here so that we can have constant string asserts easily
 	k1s := "GLTtd/FIr9+BfZJ+mFlel97VK0ED33ENxDDUPV/ck3A="
 	k1 := testutils.MustParseKey(t, k1s)
@@ -38,6 +38,7 @@ func TestLinkServer_formatFacts(t *testing.T) {
 		&wgtypes.Peer{LastHandshakeTime: now.Add(-60 * time.Minute)},
 		"",
 		false,
+		time.Time{},
 		nil,
 		now,
 	)
@@ -135,8 +136,9 @@ func TestLinkServer_formatFacts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &LinkServer{
-				config:     tt.fields.config,
-				peerConfig: tt.fields.peerConfig,
+				config:      tt.fields.config,
+				peerConfig:  tt.fields.peerConfig,
+				stateAccess: &sync.Mutex{},
 			}
 			got := s.formatFacts(now, tt.args.facts)
 			if tt.wantRegexp {

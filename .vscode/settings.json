@@ -10,6 +10,7 @@
 		"GOPATH",
 		"Iface",
 		"Ifaces",
+		"NICs",
 		"Newf",
 		"Typef",
 		"Unmarshaller",
@@ -24,6 +25,7 @@
 		"deserialization",
 		"deserialize",
 		"deserialized",
+		"enqueues",
 		"goimports",
 		"golint",
 		"gopls",
@@ -39,12 +41,16 @@
 		"uint",
 		"unencrypted",
 		"unmarshalling",
+		"unregister",
+		"unregisters",
 		"uuid",
 		"vcfg",
 		"veth",
 		"vishvananda",
+		"vnet",
 		"wgctrl",
 		"wgtypes",
+		"wirevlink",
 		"xyzzy"
 	],
 	"go.alternateTools": {
@@ -53,5 +59,8 @@
 	"go.generateTestsFlags": [
 		// NOTE: as of 2020-02-12, this requires gotests@develop
 		"-template=testify"
+	],
+	"go.testFlags": [
+		"-short",
 	],
 }

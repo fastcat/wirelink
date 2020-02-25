@@ -91,7 +91,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 	now := time.Now()
 	unhealthyAgo := now.Add(-time.Hour / 2)
 	startTime := now.Add(-time.Hour)
-	expiresFuture := now.Add(FactTTL)
+	expiresFuture := now.Add(DefaultFactTTL)
 
 	wgIface := fmt.Sprintf("wg%d", rand.Int())
 

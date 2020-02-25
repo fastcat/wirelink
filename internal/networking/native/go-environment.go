@@ -3,7 +3,10 @@ package native
 import (
 	"net"
 
+	"github.com/fastcat/wirelink/internal"
 	"github.com/fastcat/wirelink/internal/networking"
+
+	"golang.zx2c4.com/wireguard/wgctrl"
 )
 
 // GoEnvironment is a partial implementation of Environment which provides the
@@ -44,4 +47,9 @@ func (e *GoEnvironment) ListenUDP(network string, laddr *net.UDPAddr) (networkin
 		return nil, err
 	}
 	return &GoUDPConn{*conn}, nil
+}
+
+// NewWgClient implements Environment by wrapping wgctrl.New()
+func (e *GoEnvironment) NewWgClient() (internal.WgClient, error) {
+	return wgctrl.New()
 }

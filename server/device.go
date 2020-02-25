@@ -26,27 +26,27 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device, now time.Time) (ret []*fa
 	log.Debug("Collecting facts...")
 
 	// facts about the local node
-	ret, err = peerfacts.DeviceFacts(dev, now, FactTTL, s.config, s.net)
+	ret, err = peerfacts.DeviceFacts(dev, now, s.FactTTL, s.config, s.net)
 	if err != nil {
 		return
 	}
 
 	// facts the local node knows about peers configured in the wireguard device
-	//FIXME: find a better way to figure out if we should trust our local AIP list
+	//TODO: find a better way to figure out if we should trust our local AIP list
 	localTrust := s.config.Peers.Trust(dev.PublicKey, trust.Untrusted)
 	useLocalAIPs := s.config.IsRouterNow || localTrust >= trust.AllowedIPs
 	useLocalMembership := s.config.IsRouterNow || localTrust >= trust.Membership
-	log.Debug("Using local AIP facts: %v", useLocalAIPs)
+	log.Debug("Using local AIP/membership: %v/%v", useLocalAIPs, useLocalMembership)
 	for _, peer := range dev.Peers {
 		var pf []*fact.Fact
-		pf, err = peerfacts.LocalFacts(&peer, FactTTL, useLocalAIPs, useLocalMembership, now)
+		pf, err = peerfacts.LocalFacts(&peer, s.FactTTL, useLocalAIPs, useLocalMembership, now)
 		if err != nil {
 			return
 		}
 		ret = append(ret, pf...)
 	}
 
-	expires := now.Add(FactTTL)
+	expires := now.Add(s.FactTTL)
 
 	// static facts from the config
 	// these may duplicate other known facts, higher layers will dedupe

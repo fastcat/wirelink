@@ -75,7 +75,7 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 	// longer than the fact ttl so that we don't remove config until we have a
 	// reasonable shot at having received everything from the network, or if we
 	// are a router or a source of allowed IPs
-	allowDeconfigure := now.Sub(startTime) > FactTTL &&
+	allowDeconfigure := now.Sub(startTime) > s.FactTTL &&
 		!s.config.IsRouterNow &&
 		s.config.Peers.Trust(dev.PublicKey, trust.Untrusted) < trust.AllowedIPs
 
@@ -89,12 +89,13 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 		// if we have no info about a local peer, flag it for deletion
 		if !ok && !validPeers[peer.PublicKey] {
 			removePeer[peer.PublicKey] = true
+			log.Debug("Flagging peer %s for removal: not valid", peer.PublicKey)
 		}
 		// alive check uses 0 for the maxTTL, as we just care whether the alive fact
 		// is still valid now
-		newAlive, bootID := s.peerKnowledge.peerAlive(peer.PublicKey, 0)
+		newAlive, aliveUntil, bootID := s.peerKnowledge.peerAlive(peer.PublicKey)
 		ps, _ := s.peerConfig.Get(peer.PublicKey)
-		ps = ps.Update(peer, s.peerName(peer.PublicKey), newAlive, bootID, now)
+		ps = ps.Update(peer, s.peerName(peer.PublicKey), newAlive, aliveUntil, bootID, now)
 		s.peerConfig.Set(peer.PublicKey, ps)
 	}
 
@@ -107,8 +108,9 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 
 		if fact.SliceHas(factGroup, func(f *fact.Fact) bool { return f.Attribute == fact.AttributeMember }) {
 			validPeers[peer] = true
-		} else {
+		} else if peer != dev.PublicKey {
 			removePeer[peer] = true
+			log.Debug("Flagging peer %s for removal from %s: no membership", dev.PublicKey, peer)
 		}
 	}
 
@@ -180,22 +182,28 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 		updatePeer(&wgtypes.Peer{PublicKey: peer}, true)
 	}
 
+	// we may want to delete peers that we didn't want to deconfigure above
+	allowDelete := now.Sub(startTime) > s.FactTTL &&
+		!s.config.IsRouterNow &&
+		s.config.Peers.Trust(dev.PublicKey, trust.Untrusted) < trust.Membership
 	// if we are a trusted source of Membership, then we shouldn't have any
 	// peers to remove
 	if s.config.IsRouterNow || s.config.Peers.Trust(dev.PublicKey, trust.Untrusted) >= trust.Membership {
 		for peer, r := range removePeer {
-			if r {
-				log.Error("BUG detected: trust source wants to remove peer: %s", s.peerName(peer))
-				allowDeconfigure = false
+			if !r {
+				continue
 			}
+			// during tests we may remove previously valid peers,
+			// which can cause confusion as there may still be endpoint facts and such
+			// hanging around which cause the removal flag
+			if !localPeers[peer] {
+				continue
+			}
+			log.Error("BUG detected: trust source wants to remove peer: %s (%v)", s.peerName(peer))
+			allowDelete = false
 		}
 	}
-
-	// we may want to delete peers that we didn't want to deconfigure above
-	allowDelete := now.Sub(startTime) > FactTTL &&
-		!s.config.IsRouterNow &&
-		s.config.Peers.Trust(dev.PublicKey, trust.Untrusted) < trust.Membership
-	if allowDelete {
+	if allowDelete && len(removePeer) > 0 {
 		eg.Go(func() error { return s.deletePeers(dev, removePeer, now) })
 	}
 
@@ -224,11 +232,21 @@ func (s *LinkServer) deletePeers(
 		if !ok {
 			return false
 		}
-		//FIXME: this can go wrong and cause us to delete peers, because facts
-		// are allowed to get very close to expiration before being renewed
-		if !pcs.IsHealthy() || now.Sub(pcs.AliveSince()) < FactTTL {
+		// don't trust a peer's info if its alive packet is nearly expired
+		isHealthy := pcs.IsHealthy()
+		aliveFor := now.Sub(pcs.AliveSince())
+		aliveForMin := s.FactTTL + s.ChunkPeriod
+		stillAliveFor := pcs.AliveUntil().Sub(now)
+		stillAliveForMin := s.ChunkPeriod * 3 / 2
+		if !isHealthy ||
+			aliveFor < aliveForMin ||
+			stillAliveFor <= stillAliveForMin {
+			log.Debug("Maybe not safe to delete peers from %s: %s is not healthy (!%v {%v} || %v < %v || %v <= %v)",
+				dev.PublicKey, key, isHealthy, pcs.IsAlive(), aliveFor, aliveForMin, stillAliveFor, stillAliveForMin)
 			return false
 		}
+		log.Debug("Healthy enough from %s: %s: %v >= %v && %v > %v",
+			dev.PublicKey, key, aliveFor, aliveForMin, stillAliveFor, stillAliveForMin)
 		return true
 	}
 
@@ -239,7 +257,9 @@ func (s *LinkServer) deletePeers(
 		}
 		if peerHealthyEnough(pk) {
 			doDelPeers = true
+			log.Debug("Safe to delete peers from %s: %s is healthy", dev.PublicKey, pk)
 			break
+		} else {
 		}
 	}
 	if !doDelPeers && !s.config.Peers.AnyTrustedAt(trust.Membership) {
@@ -247,12 +267,14 @@ func (s *LinkServer) deletePeers(
 		for _, peer := range dev.Peers {
 			if detect.IsPeerRouter(&peer) && peerHealthyEnough(peer.PublicKey) {
 				doDelPeers = true
+				log.Debug("Safe to delete peers from %s: %s is healthy (router)", dev.PublicKey, peer)
 				break
 			}
 		}
 	}
 
 	if !doDelPeers {
+		log.Debug("Not safe to delete peers from %s", dev.PublicKey)
 		return
 	}
 
@@ -314,7 +336,7 @@ func (s *LinkServer) configurePeer(
 		// It is intentional that `healthy && !alive` results in doing nothing:
 		// this is a transient state that should clear soon, and so we leave it as
 		// hysteresis, esp. in case we miss alive pings a little.
-		if state.IsAlive() || s.config.Peers.IsBasic(peer.PublicKey) {
+		if now.Add(s.ChunkPeriod/2).Before(state.AliveUntil()) || s.config.Peers.IsBasic(peer.PublicKey) {
 			pcfg = apply.EnsureAllowedIPs(peer, facts, pcfg, allowDeconfigure)
 			if pcfg != nil && (len(pcfg.AllowedIPs) > 0 || pcfg.ReplaceAllowedIPs) {
 				if pcfg.ReplaceAllowedIPs {
@@ -372,7 +394,7 @@ func (s *LinkServer) configurePeer(
 
 	pcfg.UpdateOnly = !allowAdd
 
-	//FIXME: this is a hack to make test assertions stable, find a better way
+	//TODO: this is a hack to make test assertions stable, find a better way
 	if log.IsDebug() {
 		util.SortIPNetSlice(pcfg.AllowedIPs)
 	}

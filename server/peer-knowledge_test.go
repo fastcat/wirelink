@@ -47,8 +47,8 @@ func (pks *peerKnowledgeSet) mockPeerKnowsLocalAlive(remote, local *wgtypes.Key,
 
 func Test_peerKnowledgeSet_upsertReceived(t *testing.T) {
 	now := time.Now()
-	oldExpires := now.Add(FactTTL / 2)
-	expires := now.Add(FactTTL)
+	oldExpires := now.Add(DefaultFactTTL / 2)
+	expires := now.Add(DefaultFactTTL)
 
 	k1 := testutils.MustKey(t)
 	k1source := net.UDPAddr{IP: autopeer.AutoAddress(k1)}
@@ -191,7 +191,7 @@ func Test_peerKnowledgeSet_upsertSent(t *testing.T) {
 
 func Test_peerKnowledgeSet_expire(t *testing.T) {
 	now := time.Now()
-	expires := now.Add(FactTTL)
+	expires := now.Add(DefaultFactTTL)
 	expired := now.Add(-time.Millisecond)
 	k1 := testutils.MustKey(t)
 	ep1 := testutils.RandUDP4Addr(t)
@@ -256,8 +256,8 @@ func Test_peerKnowledgeSet_expire(t *testing.T) {
 
 func Test_peerKnowledgeSet_peerKnows(t *testing.T) {
 	now := time.Now()
-	expires := now.Add(FactTTL)
-	offset := FactTTL / 2
+	expires := now.Add(DefaultFactTTL)
+	offset := DefaultFactTTL / 2
 	k1 := testutils.MustKey(t)
 	k1p := &wgtypes.Peer{PublicKey: k1}
 	ep1 := testutils.RandUDP4Addr(t)
@@ -282,7 +282,7 @@ func Test_peerKnowledgeSet_peerKnows(t *testing.T) {
 			args{
 				k1p,
 				facts.EndpointFactFull(ep1, &k1, expires),
-				FactTTL,
+				DefaultFactTTL,
 			},
 			false,
 		},
@@ -359,14 +359,14 @@ func Test_peerKnowledgeSet_peerAlive(t *testing.T) {
 		access  *sync.RWMutex
 	}
 	type args struct {
-		peer   wgtypes.Key
-		maxTTL time.Duration
+		peer wgtypes.Key
 	}
 	tests := []struct {
 		name       string
 		fields     fields
 		args       args
 		wantAlive  bool
+		wantUntil  time.Time
 		wantBootID *uuid.UUID
 	}{
 		// TODO: Add test cases.
@@ -378,8 +378,9 @@ func Test_peerKnowledgeSet_peerAlive(t *testing.T) {
 				bootIDs: tt.fields.bootIDs,
 				access:  tt.fields.access,
 			}
-			gotAlive, gotBootID := pks.peerAlive(tt.args.peer, tt.args.maxTTL)
+			gotAlive, aliveUntil, gotBootID := pks.peerAlive(tt.args.peer)
 			assert.Equal(t, tt.wantAlive, gotAlive)
+			assert.Equal(t, tt.wantUntil, aliveUntil)
 			assert.Equal(t, tt.wantBootID, gotBootID)
 		})
 	}
