@@ -35,7 +35,7 @@ func (f *Fact) DecodeFrom(lengthHint int, now time.Time, reader io.Reader) error
 	if ttl > math.MaxUint16 {
 		return errors.Errorf("Received TTL outside range: %v", ttl)
 	}
-	f.Expires = now.Add(time.Duration(ttl) * time.Second)
+	f.Expires = now.Add(time.Duration(ttl) * timeScale)
 
 	var valueLength int
 
