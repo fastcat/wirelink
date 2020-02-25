@@ -47,7 +47,7 @@ type LinkServer struct {
 	// channel for asking it to print out its current info
 	printRequested chan struct{}
 
-	// TODO: these should not be mutable like this
+	// TODO: these should not be exported like this
 	// this is temporary to simplify acceptance tests
 	FactTTL     time.Duration
 	ChunkPeriod time.Duration
