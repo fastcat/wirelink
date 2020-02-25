@@ -233,31 +233,20 @@ func (s *LinkServer) deletePeers(
 			return false
 		}
 		// don't trust a peer's info if its alive packet is nearly expired
-		if !pcs.IsHealthy() ||
-			now.Sub(pcs.AliveSince()) < s.FactTTL+s.ChunkPeriod ||
-			pcs.AliveUntil().Sub(now) <= s.ChunkPeriod*3/2 {
-			log.Debug(
-				"Maybe not safe to delete peers from %s: %s is not healthy (!%v {%v}, %v <? %v, %v <=? %v)",
-				dev.PublicKey,
-				key,
-				pcs.IsHealthy(),
-				pcs.IsAlive(),
-				now.Sub(pcs.AliveSince()),
-				s.FactTTL+s.ChunkPeriod,
-				pcs.AliveUntil().Sub(now),
-				s.ChunkPeriod*3/2,
-			)
+		isHealthy := pcs.IsHealthy()
+		aliveFor := now.Sub(pcs.AliveSince())
+		aliveForMin := s.FactTTL + s.ChunkPeriod
+		stillAliveFor := pcs.AliveUntil().Sub(now)
+		stillAliveForMin := s.ChunkPeriod * 3 / 2
+		if !isHealthy ||
+			aliveFor < aliveForMin ||
+			stillAliveFor <= stillAliveForMin {
+			log.Debug("Maybe not safe to delete peers from %s: %s is not healthy (!%v {%v} || %v < %v || %v <= %v)",
+				dev.PublicKey, key, isHealthy, pcs.IsAlive(), aliveFor, aliveForMin, stillAliveFor, stillAliveForMin)
 			return false
 		}
-		log.Debug(
-			"Healthy enough from %s: %s: %v > %v && %v > %v",
-			dev.PublicKey,
-			key,
-			now.Sub(pcs.AliveSince()),
-			s.FactTTL+s.ChunkPeriod,
-			pcs.AliveUntil().Sub(now),
-			s.ChunkPeriod*3/2,
-		)
+		log.Debug("Healthy enough from %s: %s: %v >= %v && %v > %v",
+			dev.PublicKey, key, aliveFor, aliveForMin, stillAliveFor, stillAliveForMin)
 		return true
 	}
 
