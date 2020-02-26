@@ -41,7 +41,12 @@ func (s *Socket) OutboundPacket(p *Packet) bool {
 // Close shuts down a socket
 func (s *Socket) Close() {
 	s.m.Lock()
-	defer s.m.Unlock()
+	s._close()
+	s.m.Unlock()
+}
+
+// _close does the close work without the lock held
+func (s *Socket) _close() {
 	if s.sender != nil {
 		s.sender.DelSocket(s)
 		s.sender = nil

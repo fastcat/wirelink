@@ -28,13 +28,16 @@ func (s *Socket) Connect() networking.UDPConn {
 		inbound: make(chan *Packet, 10),
 	}
 	rx := func(p *Packet) bool {
+		// TODO: can't find a way to avoid data races on the channel without
+		// including the send in the mutex
 		s.m.Lock()
-		inbound := ret.inbound
-		s.m.Unlock()
-		if inbound == nil {
+		if ret.inbound == nil || s.rx == nil {
+			// closed
+			s.m.Unlock()
 			return false
 		}
 		ret.inbound <- p
+		s.m.Unlock()
 		return true
 	}
 	s.m.Lock()
@@ -51,9 +54,11 @@ func (sc *socketUDPConn) Close() error {
 			Err: errors.New("Attempting to close closed socket"),
 		}
 	}
-	sc.s.Close()
 	sc.s.m.Lock()
+	// Socket.Close will remove the rx handler, but there might still be outstanding calls to it
+	sc.s._close()
 	if sc.inbound != nil {
+		// TODO: this might still occasionally data-race with the rx handler in Connect
 		close(sc.inbound)
 		sc.inbound = nil
 	}
