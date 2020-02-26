@@ -30,6 +30,7 @@
 		"golint",
 		"gopls",
 		"laddr",
+		"nolint",
 		"pcfg",
 		"pflag",
 		"pflags",
@@ -63,4 +64,8 @@
 	"go.testFlags": [
 		"-short",
 	],
+	"go.lintTool": "golangci-lint",
+	"go.lintFlags": [
+		"-E", "gocyclo,gofmt,goimports,golint,misspell,prealloc,stylecheck,unconvert,unparam"
+	]
 }

@@ -1,0 +1,20 @@
+# cSpell: disable
+run:
+  skipdirs:
+    - try
+
+linters:
+  enable:
+    - gocyclo
+    - gofmt
+    - goimports
+    - golint
+    - misspell
+    - prealloc
+    - stylecheck
+    - unconvert
+    - unparam
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15

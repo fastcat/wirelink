@@ -15,6 +15,7 @@ TOOLS:=\
 	golang.org/x/lint/golint \
 	github.com/vektra/mockery/.../ \
 	github.com/cweill/gotests/...@develop \
+	github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
 	$(NULL)
 
 all: everything
@@ -56,9 +57,10 @@ wirelink: generate
 	go build -v .
 vet: generate
 	go vet ./...
-lint: lint-golint
-lint-golint: generate
-	golint -set_exit_status ./...
+lint: lint-golangci
+lint-golangci: generate
+#	golint -set_exit_status ./...
+	golangci-lint run
 test: vet lint test-go test-go-race
 test-go: generate
 	go test -vet=off -timeout=20s ./...
