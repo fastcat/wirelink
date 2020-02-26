@@ -57,7 +57,6 @@ wirelink: generate
 	go build -v .
 lint: lint-golangci
 lint-golangci: generate
-#	golint -set_exit_status ./...
 	golangci-lint run
 test: lint test-go test-go-race
 test-go: generate
