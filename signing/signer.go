@@ -1,7 +1,6 @@
 package signing
 
 import (
-	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/curve25519"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -21,8 +20,6 @@ func New(privateKey *wgtypes.Key) *Signer {
 	}
 }
 
-func (s *Signer) sharedKey(peer *wgtypes.Key) [chacha20poly1305.KeySize]byte {
-	var ret [chacha20poly1305.KeySize]byte
-	curve25519.ScalarMult(&ret, (*[chacha20poly1305.KeySize]byte)(&s.privateKey), (*[chacha20poly1305.KeySize]byte)(peer))
-	return ret
+func (s *Signer) sharedKey(peer *wgtypes.Key) ([]byte, error) {
+	return curve25519.X25519(s.privateKey[:], peer[:])
 }

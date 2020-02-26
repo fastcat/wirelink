@@ -10,10 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/fastcat/wirelink/internal/testutils"
 )
 
 func Test_TTLClamping(t *testing.T) {
@@ -73,14 +72,14 @@ func TestParseEndpointV4(t *testing.T) {
 	}
 	key := testutils.MustKey(t)
 
-	f, p := mustSerialize(t, &Fact{
+	_, p := mustSerialize(t, &Fact{
 		Attribute: AttributeEndpointV4,
 		Expires:   time.Time{},
 		Subject:   &PeerSubject{Key: key},
 		Value:     ep,
 	})
 
-	f = mustDeserialize(t, p, now)
+	f := mustDeserialize(t, p, now)
 
 	assert.Equal(t, AttributeEndpointV4, f.Attribute)
 
@@ -103,14 +102,14 @@ func TestParseEndpointV6(t *testing.T) {
 	}
 	key := testutils.MustKey(t)
 
-	f, p := mustSerialize(t, &Fact{
+	_, p := mustSerialize(t, &Fact{
 		Attribute: AttributeEndpointV6,
 		Expires:   time.Time{},
 		Subject:   &PeerSubject{Key: key},
 		Value:     ep,
 	})
 
-	f = mustDeserialize(t, p, now)
+	f := mustDeserialize(t, p, now)
 
 	assert.Equal(t, AttributeEndpointV6, f.Attribute)
 
@@ -170,7 +169,7 @@ func TestParseCidrV6(t *testing.T) {
 	}
 	key := testutils.MustKey(t)
 
-	f, p := mustSerialize(t, &Fact{
+	_, p := mustSerialize(t, &Fact{
 		Attribute: AttributeAllowedCidrV6,
 		Expires:   time.Time{},
 		Subject:   &PeerSubject{Key: key},
@@ -178,7 +177,7 @@ func TestParseCidrV6(t *testing.T) {
 	})
 	t.Logf("CidrV6 packet: %v", p)
 
-	f = mustDeserialize(t, p, now)
+	f := mustDeserialize(t, p, now)
 
 	assert.Equal(t, AttributeAllowedCidrV6, f.Attribute)
 
@@ -197,7 +196,7 @@ func TestParseMember(t *testing.T) {
 
 	key := testutils.MustKey(t)
 
-	f, p := mustSerialize(t, &Fact{
+	_, p := mustSerialize(t, &Fact{
 		Attribute: AttributeMember,
 		Expires:   time.Time{},
 		Subject:   &PeerSubject{Key: key},
@@ -205,7 +204,7 @@ func TestParseMember(t *testing.T) {
 	})
 	t.Logf("Member packet: %v", p)
 
-	f = mustDeserialize(t, p, now)
+	f := mustDeserialize(t, p, now)
 
 	assert.Equal(t, AttributeMember, f.Attribute)
 
@@ -214,4 +213,61 @@ func TestParseMember(t *testing.T) {
 	}
 
 	assert.IsType(t, &EmptyValue{}, f.Value)
+}
+
+func TestFact_DecodeFrom(t *testing.T) {
+	now := time.Now()
+
+	type fields struct {
+		Attribute Attribute
+		Expires   time.Time
+		Subject   Subject
+		Value     Value
+	}
+	type args struct {
+		lengthHint int
+		data       []byte
+	}
+	tests := []struct {
+		name       string
+		args       args
+		assertion  assert.ErrorAssertionFunc
+		wantFields *fields
+	}{
+		{
+			"AttributeUnknown error",
+			args{0, []byte{byte(AttributeUnknown), 0}},
+			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
+				return assert.Error(t, err, msgAndArgs) &&
+					assert.Contains(t, err.Error(), "AttributeUnknown") &&
+					assert.Contains(t, err.Error(), "Legacy")
+			},
+			nil,
+		},
+		{
+			"invalid attribute error",
+			args{0, []byte{0xff, 0}},
+			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
+				return assert.Error(t, err, msgAndArgs) &&
+					assert.Contains(t, err.Error(), "Unrecognized attribute") &&
+					assert.Contains(t, err.Error(), "0xff")
+			},
+			nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := &Fact{}
+			tt.assertion(t, f.DecodeFrom(tt.args.lengthHint, now, bytes.NewBuffer(tt.args.data)))
+			if tt.wantFields != nil {
+				wantFact := &Fact{
+					Attribute: tt.wantFields.Attribute,
+					Expires:   tt.wantFields.Expires,
+					Subject:   tt.wantFields.Subject,
+					Value:     tt.wantFields.Value,
+				}
+				assert.Equal(t, wantFact, f)
+			}
+		})
+	}
 }

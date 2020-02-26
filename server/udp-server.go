@@ -226,6 +226,7 @@ func (s *LinkServer) RequestStop() {
 func (s *LinkServer) Stop() {
 	s.RequestStop()
 	if s.eg != nil {
+		//nolint:errcheck // we know this is going to be a cancellation error
 		s.eg.Wait()
 	}
 

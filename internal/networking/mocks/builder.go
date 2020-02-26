@@ -16,15 +16,15 @@ const tdInterfaces = "_Interfaces"
 const tdConnections = "_Connections"
 
 // WithInterface updates the mock environment to be aware of a new interface name
-func (m *Environment) WithInterface(name string) *Interface {
+func (_m *Environment) WithInterface(name string) *Interface {
 	iface := &Interface{}
-	td := m.TestData()
+	td := _m.TestData()
 	if td.Has(tdInterfaces) {
 		td.Set(tdInterfaces, append(td.Get(tdInterfaces).MustInterSlice(), iface))
 	} else {
 		td.Set(tdInterfaces, []interface{}{iface})
 	}
-	m.On("InterfaceByName", name).Return(iface, nil).Maybe()
+	_m.On("InterfaceByName", name).Return(iface, nil).Maybe()
 	iface.On("Name").Return(name).Maybe()
 	iface.On("IsUp").Return(true).Maybe()
 	return iface
@@ -32,11 +32,11 @@ func (m *Environment) WithInterface(name string) *Interface {
 
 // WithKnownInterfaces sets m.Interfaces() to return all the interface mocks
 // set up via WithInterfaces (now or in the future)
-func (m *Environment) WithKnownInterfaces() {
+func (_m *Environment) WithKnownInterfaces() {
 	// this relies on the mockery return function support
-	m.On("Interfaces").Return(
+	_m.On("Interfaces").Return(
 		func() []networking.Interface {
-			tdi := m.TestData().Get(tdInterfaces)
+			tdi := _m.TestData().Get(tdInterfaces)
 			if tdi == nil || tdi.IsNil() {
 				return nil
 			}
@@ -57,10 +57,10 @@ func (i *Interface) WithAddrs(addrs ...net.IPNet) {
 }
 
 // WithSimpleInterfaces sets up a simple map of interface name to ip address
-func (m *Environment) WithSimpleInterfaces(ifaces map[string]net.IPNet) map[string]*Interface {
+func (_m *Environment) WithSimpleInterfaces(ifaces map[string]net.IPNet) map[string]*Interface {
 	ret := make(map[string]*Interface, len(ifaces))
 	for n, ipn := range ifaces {
-		iface := m.WithInterface(n)
+		iface := _m.WithInterface(n)
 		iface.WithAddrs(ipn)
 		ret[n] = iface
 	}
@@ -68,15 +68,15 @@ func (m *Environment) WithSimpleInterfaces(ifaces map[string]net.IPNet) map[stri
 }
 
 // Test sets the T used on the Environment and all its registered Interfaces
-func (m *Environment) Test(t *testing.T) {
-	m.Mock.Test(t)
-	if m.TestData().Has(tdInterfaces) {
-		for _, iface := range m.TestData().Get(tdInterfaces).MustInterSlice() {
+func (_m *Environment) Test(t *testing.T) {
+	_m.Mock.Test(t)
+	if _m.TestData().Has(tdInterfaces) {
+		for _, iface := range _m.TestData().Get(tdInterfaces).MustInterSlice() {
 			iface.(*Interface).Test(t)
 		}
 	}
-	if m.TestData().Has(tdConnections) {
-		for _, iface := range m.TestData().Get(tdConnections).MustInterSlice() {
+	if _m.TestData().Has(tdConnections) {
+		for _, iface := range _m.TestData().Get(tdConnections).MustInterSlice() {
 			iface.(*UDPConn).Test(t)
 		}
 	}
@@ -84,15 +84,15 @@ func (m *Environment) Test(t *testing.T) {
 
 // AssertExpectations calls the method on the Environment mock and on all its
 // registered Interface mocks
-func (m *Environment) AssertExpectations(t *testing.T) {
-	m.Mock.AssertExpectations(t)
-	if m.TestData().Has(tdInterfaces) {
-		for _, iface := range m.TestData().Get(tdInterfaces).MustInterSlice() {
+func (_m *Environment) AssertExpectations(t *testing.T) {
+	_m.Mock.AssertExpectations(t)
+	if _m.TestData().Has(tdInterfaces) {
+		for _, iface := range _m.TestData().Get(tdInterfaces).MustInterSlice() {
 			iface.(*Interface).AssertExpectations(t)
 		}
 	}
-	if m.TestData().Has(tdConnections) {
-		for _, iface := range m.TestData().Get(tdConnections).MustInterSlice() {
+	if _m.TestData().Has(tdConnections) {
+		for _, iface := range _m.TestData().Get(tdConnections).MustInterSlice() {
 			iface.(*UDPConn).AssertExpectations(t)
 		}
 	}
@@ -100,8 +100,8 @@ func (m *Environment) AssertExpectations(t *testing.T) {
 
 // RegisterUDPConn records a mocked connection as being related to the environment,
 // so that calling Test or AssertExpections will propagate to it
-func (m *Environment) RegisterUDPConn(c *UDPConn) *UDPConn {
-	td := m.TestData()
+func (_m *Environment) RegisterUDPConn(c *UDPConn) *UDPConn {
+	td := _m.TestData()
 	if td.Has(tdConnections) {
 		td.Set(tdConnections, append(td.Get(tdConnections).MustInterSlice(), c))
 	} else {
@@ -123,11 +123,11 @@ func (c *UDPConn) WithPacketSequence(reference time.Time, packets ...*networking
 		mock.Anything,
 	).Return(func(ctx context.Context, maxSize int, output chan<- *networking.UDPPacket) error {
 		defer close(output)
-		offset := time.Now().Sub(reference)
+		offset := time.Since(reference)
 		ctxDone := ctx.Done()
 		for i := range packets {
 			packetDeadline := packets[i].Time.Add(offset)
-			timer := time.NewTimer(time.Now().Sub(packetDeadline))
+			timer := time.NewTimer(time.Since(packetDeadline))
 			select {
 			case <-ctxDone:
 				if !timer.Stop() {

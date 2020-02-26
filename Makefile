@@ -15,6 +15,7 @@ TOOLS:=\
 	golang.org/x/lint/golint \
 	github.com/vektra/mockery/.../ \
 	github.com/cweill/gotests/...@develop \
+	github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
 	$(NULL)
 
 all: everything
@@ -54,12 +55,10 @@ compile: generate
 wirelink: generate
 # for some reason it only puts the exe in if you tell it to build just .
 	go build -v .
-vet: generate
-	go vet ./...
-lint: lint-golint
-lint-golint: generate
-	golint -set_exit_status ./...
-test: vet lint test-go test-go-race
+lint: lint-golangci
+lint-golangci: generate
+	golangci-lint run
+test: lint test-go test-go-race
 test-go: generate
 	go test -vet=off -timeout=20s ./...
 test-go-race: generate
@@ -118,14 +117,14 @@ checkinstall: checkinstall-prep
 		make -C ../../ sysinstall \
 		</dev/null
 
-everything: fmt vet lint compile wirelink test
+everything: fmt lint compile wirelink test
 
 clean: checkinstall-clean
 	rm -vf ./wirelink $(GENERATED_SOURCES) $(patsubst %,%.tmp,$(GENERATED_SOURCES)) $(GOGENERATED_SOURCES) ./coverage.out ./coverage.html
 #TODO: any way to clean the go cache for just this package?
 
 .PHONY: all info install-tools fmt generate compile run install everything clean
-.PHONY: vet lint lint-golint test cover htmlcover
+.PHONY: lint lint-golint test cover htmlcover
 .PHONY: test-go test-go-race test-stress test-stress-go test-stress-race
 .PHONY: checkinstall checkinstall-prep checkinstall-clean
 # wirelink isn't actually phony, but we can't compute deps for it, so pretend

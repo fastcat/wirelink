@@ -80,6 +80,7 @@ func ShouldAccept(attr fact.Attribute, known bool, level *Level) bool {
 		return false
 	}
 	// default threshold is effectively infinite, to be safe
+	//nolint:ineffassign // safety catch for future code
 	threshold := DelegateTrust
 	switch attr {
 	case fact.AttributeUnknown:

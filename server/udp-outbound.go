@@ -101,6 +101,60 @@ func (s *LinkServer) shouldSendTo(p *wgtypes.Peer) sendLevel {
 	return sendPing
 }
 
+func (s *LinkServer) prepareFactsForPeer(p *wgtypes.Peer, facts []*fact.Fact, ga *fact.GroupAccumulator) {
+	for _, f := range facts {
+		// don't tell peers things about themselves
+		// they won't accept it unless we are a router,
+		// the only way this would be useful would be to tell them their external endpoint,
+		// but that's only useful if they can tell others and we can't, but if they can tell others,
+		// then those others don't need to know it because they are already connected
+		if ps, ok := f.Subject.(*fact.PeerSubject); ok && *ps == (fact.PeerSubject{Key: p.PublicKey}) {
+			continue
+		}
+		// don't tell peers other things they already know
+		if !s.peerKnowledge.peerNeeds(p, f, s.ChunkPeriod+time.Second) {
+			continue
+		}
+		err := ga.AddFact(f)
+		if err != nil {
+			log.Error("Unable to add fact to group: %v", err)
+		} else {
+			log.Debug("Peer %s needs %v", s.peerName(p.PublicKey), f)
+			// assume we will successfully send and peer will accept the info
+			// if these assumptions are wrong, re-sending more often is unlikely to help
+			s.peerKnowledge.upsertSent(p, f)
+		}
+	}
+}
+
+func (s *LinkServer) addPingFor(p *wgtypes.Peer, ping *fact.Fact, ga *fact.GroupAccumulator) {
+	var addedPing bool
+	var addPingErr error
+	// we want alive facts to live for the normal FactTTL, but we want to send them every AlivePeriod
+	// so the "forgetting window" is the difference between those
+	// we don't need to add the extra ChunkPeriod+1 buffer in this case
+	if s.peerKnowledge.peerNeeds(p, ping, s.FactTTL-s.AlivePeriod) {
+		log.Debug("Peer %s needs ping", s.peerName(p.PublicKey))
+		addPingErr = ga.AddFact(ping)
+		addedPing = true
+	} else {
+		// if we're going to send stuff to the peer anyways, opportunistically
+		// include the ping data if it won't result in sending an extra packet
+		// so that we don't send another packet again quite so soon
+		addedPing, addPingErr = ga.AddFactIfRoom(ping)
+		if addedPing {
+			log.Debug("Opportunistically sending ping to %s", s.peerName(p.PublicKey))
+		}
+	}
+	if addPingErr != nil {
+		log.Error("Unable to add ping fact to group: %v", addPingErr)
+	} else if addedPing {
+		// assume we will successfully send and peer will accept the info
+		// if these assumptions are wrong, re-sending more often is unlikely to help
+		s.peerKnowledge.upsertSent(p, ping)
+	}
+}
+
 // broadcastFacts tries to send every fact to every peer
 // it returns the number of sends performed
 func (s *LinkServer) broadcastFacts(
@@ -112,10 +166,11 @@ func (s *LinkServer) broadcastFacts(
 ) (packetsSent int, sendErrors []error) {
 	var sg errgroup.Group
 
+	//nolint:errcheck // don't care if this fails
 	s.conn.SetWriteDeadline(now.Add(timeout))
 
 	errs := make(chan error)
-	pingFact := &fact.Fact{
+	ping := &fact.Fact{
 		Subject:   &fact.PeerSubject{Key: self},
 		Attribute: fact.AttributeAlive,
 		Value:     &fact.UUIDValue{UUID: s.bootID},
@@ -134,56 +189,10 @@ func (s *LinkServer) broadcastFacts(
 		ga := fact.NewAccumulator(fact.SignedGroupMaxSafeInnerLength, now)
 
 		if sendLevel >= sendFacts {
-			for _, f := range facts {
-				// don't tell peers things about themselves
-				// they won't accept it unless we are a router,
-				// the only way this would be useful would be to tell them their external endpoint,
-				// but that's only useful if they can tell others and we can't, but if they can tell others,
-				// then those others don't need to know it because they are already connected
-				if ps, ok := f.Subject.(*fact.PeerSubject); ok && *ps == (fact.PeerSubject{Key: p.PublicKey}) {
-					continue
-				}
-				// don't tell peers other things they already know
-				if !s.peerKnowledge.peerNeeds(p, f, s.ChunkPeriod+time.Second) {
-					continue
-				}
-				err := ga.AddFact(f)
-				if err != nil {
-					log.Error("Unable to add fact to group: %v", err)
-				} else {
-					log.Debug("Peer %s needs %v", s.peerName(p.PublicKey), f)
-					// assume we will successfully send and peer will accept the info
-					// if these assumptions are wrong, re-sending more often is unlikely to help
-					s.peerKnowledge.upsertSent(p, f)
-				}
-			}
+			s.prepareFactsForPeer(p, facts, ga)
 		}
 
-		var addedPing bool
-		var addPingErr error
-		// we want alive facts to live for the normal FactTTL, but we want to send them every AlivePeriod
-		// so the "forgetting window" is the difference between those
-		// we don't need to add the extra ChunkPeriod+1 buffer in this case
-		if s.peerKnowledge.peerNeeds(p, pingFact, s.FactTTL-s.AlivePeriod) {
-			log.Debug("Peer %s needs ping", s.peerName(p.PublicKey))
-			addPingErr = ga.AddFact(pingFact)
-			addedPing = true
-		} else {
-			// if we're going to send stuff to the peer anyways, opportunistically
-			// include the ping data if it won't result in sending an extra packet
-			// so that we don't send another packet again quite so soon
-			addedPing, addPingErr = ga.AddFactIfRoom(pingFact)
-			if addedPing {
-				log.Debug("Opportunistically sending ping to %s", s.peerName(p.PublicKey))
-			}
-		}
-		if addPingErr != nil {
-			log.Error("Unable to add ping fact to group: %v", addPingErr)
-		} else if addedPing {
-			// assume we will successfully send and peer will accept the info
-			// if these assumptions are wrong, re-sending more often is unlikely to help
-			s.peerKnowledge.upsertSent(p, pingFact)
-		}
+		s.addPingFor(p, ping, ga)
 
 		signedGroupFacts, err := ga.MakeSignedGroups(s.signer, &p.PublicKey)
 		if err != nil {
@@ -216,7 +225,9 @@ func (s *LinkServer) broadcastFacts(
 		}
 		return nil
 	})
+	//nolint:errcheck // never returns an error, accumulates into errs instead
 	wg.Go(func() error { sg.Wait(); close(errs); return nil })
+	//nolint:errcheck
 	wg.Wait()
 
 	if len(errlist) != 0 {

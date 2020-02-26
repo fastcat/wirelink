@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+//nolint:gocyclo
 func TestGoUDPConn_ReadPackets(t *testing.T) {
 	now := time.Now()
 	packet1 := make([]byte, 1+rand.Intn(1400))
@@ -183,9 +184,11 @@ func TestGoUDPConn_ReadPackets(t *testing.T) {
 				for i := range tt.args.send {
 					packetOffset := tt.args.send[i].Time.Sub(now)
 					packetDeadline := sendStarted.Add(packetOffset)
-					timer := time.NewTimer(packetDeadline.Sub(time.Now()))
+					timer := time.NewTimer(time.Until(packetDeadline))
 					<-timer.C
-					udpSend.WriteToUDP(tt.args.send[i].Data, recvAddr)
+					n, err := udpSend.WriteToUDP(tt.args.send[i].Data, recvAddr)
+					assert.NoError(t, err)
+					assert.Equal(t, len(tt.args.send[i].Data), n)
 				}
 			}()
 

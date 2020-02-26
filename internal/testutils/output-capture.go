@@ -23,7 +23,8 @@ func CaptureOutput(t *testing.T, f func()) []byte {
 		f()
 	}()
 
-	tempfile.Seek(0, 0)
+	_, err = tempfile.Seek(0, 0)
+	require.NoError(t, err)
 	data, err := ioutil.ReadAll(tempfile)
 	require.NoError(t, err)
 

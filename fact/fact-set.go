@@ -34,10 +34,12 @@ func KeyOf(fact *Fact) Key {
 // factSet is used to map fact keys to the "best" fact for that key
 type factSet map[Key]*Fact
 
+/*
 func (s factSet) has(fact *Fact) bool {
 	_, ret := s[KeyOf((fact))]
 	return ret
 }
+*/
 
 func (s factSet) upsert(fact *Fact) time.Time {
 	key := KeyOf(fact)
@@ -50,9 +52,11 @@ func (s factSet) upsert(fact *Fact) time.Time {
 	return best.Expires
 }
 
+/*
 func (s factSet) delete(fact *Fact) {
 	delete(s, KeyOf(fact))
 }
+*/
 
 // MergeList merges duplicate facts in a slice, keeping the latest Expires value
 func MergeList(facts []*Fact) []*Fact {

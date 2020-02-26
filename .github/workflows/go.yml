@@ -51,7 +51,7 @@ jobs:
         git diff --exit-code
 
     - name: Lint
-      run: make vet lint
+      run: make lint
 
     - name: Test with coverage
       # building the coverage output runs the tests

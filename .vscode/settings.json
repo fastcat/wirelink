@@ -26,10 +26,12 @@
 		"deserialize",
 		"deserialized",
 		"enqueues",
+		"gocyclo",
 		"goimports",
 		"golint",
 		"gopls",
 		"laddr",
+		"nolint",
 		"pcfg",
 		"pflag",
 		"pflags",
@@ -63,4 +65,5 @@
 	"go.testFlags": [
 		"-short",
 	],
+	"go.lintTool": "golangci-lint",
 }

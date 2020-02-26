@@ -4,29 +4,26 @@ import (
 	"crypto/rand"
 	"testing"
 
+	"github.com/fastcat/wirelink/internal/testutils"
+	"github.com/stretchr/testify/assert"
+
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestSignAndVerify(t *testing.T) {
-	key1, err := wgtypes.GeneratePrivateKey()
-	if err != nil {
-		t.Fatal("Unable to generate a private key")
-	}
-	key2, err := wgtypes.GeneratePrivateKey()
-	if err != nil {
-		t.Fatal("Unable to generate a private key")
-	}
-	pubkey1 := key1.PublicKey()
-	pubkey2 := key2.PublicKey()
+	key1, pubkey1 := testutils.MustKeyPair(t)
+	key2, pubkey2 := testutils.MustKeyPair(t)
 
 	signer1 := New(&key1)
 	signer2 := New(&key2)
 
-	sk1 := signer1.sharedKey(&pubkey2)
-	sk2 := signer2.sharedKey(&pubkey1)
-	if sk1 != sk2 {
-		t.Errorf("Shared keys are unequal: %v / %v", sk1, sk2)
-	}
+	sk1, err := signer1.sharedKey(&pubkey2)
+	require.NoError(t, err)
+	sk2, err := signer2.sharedKey(&pubkey1)
+	require.NoError(t, err)
+	assert.Equal(t, sk1, sk2, "Shared keys should compute equal")
 
 	// this is a "random" value
 	const dataLen = 87
@@ -56,4 +53,16 @@ func TestSignAndVerify(t *testing.T) {
 	if valid || err == nil {
 		t.Errorf("Incorrectly validated corrupted data")
 	}
+}
+
+func TestSignErrors(t *testing.T) {
+	var badKey wgtypes.Key
+	var badPub wgtypes.Key
+	goodKey, _ := testutils.MustKeyPair(t)
+	signer := New(&badKey)
+	_, err := signer.sharedKey(&badPub)
+	assert.Error(t, err)
+	signer = New(&goodKey)
+	_, err = signer.sharedKey(&badPub)
+	assert.Error(t, err)
 }

@@ -19,7 +19,10 @@ func (s *Signer) SignFor(
 	tag [poly1305.TagSize]byte,
 	err error,
 ) {
-	sk := s.sharedKey(peer)
+	sk, err := s.sharedKey(peer)
+	if err != nil {
+		return
+	}
 	if _, err = rand.Read(nonce[:]); err != nil {
 		return
 	}

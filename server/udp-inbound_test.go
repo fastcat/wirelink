@@ -172,17 +172,17 @@ func TestLinkServer_processSignedGroup(t *testing.T) {
 		return f
 	}
 
-	sgvFromBytes := func(t *testing.T, data []byte) *fact.SignedGroupValue {
+	sgvFromBytes := func(data []byte) *fact.SignedGroupValue {
 		return sign(&fact.SignedGroupValue{
 			InnerBytes: data,
 		})
 	}
-	svgFromFacts := func(t *testing.T, facts ...*fact.Fact) *fact.SignedGroupValue {
+	svgFromFacts := func(facts ...*fact.Fact) *fact.SignedGroupValue {
 		data := make([]byte, 0)
 		for _, f := range facts {
 			data = append(data, util.MustBytes(f.MarshalBinaryNow(now))...)
 		}
-		return sgvFromBytes(t, data)
+		return sgvFromBytes(data)
 	}
 	rf := func(f *fact.Fact) *ReceivedFact {
 		return &ReceivedFact{
@@ -190,12 +190,12 @@ func TestLinkServer_processSignedGroup(t *testing.T) {
 			source: *properSource,
 		}
 	}
-	corrupt := func(offset int, data []byte) []byte {
+	corrupt := func(offset int, data []byte) /* []byte */ {
 		inner := data[offset:]
 		// using xor to ensure we change at least one bit, i.e. no matter what random value we get,
 		// we will change the target byte
 		inner[rand.Intn(len(inner))] ^= byte(1 + rand.Intn(255))
-		return data
+		// return data
 	}
 	corruptSGV := func(f *fact.SignedGroupValue) *fact.SignedGroupValue {
 		pos := rand.Intn(len(f.Nonce) + len(f.Tag) + len(f.InnerBytes))
@@ -242,7 +242,7 @@ func TestLinkServer_processSignedGroup(t *testing.T) {
 				&fact.Fact{
 					Attribute: fact.AttributeSignedGroup,
 					Subject:   &fact.PeerSubject{Key: remotePubKey},
-					Value:     sgvFromBytes(t, []byte{}),
+					Value:     sgvFromBytes([]byte{}),
 				},
 				properSource,
 			},
@@ -258,7 +258,7 @@ func TestLinkServer_processSignedGroup(t *testing.T) {
 				&fact.Fact{
 					Attribute: fact.AttributeSignedGroup,
 					Subject:   &fact.PeerSubject{Key: remotePubKey},
-					Value:     svgFromFacts(t, facts.AliveFact(&remotePubKey, expires)),
+					Value:     svgFromFacts(facts.AliveFact(&remotePubKey, expires)),
 				},
 				properSource,
 			},
@@ -276,7 +276,7 @@ func TestLinkServer_processSignedGroup(t *testing.T) {
 				&fact.Fact{
 					Attribute: fact.AttributeSignedGroup,
 					Subject:   &fact.PeerSubject{Key: remotePubKey},
-					Value: svgFromFacts(t,
+					Value: svgFromFacts(
 						facts.AliveFact(&remotePubKey, expires),
 						facts.EndpointFactFull(properSource, &remotePubKey, expires),
 					),
@@ -298,7 +298,7 @@ func TestLinkServer_processSignedGroup(t *testing.T) {
 				&fact.Fact{
 					Attribute: fact.AttributeSignedGroup,
 					Subject:   &fact.PeerSubject{Key: remotePubKey},
-					Value:     corruptSGV(svgFromFacts(t, facts.AliveFact(&remotePubKey, expires))),
+					Value:     corruptSGV(svgFromFacts(facts.AliveFact(&remotePubKey, expires))),
 				},
 				properSource,
 			},
@@ -315,7 +315,7 @@ func TestLinkServer_processSignedGroup(t *testing.T) {
 				&fact.Fact{
 					Attribute: fact.AttributeSignedGroup,
 					Subject:   &fact.PeerSubject{Key: remotePubKey},
-					Value:     svgFromFacts(t, facts.AliveFact(&remotePubKey, expires)),
+					Value:     svgFromFacts(facts.AliveFact(&remotePubKey, expires)),
 				},
 				improperSource,
 			},
@@ -332,7 +332,7 @@ func TestLinkServer_processSignedGroup(t *testing.T) {
 				&fact.Fact{
 					Attribute: fact.AttributeSignedGroup,
 					Subject:   &fact.PeerSubject{Key: remotePubKey},
-					Value:     shorten(svgFromFacts(t, facts.AliveFact(&remotePubKey, expires))),
+					Value:     shorten(svgFromFacts(facts.AliveFact(&remotePubKey, expires))),
 				},
 				properSource,
 			},
@@ -349,7 +349,7 @@ func TestLinkServer_processSignedGroup(t *testing.T) {
 				&fact.Fact{
 					Attribute: fact.AttributeSignedGroup,
 					Subject:   &fact.PeerSubject{Key: remotePubKey},
-					Value:     sign(shorten(svgFromFacts(t, facts.AliveFact(&remotePubKey, expires)))),
+					Value:     sign(shorten(svgFromFacts(facts.AliveFact(&remotePubKey, expires)))),
 				},
 				properSource,
 			},
@@ -616,7 +616,7 @@ func TestLinkServer_chunkPackets_slow(t *testing.T) {
 				timer := time.NewTimer(time.Hour)
 				defer timer.Stop()
 				for _, p := range tt.packets {
-					currentOffset := time.Now().Sub(start)
+					currentOffset := time.Since(start)
 					delay := p.offset - currentOffset
 					if delay > 0 {
 						timer.Reset(delay)
@@ -625,7 +625,7 @@ func TestLinkServer_chunkPackets_slow(t *testing.T) {
 					// sending a nil packet is valid, so we need to check flags if that's what we've got
 					if p.packet != nil {
 						// treat the packet expires as an offset from timeZero, update it to be that offset from now
-						p.packet.fact.Expires.Add(time.Now().Sub(timeZero))
+						p.packet.fact.Expires.Add(time.Since(timeZero))
 						packets <- p.packet
 					} else {
 						packets <- nil
@@ -636,7 +636,7 @@ func TestLinkServer_chunkPackets_slow(t *testing.T) {
 			go func() {
 				defer close(doneReceive)
 				for chunk := range newFacts {
-					gotChunks = append(gotChunks, receive{time.Now().Sub(start), chunk})
+					gotChunks = append(gotChunks, receive{time.Since(start), chunk})
 				}
 			}()
 			tt.assertion(t, s.chunkPackets(packets, newFacts, tt.args.maxChunk))

@@ -33,9 +33,9 @@ func TestParseSignedGroup_Trivial(t *testing.T) {
 
 	//TODO: use mock data for TTL, hard because clock moves
 
-	f, p := mustMockAlivePacket(t, &mockSubjectKey, &mockBootID)
+	_, p := mustMockAlivePacket(t, &mockSubjectKey, &mockBootID)
 
-	f, p = mustSerialize(t, &Fact{
+	_, p = mustSerialize(t, &Fact{
 		Attribute: AttributeSignedGroup,
 		Subject:   &PeerSubject{Key: mockSignerKey},
 		Expires:   time.Time{},
@@ -46,7 +46,7 @@ func TestParseSignedGroup_Trivial(t *testing.T) {
 		},
 	})
 
-	f = mustDeserialize(t, p, now)
+	f := mustDeserialize(t, p, now)
 	assert.Equal(t, AttributeSignedGroup, f.Attribute)
 
 	if assert.IsType(t, &PeerSubject{}, f.Subject) {
@@ -121,7 +121,7 @@ func TestParseSignedGroup_Inner(t *testing.T) {
 	inner = append(inner, p1...)
 	inner = append(inner, p2...)
 
-	f, p := mustSerialize(t, &Fact{
+	_, p := mustSerialize(t, &Fact{
 		Attribute: AttributeSignedGroup,
 		Subject:   &PeerSubject{Key: mockSignerKey},
 		Expires:   time.Time{},
@@ -132,7 +132,7 @@ func TestParseSignedGroup_Inner(t *testing.T) {
 		},
 	})
 
-	f = mustDeserialize(t, p, now)
+	f := mustDeserialize(t, p, now)
 	assert.Equal(t, AttributeSignedGroup, f.Attribute)
 
 	if assert.IsType(t, &PeerSubject{}, f.Subject) {

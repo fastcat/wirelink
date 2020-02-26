@@ -42,7 +42,7 @@ func (c *GoUDPConn) ReadPackets(
 		for {
 			select {
 			case <-ctxDone:
-				// interrupt any ongoing read
+				//nolint:errcheck // interrupt any ongoing read, don't care about error
 				c.SetReadDeadline(time.Now())
 				return
 			case <-readsDone:
@@ -59,8 +59,10 @@ READLOOP:
 		default:
 			deadline, ok := ctx.Deadline()
 			if ok {
+				//nolint:errcheck // don't care about error
 				c.SetReadDeadline(deadline)
 			} else {
+				//nolint:errcheck // don't care about error
 				c.SetReadDeadline(time.Time{})
 			}
 			n, addr, err := c.ReadFromUDP(buffer)
@@ -98,7 +100,7 @@ READLOOP:
 	close(readsDone)
 	<-monitorDone
 
-	// reset read deadline on the connection to be safe
+	//nolint:errcheck // don't care about error // reset read deadline on the connection to be safe
 	c.SetReadDeadline(time.Time{})
 
 	// TODO: should we return ctx.Err() or the network closing error here?

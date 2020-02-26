@@ -19,7 +19,10 @@ func (s *Signer) VerifyFrom(
 	valid bool,
 	err error,
 ) {
-	sk := s.sharedKey(peer)
+	sk, err := s.sharedKey(peer)
+	if err != nil {
+		return
+	}
 	var cipher cipher.AEAD
 	cipher, err = chacha20poly1305.NewX(sk[:])
 	if err != nil {
