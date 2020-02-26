@@ -10,10 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/fastcat/wirelink/internal/testutils"
 )
 
 func Test_TTLClamping(t *testing.T) {
@@ -214,4 +213,61 @@ func TestParseMember(t *testing.T) {
 	}
 
 	assert.IsType(t, &EmptyValue{}, f.Value)
+}
+
+func TestFact_DecodeFrom(t *testing.T) {
+	now := time.Now()
+
+	type fields struct {
+		Attribute Attribute
+		Expires   time.Time
+		Subject   Subject
+		Value     Value
+	}
+	type args struct {
+		lengthHint int
+		data       []byte
+	}
+	tests := []struct {
+		name       string
+		args       args
+		assertion  assert.ErrorAssertionFunc
+		wantFields *fields
+	}{
+		{
+			"AttributeUnknown error",
+			args{0, []byte{byte(AttributeUnknown), 0}},
+			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
+				return assert.Error(t, err, msgAndArgs) &&
+					assert.Contains(t, err.Error(), "AttributeUnknown") &&
+					assert.Contains(t, err.Error(), "Legacy")
+			},
+			nil,
+		},
+		{
+			"invalid attribute error",
+			args{0, []byte{0xff, 0}},
+			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
+				return assert.Error(t, err, msgAndArgs) &&
+					assert.Contains(t, err.Error(), "Unrecognized attribute") &&
+					assert.Contains(t, err.Error(), "0xff")
+			},
+			nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := &Fact{}
+			tt.assertion(t, f.DecodeFrom(tt.args.lengthHint, now, bytes.NewBuffer(tt.args.data)))
+			if tt.wantFields != nil {
+				wantFact := &Fact{
+					Attribute: tt.wantFields.Attribute,
+					Expires:   tt.wantFields.Expires,
+					Subject:   tt.wantFields.Subject,
+					Value:     tt.wantFields.Value,
+				}
+				assert.Equal(t, wantFact, f)
+			}
+		})
+	}
 }

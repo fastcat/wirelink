@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"testing"
 
+	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/stretchr/testify/assert"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -12,16 +13,8 @@ import (
 )
 
 func TestSignAndVerify(t *testing.T) {
-	key1, err := wgtypes.GeneratePrivateKey()
-	if err != nil {
-		t.Fatal("Unable to generate a private key")
-	}
-	key2, err := wgtypes.GeneratePrivateKey()
-	if err != nil {
-		t.Fatal("Unable to generate a private key")
-	}
-	pubkey1 := key1.PublicKey()
-	pubkey2 := key2.PublicKey()
+	key1, pubkey1 := testutils.MustKeyPair(t)
+	key2, pubkey2 := testutils.MustKeyPair(t)
 
 	signer1 := New(&key1)
 	signer2 := New(&key2)
@@ -60,4 +53,16 @@ func TestSignAndVerify(t *testing.T) {
 	if valid || err == nil {
 		t.Errorf("Incorrectly validated corrupted data")
 	}
+}
+
+func TestSignErrors(t *testing.T) {
+	var badKey wgtypes.Key
+	var badPub wgtypes.Key
+	goodKey, _ := testutils.MustKeyPair(t)
+	signer := New(&badKey)
+	_, err := signer.sharedKey(&badPub)
+	assert.Error(t, err)
+	signer = New(&goodKey)
+	_, err = signer.sharedKey(&badPub)
+	assert.Error(t, err)
 }
