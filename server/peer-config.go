@@ -53,15 +53,17 @@ FACTLOOP:
 	return nil
 }
 
-func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Device, startTime, now time.Time) {
-	factsByPeer := groupFactsByPeer(newFacts)
-
+func (s *LinkServer) collectPeerFlags(
+	now time.Time,
+	dev *wgtypes.Device,
+	factsByPeer map[wgtypes.Key][]*fact.Fact,
+) (localPeers, removePeer, validPeers map[wgtypes.Key]bool) {
 	// track which peers are known to the device, so we know which we should add
 	// this assumes that the prior layer has filtered to not include facts for
 	// peers we shouldn't add
-	localPeers := make(map[wgtypes.Key]bool)
-	removePeer := make(map[wgtypes.Key]bool)
-	validPeers := make(map[wgtypes.Key]bool)
+	localPeers = make(map[wgtypes.Key]bool)
+	removePeer = make(map[wgtypes.Key]bool)
+	validPeers = make(map[wgtypes.Key]bool)
 	// the "self" key is always local and valid
 	localPeers[dev.PublicKey] = true
 	validPeers[dev.PublicKey] = true
@@ -70,20 +72,6 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 	for k := range s.config.Peers {
 		validPeers[k] = true
 	}
-
-	// don't need the group members to cancel when one of them fails
-	var eg errgroup.Group
-
-	// we don't allow deconfigure/delete until we've been running for
-	// longer than the fact ttl so that we don't remove config until we have a
-	// reasonable shot at having received everything from the network, or if we
-	// are a router or a source of allowed IPs
-	startedAndNotRouter := now.Sub(startTime) > s.FactTTL && !s.config.IsRouterNow
-
-	selfTrust := s.config.Peers.Trust(dev.PublicKey, trust.Untrusted)
-
-	// deconfigure also requires that we are not listed as an AIP trust source
-	allowDeconfigure := startedAndNotRouter && selfTrust < trust.AllowedIPs
 
 	// loop over the local peers once to update their current state flags
 	// before we modify anything. this is important for some race conditions
@@ -123,6 +111,28 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 		// we already added all the peers in s.config.Peers to validPeers, don't need to re-check here
 		return factsByPeer[k] != nil || localPeers[k] || validPeers[k]
 	})
+
+	return
+}
+
+func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Device, startTime, now time.Time) {
+	factsByPeer := groupFactsByPeer(newFacts)
+
+	localPeers, removePeer, validPeers := s.collectPeerFlags(now, dev, factsByPeer)
+
+	// don't need the group members to cancel when one of them fails
+	var eg errgroup.Group
+
+	// we don't allow deconfigure/delete until we've been running for
+	// longer than the fact ttl so that we don't remove config until we have a
+	// reasonable shot at having received everything from the network, or if we
+	// are a router or a source of allowed IPs
+	startedAndNotRouter := now.Sub(startTime) > s.FactTTL && !s.config.IsRouterNow
+
+	selfTrust := s.config.Peers.Trust(dev.PublicKey, trust.Untrusted)
+
+	// deconfigure also requires that we are not listed as an AIP trust source
+	allowDeconfigure := startedAndNotRouter && selfTrust < trust.AllowedIPs
 
 	updatePeer := func(peer *wgtypes.Peer, allowAdd bool) {
 		factGroup, ok := factsByPeer[peer.PublicKey]
