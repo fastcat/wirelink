@@ -72,8 +72,7 @@ func (w *WirelinkCmd) Init(env networking.Environment) error {
 // Run invokes the server
 func (w *WirelinkCmd) Run() error {
 	defer w.Server.Close()
-	var err error
-	err = w.Server.Start()
+	err := w.Server.Start()
 	if err != nil {
 		return errors.Wrapf(err, "Unable to start server for interface %s", w.Config.Iface)
 	}

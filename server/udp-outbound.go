@@ -112,6 +112,7 @@ func (s *LinkServer) broadcastFacts(
 ) (packetsSent int, sendErrors []error) {
 	var sg errgroup.Group
 
+	//nolint:errcheck // don't care if this fails
 	s.conn.SetWriteDeadline(now.Add(timeout))
 
 	errs := make(chan error)
@@ -216,7 +217,9 @@ func (s *LinkServer) broadcastFacts(
 		}
 		return nil
 	})
+	//nolint:errcheck // never returns an error, accumulates into errs instead
 	wg.Go(func() error { sg.Wait(); close(errs); return nil })
+	//nolint:errcheck
 	wg.Wait()
 
 	if len(errlist) != 0 {

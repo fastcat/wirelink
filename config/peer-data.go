@@ -57,16 +57,14 @@ func (p *PeerData) Parse() (key wgtypes.Key, peer Peer, err error) {
 		// even if it is not actually valid as such (e.g. all numbers), and then a lookup attempted,
 		// and if the lookup fails, we get an DNS error
 		_, err = net.LookupIP(host)
-		if err != nil {
-			if _, ok := err.(*net.DNSError); ok {
-				// ignore DNS errors ... which actually ends up as basically everything except for a
-				// parse error for giving the empty string
-				err = nil
-			} else {
-				// this branch is very hard, if not impossible, to reach in a test or in the real world
-				err = errors.Wrapf(err, "Bad endpoint host in '%s' for '%s'='%s'", ep, p.PublicKey, p.Name)
-				return
-			}
+		if _, ok := err.(*net.DNSError); ok {
+			// ignore DNS errors ... which actually ends up as basically everything except for a
+			// parse error for giving the empty string
+			err = nil
+		} else if err != nil {
+			// this branch is very hard, if not impossible, to reach in a test or in the real world
+			err = errors.Wrapf(err, "Bad endpoint host in '%s' for '%s'='%s'", ep, p.PublicKey, p.Name)
+			return
 		}
 
 		//TODO: can validate host portion is syntactically valid: do a lookup and

@@ -14,11 +14,11 @@ import (
 type allowedIPFlag int
 
 const (
-	aipNone     allowedIPFlag = 0
-	aipCurrent                = 1 << 0
-	aipAdding                 = 1 << 1
-	aipValid                  = 1 << 2
-	aipDeleting               = 1 << 3
+	aipNone    allowedIPFlag = 0
+	aipCurrent               = 1 << 0
+	aipAdding                = 1 << 1
+	aipValid                 = 1 << 2
+	// aipDeleting               = 1 << 3
 
 	aipAlreadyMask = aipCurrent | aipAdding
 	// trust values others started adding, e.g. auto ip
@@ -35,7 +35,11 @@ func fvKey(value fact.Value) string {
 
 func keyIPNet(key string) net.IPNet {
 	v := &fact.IPNetValue{}
-	v.UnmarshalBinary([]byte(key))
+	err := v.UnmarshalBinary([]byte(key))
+	// this should never happen
+	if err != nil {
+		panic(err)
+	}
 	return v.IPNet
 }
 

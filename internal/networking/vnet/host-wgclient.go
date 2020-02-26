@@ -127,7 +127,7 @@ func (hc *hostWgClient) ConfigureDevice(name string, cfg wgtypes.Config) error {
 			} else if p.UpdateOnly {
 				continue
 			} else {
-				tp = t.AddPeer(peerID, p.PublicKey, p.Endpoint, p.AllowedIPs)
+				/* tp = */ t.AddPeer(peerID, p.PublicKey, p.Endpoint, p.AllowedIPs)
 			}
 		} else if p.Remove {
 			t.DelPeer(peerID)

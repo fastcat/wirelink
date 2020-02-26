@@ -4,7 +4,11 @@ import (
 	"crypto/rand"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestSignAndVerify(t *testing.T) {
@@ -22,11 +26,11 @@ func TestSignAndVerify(t *testing.T) {
 	signer1 := New(&key1)
 	signer2 := New(&key2)
 
-	sk1 := signer1.sharedKey(&pubkey2)
-	sk2 := signer2.sharedKey(&pubkey1)
-	if sk1 != sk2 {
-		t.Errorf("Shared keys are unequal: %v / %v", sk1, sk2)
-	}
+	sk1, err := signer1.sharedKey(&pubkey2)
+	require.NoError(t, err)
+	sk2, err := signer2.sharedKey(&pubkey1)
+	require.NoError(t, err)
+	assert.Equal(t, sk1, sk2, "Shared keys should compute equal")
 
 	// this is a "random" value
 	const dataLen = 87

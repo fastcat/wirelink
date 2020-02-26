@@ -192,9 +192,8 @@ func (pcs *PeerConfigState) NextEndpoint(peerFacts []*fact.Fact, now time.Time) 
 		case fact.AttributeEndpointV4:
 			fallthrough
 		case fact.AttributeEndpointV6:
-			fvk := string(util.MustBytes(pf.Value.MarshalBinary()))
 			// this logic relies on the zero value of a Time being very far in the past
-			lu := pcs.endpointLastUsed[fvk]
+			lu := pcs.endpointLastUsed[string(util.MustBytes(pf.Value.MarshalBinary()))]
 			if lu.Before(bestLastUsed) {
 				best = pf
 				bestLastUsed = lu

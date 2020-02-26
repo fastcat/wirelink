@@ -51,7 +51,7 @@ func SetDebug(enabled bool) {
 }
 
 func debugOffset() string {
-	return time.Now().Sub(debugReference).Round(time.Millisecond).String()
+	return time.Since(debugReference).Round(time.Millisecond).String()
 }
 
 // IsDebug returns whether debug logging is enabled

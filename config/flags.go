@@ -68,7 +68,11 @@ func Init(args []string) (flags *pflag.FlagSet, vcfg *viper.Viper) {
 	// no flag for config-path for now, only env
 	flags.BoolP(DebugFlag, "d", false, "Enable debug logging output")
 
-	vcfg.BindPFlags(flags)
+	err := vcfg.BindPFlags(flags)
+	// this should never happen, flags are constant
+	if err != nil {
+		panic(err)
+	}
 	vcfg.SetEnvPrefix(programName(args))
 	vcfg.AutomaticEnv()
 	// hard to set env vars with hyphens, bash doesn't like it
@@ -114,9 +118,8 @@ func Parse(flags *pflag.FlagSet, vcfg *viper.Viper, args []string) (ret *ServerD
 
 	err = vcfg.ReadInConfig()
 	if err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			// Config file not found, harmless
-		} else {
+		// config file not found is harmless
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return nil, errors.Wrap(err, "Unable to read config file")
 		}
 	}

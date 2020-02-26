@@ -73,14 +73,14 @@ func TestParseEndpointV4(t *testing.T) {
 	}
 	key := testutils.MustKey(t)
 
-	f, p := mustSerialize(t, &Fact{
+	_, p := mustSerialize(t, &Fact{
 		Attribute: AttributeEndpointV4,
 		Expires:   time.Time{},
 		Subject:   &PeerSubject{Key: key},
 		Value:     ep,
 	})
 
-	f = mustDeserialize(t, p, now)
+	f := mustDeserialize(t, p, now)
 
 	assert.Equal(t, AttributeEndpointV4, f.Attribute)
 
@@ -103,14 +103,14 @@ func TestParseEndpointV6(t *testing.T) {
 	}
 	key := testutils.MustKey(t)
 
-	f, p := mustSerialize(t, &Fact{
+	_, p := mustSerialize(t, &Fact{
 		Attribute: AttributeEndpointV6,
 		Expires:   time.Time{},
 		Subject:   &PeerSubject{Key: key},
 		Value:     ep,
 	})
 
-	f = mustDeserialize(t, p, now)
+	f := mustDeserialize(t, p, now)
 
 	assert.Equal(t, AttributeEndpointV6, f.Attribute)
 
@@ -170,7 +170,7 @@ func TestParseCidrV6(t *testing.T) {
 	}
 	key := testutils.MustKey(t)
 
-	f, p := mustSerialize(t, &Fact{
+	_, p := mustSerialize(t, &Fact{
 		Attribute: AttributeAllowedCidrV6,
 		Expires:   time.Time{},
 		Subject:   &PeerSubject{Key: key},
@@ -178,7 +178,7 @@ func TestParseCidrV6(t *testing.T) {
 	})
 	t.Logf("CidrV6 packet: %v", p)
 
-	f = mustDeserialize(t, p, now)
+	f := mustDeserialize(t, p, now)
 
 	assert.Equal(t, AttributeAllowedCidrV6, f.Attribute)
 
@@ -197,7 +197,7 @@ func TestParseMember(t *testing.T) {
 
 	key := testutils.MustKey(t)
 
-	f, p := mustSerialize(t, &Fact{
+	_, p := mustSerialize(t, &Fact{
 		Attribute: AttributeMember,
 		Expires:   time.Time{},
 		Subject:   &PeerSubject{Key: key},
@@ -205,7 +205,7 @@ func TestParseMember(t *testing.T) {
 	})
 	t.Logf("Member packet: %v", p)
 
-	f = mustDeserialize(t, p, now)
+	f := mustDeserialize(t, p, now)
 
 	assert.Equal(t, AttributeMember, f.Attribute)
 

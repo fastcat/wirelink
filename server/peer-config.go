@@ -207,8 +207,8 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 		eg.Go(func() error { return s.deletePeers(dev, removePeer, now) })
 	}
 
-	// we don't actually care if any of the routines failed, just that they
-	// finished
+	//nolint:errcheck // we don't actually care if any of the routines failed,
+	// just that they finished
 	eg.Wait()
 }
 
@@ -259,7 +259,6 @@ func (s *LinkServer) deletePeers(
 			doDelPeers = true
 			log.Debug("Safe to delete peers from %s: %s is healthy", dev.PublicKey, pk)
 			break
-		} else {
 		}
 	}
 	if !doDelPeers && !s.config.Peers.AnyTrustedAt(trust.Membership) {

@@ -110,10 +110,7 @@ func (ipn *IPNetValue) DecodeFrom(lengthHint int, reader io.Reader) error {
 
 // IPNetValue inherits Stringer from IPNet
 
-// EmptyValue is used to represent facts of AttributeUnknown with a zero length value,
-// which indicate just that a remote peer is alive and talking to us
-//
-// Deprecated: prior uses of this should often use UUIDValue instead
+// EmptyValue is currently used as a placeholder in Membership facts
 type EmptyValue struct{}
 
 var _ Value = EmptyValue{}

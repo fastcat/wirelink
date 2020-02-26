@@ -54,18 +54,26 @@ func ipMatcher(ip net.IP) func(source net.UDPAddr) bool {
 		return ip.Equal(source.IP)
 	}
 }
+
+/*
 func (m *mockEvaluator) trustsSource(ip net.IP, level Level) *mockEvaluator {
 	m.On("TrustLevel", mock.Anything, mock.MatchedBy(ipMatcher(ip))).Return(&level)
 	return m
 }
+*/
+
+//nolint:unparam // keep builder pattern
 func (m *mockEvaluator) knowsSource(ip net.IP, level *Level) *mockEvaluator {
 	m.On("TrustLevel", mock.Anything, mock.MatchedBy(ipMatcher(ip))).Return(level)
 	return m
 }
+
+/*
 func (m *mockEvaluator) ignoresSource(ip net.IP) *mockEvaluator {
 	m.On("TrustLevel", mock.Anything, mock.MatchedBy(ipMatcher(ip))).Return(nil)
 	return m
 }
+*/
 
 func Test_composite_IsKnown(t *testing.T) {
 	k := testutils.MustKey(t)

@@ -114,8 +114,7 @@ func (h *Host) DelSocket(s *Socket) {
 // host-level listening socket, and if so enqueues it for that listener
 func (h *Host) InboundPacket(p *Packet) bool {
 	h.m.Lock()
-	var rs *Socket
-	rs = destinationSocket(p, h.sockets)
+	rs := destinationSocket(p, h.sockets)
 	h.m.Unlock()
 
 	if rs == nil {
