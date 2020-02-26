@@ -63,6 +63,7 @@ func (sc *socketUDPConn) Close() error {
 		sc.inbound = nil
 	}
 	sc.s.m.Unlock()
+	sc.s = nil
 	return nil
 }
 
