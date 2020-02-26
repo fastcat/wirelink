@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+//nolint:gocyclo
 func TestGoUDPConn_ReadPackets(t *testing.T) {
 	now := time.Now()
 	packet1 := make([]byte, 1+rand.Intn(1400))

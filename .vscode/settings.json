@@ -26,6 +26,7 @@
 		"deserialize",
 		"deserialized",
 		"enqueues",
+		"gocyclo",
 		"goimports",
 		"golint",
 		"gopls",

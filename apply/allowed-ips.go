@@ -89,7 +89,7 @@ func EnsureAllowedIPs(
 	if allowDeconfigure {
 		replace := false
 		for _, f := range aipFlags {
-			if f&aipCurrent != aipNone && f&aipValid == aipNone {
+			if f&(aipCurrent|aipValid) == aipCurrent {
 				// peer has a current AIP that it should not
 				// we need to convert the config to a _replace_ mode
 				replace = true
