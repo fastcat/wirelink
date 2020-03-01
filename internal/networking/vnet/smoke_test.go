@@ -5,10 +5,11 @@ import (
 	"testing"
 
 	"github.com/fastcat/wirelink/internal/testutils"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 const wgPort = 51820

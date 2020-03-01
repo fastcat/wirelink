@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/fastcat/wirelink/internal/testutils"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

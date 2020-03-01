@@ -3,9 +3,10 @@ package peerfacts
 import (
 	"time"
 
+	"github.com/pkg/errors"
+
 	"github.com/fastcat/wirelink/apply"
 	"github.com/fastcat/wirelink/fact"
-	"github.com/pkg/errors"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )

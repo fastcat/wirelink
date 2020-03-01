@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/fastcat/wirelink/internal/networking"
+
 	"github.com/stretchr/testify/mock"
 )
 

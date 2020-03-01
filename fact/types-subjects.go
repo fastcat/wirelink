@@ -3,8 +3,9 @@ package fact
 import (
 	"io"
 
-	"github.com/fastcat/wirelink/util"
 	"github.com/pkg/errors"
+
+	"github.com/fastcat/wirelink/util"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )

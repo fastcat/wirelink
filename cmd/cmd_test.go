@@ -6,10 +6,11 @@ import (
 	"syscall"
 	"testing"
 
+	"github.com/pkg/errors"
+
 	"github.com/fastcat/wirelink/internal/networking"
 	"github.com/fastcat/wirelink/internal/networking/host"
 	"github.com/fastcat/wirelink/internal/testutils"
-	"github.com/pkg/errors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

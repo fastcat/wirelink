@@ -5,11 +5,12 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/fastcat/wirelink/signing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAccumulatorLimits(t *testing.T) {

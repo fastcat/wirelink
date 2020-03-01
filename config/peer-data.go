@@ -3,8 +3,9 @@ package config
 import (
 	"net"
 
-	"github.com/fastcat/wirelink/trust"
 	"github.com/pkg/errors"
+
+	"github.com/fastcat/wirelink/trust"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )

@@ -7,7 +7,9 @@ import (
 
 	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/fastcat/wirelink/trust"
+
 	"github.com/stretchr/testify/assert"
+
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 

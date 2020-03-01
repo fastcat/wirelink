@@ -3,9 +3,10 @@ package vnet
 import (
 	"net"
 
+	"github.com/pkg/errors"
+
 	"github.com/fastcat/wirelink/internal"
 	"github.com/fastcat/wirelink/util"
-	"github.com/pkg/errors"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
