@@ -15,6 +15,7 @@ require (
 	github.com/stretchr/testify v1.4.0
 	github.com/vishvananda/netlink v1.1.0
 	golang.org/x/crypto v0.0.0-20200210222208-86ce3cb69678
+	golang.org/x/net v0.0.0-20200226121028-0de0cce0169b // indirect
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 	golang.zx2c4.com/wireguard v0.0.20200121
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200205215550-e35592f146e4
