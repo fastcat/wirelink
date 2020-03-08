@@ -86,9 +86,10 @@ func (mm *MemberMetadata) DecodeFrom(lengthHint int, reader io.Reader) error {
 		}
 		p += n
 		if p+int(al) > len(payload) {
-			return errors.Errorf("attribute length error at payload offset %d", p)
+			return errors.Errorf("attribute length error at payload offset %d: +%d>%d", p, al, len(payload))
 		}
 		mm.attributes[a] = string(payload[p : p+int(al)])
+		p += int(al)
 	}
 
 	return nil
