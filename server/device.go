@@ -52,6 +52,7 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device, now time.Time) (ret []*fa
 	// these may duplicate other known facts, higher layers will dedupe
 	for pk, pc := range s.config.Peers {
 		// statically configured peers are always valid members
+		// TODO: replace this with an AttributeMemberMetadata if we have metadata
 		ret = append(ret, &fact.Fact{
 			Attribute: fact.AttributeMember,
 			Subject:   &fact.PeerSubject{Key: pk},

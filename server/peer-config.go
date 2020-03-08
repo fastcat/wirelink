@@ -98,7 +98,9 @@ func (s *LinkServer) collectPeerFlags(
 		// don't flag for removal anything already identified as valid
 		if validPeers[peer] {
 			continue
-		} else if fact.SliceHas(factGroup, func(f *fact.Fact) bool { return f.Attribute == fact.AttributeMember }) {
+		} else if fact.SliceHas(factGroup, func(f *fact.Fact) bool {
+			return f.Attribute == fact.AttributeMember || f.Attribute == fact.AttributeMemberMetadata
+		}) {
 			validPeers[peer] = true
 		} else {
 			removePeer[peer] = true

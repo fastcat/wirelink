@@ -98,6 +98,8 @@ func ShouldAccept(attr fact.Attribute, known bool, level *Level) bool {
 		threshold = AllowedIPs
 
 	case fact.AttributeMember:
+		fallthrough
+	case fact.AttributeMemberMetadata:
 		threshold = Membership
 
 	default:

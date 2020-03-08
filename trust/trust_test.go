@@ -41,6 +41,7 @@ func TestShouldAccept(t *testing.T) {
 		fact.AttributeAllowedCidrV4,
 		fact.AttributeAllowedCidrV6,
 		fact.AttributeMember,
+		fact.AttributeMemberMetadata,
 	}
 	invalidAttrs := []fact.Attribute{
 		fact.AttributeUnknown,
@@ -59,6 +60,7 @@ func TestShouldAccept(t *testing.T) {
 	}
 	memberAttr := []fact.Attribute{
 		fact.AttributeMember,
+		fact.AttributeMemberMetadata,
 	}
 	allLevels := []Level{Untrusted, Endpoint, AllowedIPs, Membership, DelegateTrust}
 
