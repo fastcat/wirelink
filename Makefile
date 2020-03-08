@@ -10,12 +10,17 @@ PKGREL=$(PKGVERREL:$(PKGVER)-%=%)
 
 DOCSFILES:=LICENSE README.md TODO.md
 
+# tools needed to build the package
 TOOLS:=\
 	golang.org/x/tools/cmd/goimports \
 	golang.org/x/lint/golint \
 	github.com/vektra/mockery/.../ \
-	github.com/cweill/gotests/...@develop \
 	github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
+	$(NULL)
+# tools needed to develop the package
+TOOLS_DEV:=\
+	github.com/cweill/gotests/...@develop \
+	github.com/go-delve/delve/cmd/dlv \
 	$(NULL)
 
 all: everything
@@ -27,6 +32,8 @@ info:
 
 install-tools:
 	go get $(TOOLS)
+install-tools-dev:
+	go get $(TOOLS) $(TOOLS_DEV)
 
 GENERATED_SOURCES:=\
 	internal/version.go \
