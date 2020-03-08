@@ -105,3 +105,31 @@ func (mm *MemberMetadata) String() string {
 	}
 	return ret.String()
 }
+
+// Has returns whether the given MemberAttribute is present in the metadata
+func (mm *MemberMetadata) Has(attr MemberAttribute) bool {
+	_, ok := mm.attributes[attr]
+	return ok
+}
+
+// Get returns the given MemberAttribute or the empty string if not present
+func (mm *MemberMetadata) Get(attr MemberAttribute) string {
+	return mm.attributes[attr]
+}
+
+// TryGet returns the given MemberAttribute or the empty string,
+// and whether or not it was present.
+func (mm *MemberMetadata) TryGet(attr MemberAttribute) (string, bool) {
+	val, ok := mm.attributes[attr]
+	return val, ok
+}
+
+// BuildMemberMetadata creates a metadata structure with the MemberName
+// attribute set to the given value.
+func BuildMemberMetadata(name string) *MemberMetadata {
+	return &MemberMetadata{
+		attributes: map[MemberAttribute]string{
+			MemberName: name,
+		},
+	}
+}
