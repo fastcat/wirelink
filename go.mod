@@ -14,9 +14,10 @@ require (
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.4.0
 	github.com/vishvananda/netlink v1.1.0
-	golang.org/x/crypto v0.0.0-20200210222208-86ce3cb69678
+	golang.org/x/crypto v0.0.0-20200302210943-78000ba7a073
 	golang.org/x/net v0.0.0-20200226121028-0de0cce0169b // indirect
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
+	golang.org/x/sys v0.0.0-20200302150141-5c8b2ff67527 // indirect
 	golang.zx2c4.com/wireguard v0.0.20200121
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200205215550-e35592f146e4
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
