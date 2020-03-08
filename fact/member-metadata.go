@@ -130,6 +130,13 @@ func (mm *MemberMetadata) TryGet(attr MemberAttribute) (string, bool) {
 	return val, ok
 }
 
+// ForEach calls visitor for each attribute in the metadata.
+func (mm *MemberMetadata) ForEach(visitor func(MemberAttribute, string)) {
+	for a, v := range mm.attributes {
+		visitor(a, v)
+	}
+}
+
 // BuildMemberMetadata creates a metadata structure with the MemberName
 // attribute set to the given value.
 func BuildMemberMetadata(name string) *MemberMetadata {

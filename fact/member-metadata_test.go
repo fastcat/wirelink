@@ -2,7 +2,6 @@ package fact
 
 import (
 	"bytes"
-	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -89,10 +88,6 @@ func TestMemberMetadata_MarshalBinary(t *testing.T) {
 func TestMemberMetadata_DecodeFrom(t *testing.T) {
 	type fields struct {
 		attributes map[MemberAttribute]string
-	}
-	type args struct {
-		lengthHint int
-		reader     io.Reader
 	}
 	tests := []struct {
 		name       string

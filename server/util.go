@@ -13,8 +13,17 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-func (s *LinkServer) peerName(peer wgtypes.Key) string {
+func (s *LinkServer) peerConfigName(peer wgtypes.Key) string {
 	return s.config.Peers.Name(peer)
+}
+
+func (s *LinkServer) peerName(peer wgtypes.Key) string {
+	ret := s.peerConfigName(peer)
+	if len(ret) == 0 {
+		pcs, _ := s.peerConfig.Get(peer)
+		ret, _ = pcs.TryGetMetadata(fact.MemberName)
+	}
+	return ret
 }
 
 func (s *LinkServer) formatFacts(

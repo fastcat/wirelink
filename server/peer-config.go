@@ -79,7 +79,7 @@ func (s *LinkServer) collectPeerFlags(
 	for i := range dev.Peers {
 		peer := &dev.Peers[i]
 		localPeers[peer.PublicKey] = true
-		_, ok := factsByPeer[peer.PublicKey]
+		peerFacts, ok := factsByPeer[peer.PublicKey]
 		// if we have no info about a local peer, flag it for deletion
 		if !ok && !validPeers[peer.PublicKey] {
 			removePeer[peer.PublicKey] = true
@@ -89,7 +89,7 @@ func (s *LinkServer) collectPeerFlags(
 		// is still valid now
 		newAlive, aliveUntil, bootID := s.peerKnowledge.peerAlive(peer.PublicKey)
 		ps, _ := s.peerConfig.Get(peer.PublicKey)
-		ps = ps.Update(peer, s.peerName(peer.PublicKey), newAlive, aliveUntil, bootID, now)
+		ps = ps.Update(peer, s.peerConfigName(peer.PublicKey), newAlive, aliveUntil, bootID, now, peerFacts)
 		s.peerConfig.Set(peer.PublicKey, ps)
 	}
 
