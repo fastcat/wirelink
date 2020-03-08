@@ -9,7 +9,7 @@ Each UDP packet on the wire has the following payload:
 * Subject (N bytes)
 * Value (N bytes)
 
-The "varint" fields use Go / Protocol Buffer's
+The "varint" / "uvarint" fields use Go / Protocol Buffer's
 [varint encoding](https://developers.google.com/protocol-buffers/docs/encoding#varints).
 
 The value of the Attribute field determines the expected length and
@@ -26,6 +26,10 @@ The following attributes are defined, mostly as 1 byte ASCII values:
     otherwise forgets things and needs to be re-told them.
 * `m`: `Member`: An indicator that the peer is a valid member of the network
   * Value is empty (zero bytes)
+* `M`: `MemberWithMetadata`: An indicator that the peer is a valid member of the
+  network, but with additional metadata
+  * Value is the metadata structure including information about the peer,
+    such as friendly / display name for the peer.
 * `e`: `EndpointV4`: A candidate IPv4 address + UDP port for reaching the peer
   * Value is a 4 byte IPv4 address followed by a two byte UDP port
 * `E`: `EndpointV6`: A candidate IPv4 address + UDP port for reaching the peer
@@ -62,6 +66,33 @@ appropriate length followed by the CIDR prefix length. For example, an
 `AllowedCidrV4` of `10.0.0.0/24` would be represented as:
 
     0x0A 0x00 0x00 0x00 0x18
+
+### Member Metadata
+
+The member metadata structure contains:
+
+* A length field, using the "uvarint" encoding, for the number of bytes following
+  (i.e. not counting its own bytes in the length)
+* A list of attribute/value pairs, each of which is encoded as:
+  * 1 byte: the attribute, commonly an ASCII character
+  * N bytes: uvarint-encoded length of the value (?)
+  * N bytes: value for the given attribute
+
+This list is to be interpreted as a un-ordered map, specifically in the senses
+that order of keys is unimportant, and presence of the same key more than once
+is invalid.
+
+Currently defined attributes are:
+
+* `n`: Member friendly/display name
+  * Value is a UTF-8 encoded string. The client may apply length limits to this
+    value by either truncating it or rejecting it. Clients MUST accept valid
+    UTF-8 entries that are 16 bytes or less and which consist entirely of
+    printable non-whitespace characters. Senders SHOULD thus limit themselves
+    to that domain.
+
+Clients MUST NOT reject facts that contain unrecognized attributes, they SHOULD
+simply ignore the unrecognized attributes and only use those they do.
 
 ## Signed Groups
 
