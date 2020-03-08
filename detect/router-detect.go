@@ -1,3 +1,5 @@
+// Package detect provides utilities to detect if the local system is a router,
+// or if some remote peer is one.
 package detect
 
 import (

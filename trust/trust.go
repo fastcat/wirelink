@@ -1,3 +1,5 @@
+// Package trust provides types and code for representing and evaluating trust
+// levels of facts.
 package trust
 
 import (

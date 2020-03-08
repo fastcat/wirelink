@@ -1,3 +1,5 @@
+// Package mocks provides mock implementations of the networking apis,
+// for the testify mock library, generated via go generate and mockery.
 package mocks
 
 //go:generate mockery -dir ../ -output ./ -name "Environment|Interface|UDPConn"

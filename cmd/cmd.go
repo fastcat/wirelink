@@ -1,3 +1,4 @@
+// Package cmd provides the main implementation of the wirelink command line.
 package cmd
 
 import (

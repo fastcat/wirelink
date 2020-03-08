@@ -1,3 +1,6 @@
+// Package native provdies common base implementations of the
+// networking.Environment and related interfaces, or at least the portions that
+// can be implemented using common native Go APIs.
 package native
 
 import (

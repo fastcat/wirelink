@@ -1,3 +1,5 @@
+// Package autopeer provides code to compute a peer's automatic IPv6-LL address
+// derived from its public key.
 package autopeer
 
 import (
