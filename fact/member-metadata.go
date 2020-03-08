@@ -9,12 +9,16 @@ import (
 	"github.com/pkg/errors"
 )
 
+// MemberAttribute is a single byte identifying some attribute of a member.
 type MemberAttribute byte
 
 const (
+	// MemberName is the friendly / display name to use for a peer
 	MemberName MemberAttribute = 'n'
 )
 
+// MemberMetadata represents a set of attributes and their values for a single
+// peer.
 type MemberMetadata struct {
 	attributes map[MemberAttribute]string
 }
@@ -51,6 +55,7 @@ func (mm *MemberMetadata) MarshalBinary() ([]byte, error) {
 	return buf[start:], nil
 }
 
+// DecodeFrom implements Decodable
 func (mm *MemberMetadata) DecodeFrom(lengthHint int, reader io.Reader) error {
 	var br io.ByteReader
 	var ok bool
