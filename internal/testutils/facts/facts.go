@@ -1,3 +1,4 @@
+// Package facts provides helper code for generating facts for use in unit tests.
 package facts
 
 import (

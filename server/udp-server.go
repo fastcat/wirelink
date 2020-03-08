@@ -1,3 +1,5 @@
+// Package server provides the core class that implements the wirelink server,
+// exchanging UDP packets with other peers on the same wireguard network.
 package server
 
 import (

@@ -1,3 +1,5 @@
+// Package host provides a generic accessor factory to create the appropriate
+// platform-specific interface to the host networking APIs.
 package host
 
 import "github.com/fastcat/wirelink/internal/networking"
