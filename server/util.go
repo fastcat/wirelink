@@ -53,7 +53,14 @@ func (s *LinkServer) formatFacts(
 	}
 	str.WriteString("\nCurrent peers:")
 	s.peerConfig.ForEach(func(k wgtypes.Key, pcs *apply.PeerConfigState) {
-		fmt.Fprintf(&str, "\nPeer %s is %s", s.peerName(k), pcs.Describe(now))
+		peerName := s.peerConfigName(k)
+		if len(peerName) == 0 {
+			peerName, _ = pcs.TryGetMetadata(fact.MemberName)
+			if len(peerName) == 0 {
+				peerName = k.String()
+			}
+		}
+		fmt.Fprintf(&str, "\nPeer %s is %s", peerName, pcs.Describe(now))
 	})
 	str.WriteString("\nSelf: ")
 	str.WriteString(s.Describe())
