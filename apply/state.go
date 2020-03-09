@@ -115,6 +115,9 @@ func (pcs *PeerConfigState) Update(
 	name := configName
 	if len(name) == 0 {
 		name = metaName
+		if len(name) == 0 {
+			name = peer.PublicKey.String()
+		}
 	}
 	// don't log the first boot as a reboot
 	if bootChanged && !firstBoot {
