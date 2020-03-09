@@ -107,10 +107,12 @@ func (mm *MemberMetadata) String() string {
 		break
 	}
 	if len(mm.attributes) > 1 {
-		fmt.Fprintf(ret, ",%d more", len(mm.attributes)-1)
+		fmt.Fprintf(ret, ",+%d", len(mm.attributes)-1)
 	}
 	return ret.String()
 }
+
+/*
 
 // Has returns whether the given MemberAttribute is present in the metadata
 func (mm *MemberMetadata) Has(attr MemberAttribute) bool {
@@ -129,6 +131,8 @@ func (mm *MemberMetadata) TryGet(attr MemberAttribute) (string, bool) {
 	val, ok := mm.attributes[attr]
 	return val, ok
 }
+
+*/
 
 // ForEach calls visitor for each attribute in the metadata.
 func (mm *MemberMetadata) ForEach(visitor func(MemberAttribute, string)) {

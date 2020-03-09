@@ -150,3 +150,48 @@ func TestMemberMetadata_DecodeFrom(t *testing.T) {
 		})
 	}
 }
+
+func TestMemberMetadata_String(t *testing.T) {
+	type fields struct {
+		attributes map[MemberAttribute]string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		wantOne []string
+	}{
+		{
+			"empty",
+			fields{map[MemberAttribute]string{}},
+			[]string{"(empty)"},
+		},
+		{
+			"one",
+			fields{map[MemberAttribute]string{
+				MemberName: "foo",
+			}},
+			[]string{"n:foo"},
+		},
+		{
+			"many",
+			fields{map[MemberAttribute]string{
+				MemberName:           "foo",
+				MemberAttribute('a'): "bar",
+				MemberAttribute('b'): "baz",
+			}},
+			[]string{
+				"n:foo,+2",
+				"a:bar,+2",
+				"b:baz,+2",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mm := &MemberMetadata{
+				attributes: tt.fields.attributes,
+			}
+			assert.Contains(t, tt.wantOne, mm.String())
+		})
+	}
+}
