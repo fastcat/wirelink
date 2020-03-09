@@ -461,6 +461,8 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 			1,
 			nil,
 		},
+		// TODO: test for sending enough facts it splits into two SGFs, make sure
+		// two correct facts are sent, no corruption or loop binding errors
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

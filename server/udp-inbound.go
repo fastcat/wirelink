@@ -90,7 +90,7 @@ func (s *LinkServer) processSignedGroup(
 	if err != nil {
 		return errors.Wrapf(err, "Unable to parse SignedGroup inner")
 	}
-	log.Debug("Received SGF of length %d/%d from %v", len(pv.InnerBytes), len(inner), source)
+	// log.Debug("Received SGF of length %d/%d from %v", len(pv.InnerBytes), len(inner), source)
 	for _, innerFact := range inner {
 		packets <- &ReceivedFact{fact: innerFact, source: *source}
 	}
@@ -259,9 +259,9 @@ func (s *LinkServer) processOneChunk(
 		known := evaluator.IsKnown(rf.fact.Subject)
 		if trust.ShouldAccept(rf.fact.Attribute, known, level) {
 			newFactsChunk = append(newFactsChunk, rf.fact)
-			log.Debug("Accepting %v", rf)
-		} else {
-			log.Debug("Rejecting %v", rf)
+			// 	log.Debug("Accepting %v", rf)
+			// } else {
+			// 	log.Debug("Rejecting %v", rf)
 		}
 	}
 	uniqueFacts = fact.MergeList(newFactsChunk)
