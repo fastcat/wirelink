@@ -66,8 +66,8 @@ func (ga *GroupAccumulator) AddFactIfRoom(f *Fact) (added bool, err error) {
 func (ga *GroupAccumulator) MakeSignedGroups(
 	s *signing.Signer,
 	recipient *wgtypes.Key,
-) ([]Fact, error) {
-	ret := make([]Fact, 0, len(ga.groups))
+) ([]*Fact, error) {
+	ret := make([]*Fact, 0, len(ga.groups))
 	subject := PeerSubject{Key: s.PublicKey}
 	for _, g := range ga.groups {
 		if len(g) == 0 {
@@ -83,7 +83,7 @@ func (ga *GroupAccumulator) MakeSignedGroups(
 			Tag:        tag,
 			InnerBytes: g,
 		}
-		ret = append(ret, Fact{
+		ret = append(ret, &Fact{
 			Attribute: AttributeSignedGroup,
 			// zero time will turn into a TTL of zero
 			Expires: time.Time{},

@@ -90,7 +90,7 @@ func (s *LinkServer) processSignedGroup(
 	if err != nil {
 		return errors.Wrapf(err, "Unable to parse SignedGroup inner")
 	}
-	log.Debug("Received SGF of length %d from %v", len(inner), source)
+	log.Debug("Received SGF of length %d/%d from %v", len(pv.InnerBytes), len(inner), source)
 	for _, innerFact := range inner {
 		packets <- &ReceivedFact{fact: innerFact, source: *source}
 	}
