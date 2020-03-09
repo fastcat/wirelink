@@ -19,11 +19,15 @@ func (s *LinkServer) peerConfigName(peer wgtypes.Key) string {
 
 func (s *LinkServer) peerName(peer wgtypes.Key) string {
 	ret := s.peerConfigName(peer)
-	if len(ret) == 0 {
-		pcs, _ := s.peerConfig.Get(peer)
-		ret, _ = pcs.TryGetMetadata(fact.MemberName)
+	if len(ret) > 0 {
+		return ret
 	}
-	return ret
+	pcs, _ := s.peerConfig.Get(peer)
+	ret, _ = pcs.TryGetMetadata(fact.MemberName)
+	if len(ret) > 0 {
+		return ret
+	}
+	return peer.String()
 }
 
 func (s *LinkServer) formatFacts(
