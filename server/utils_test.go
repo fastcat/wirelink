@@ -26,7 +26,7 @@ func makePCS(t *testing.T, healthy, alive, aliveLong bool) *apply.PeerConfigStat
 	if aliveLong {
 		now = now.Add(-DefaultFactTTL * 2)
 	}
-	ret.Update(
+	ret = ret.Update(
 		&wgtypes.Peer{
 			LastHandshakeTime: handshake,
 			Endpoint:          testutils.RandUDP4Addr(t),

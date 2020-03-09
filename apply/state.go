@@ -59,8 +59,8 @@ func (pcs *PeerConfigState) Clone() *PeerConfigState {
 	return &ret
 }
 
-// Update refreshes the PeerConfigState with new data from the wireguard device.
-// NOTE: It is safe to call this on a `nil` pointer, it will return a new state
+// Update returns a cloned PeerConfigState with new data from the wireguard device.
+// NOTE: It is safe to call this on a `nil` pointer, it will return a new state.
 // TODO: give this access to the `peerKnowledgeSet` instead of passing in the alive state
 func (pcs *PeerConfigState) Update(
 	peer *wgtypes.Peer,
@@ -72,6 +72,8 @@ func (pcs *PeerConfigState) Update(
 	facts []*fact.Fact,
 ) *PeerConfigState {
 	pcs = pcs.EnsureNotNil()
+	// clone before updates to prevent data races
+	pcs = pcs.Clone()
 	pcs.lastHandshake = peer.LastHandshakeTime
 	newHealthy := isHealthy(pcs, peer)
 	bootChanged := bootID != nil && pcs.lastBootID != nil && *bootID != *pcs.lastBootID
