@@ -156,6 +156,7 @@ func TestLinkServer_shouldSendTo(t *testing.T) {
 			s := &LinkServer{
 				config:      tt.fields.config,
 				stateAccess: &sync.Mutex{},
+				peerConfig:  newPeerConfigSet(),
 			}
 			assert.Equal(t, tt.want, s.shouldSendTo(tt.args.p))
 		})
@@ -477,6 +478,7 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 				signer:        tt.fields.signer,
 
 				stateAccess: &sync.Mutex{},
+				peerConfig:  newPeerConfigSet(),
 
 				FactTTL:     DefaultFactTTL,
 				ChunkPeriod: DefaultChunkPeriod,

@@ -48,6 +48,11 @@ var decodeHints map[Attribute]decodeHinter = map[Attribute]decodeHinter{
 		f.Value = &EmptyValue{}
 		return 0
 	},
+	AttributeMemberMetadata: func(f *Fact) int {
+		f.Subject = &PeerSubject{}
+		f.Value = &MemberMetadata{}
+		return 0
+	},
 
 	AttributeSignedGroup: func(f *Fact) int {
 		f.Subject = &PeerSubject{}

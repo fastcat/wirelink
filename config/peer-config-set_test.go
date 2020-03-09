@@ -26,9 +26,9 @@ func TestPeers_Name(t *testing.T) {
 		args args
 		want string
 	}{
-		{"nil peers", nil, args{k1}, k1.String()},
-		{"empty peers", make(Peers), args{k1}, k1.String()},
-		{"other peer", Peers{k2: &Peer{Name: "xyzzy"}}, args{k1}, k1.String()},
+		{"nil peers", nil, args{k1}, ""},
+		{"empty peers", make(Peers), args{k1}, ""},
+		{"other peer", Peers{k2: &Peer{Name: "xyzzy"}}, args{k1}, ""},
 		{"named peer", Peers{k1: &Peer{Name: "xyzzy"}}, args{k1}, "xyzzy"},
 	}
 	for _, tt := range tests {

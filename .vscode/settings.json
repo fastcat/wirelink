@@ -46,6 +46,7 @@
 		"unregister",
 		"unregisters",
 		"uuid",
+		"uvarint",
 		"vcfg",
 		"veth",
 		"vishvananda",

@@ -361,8 +361,9 @@ func TestLinkServer_processSignedGroup(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &LinkServer{
-				config: &config.Server{},
-				signer: tt.fields.signer,
+				config:     &config.Server{},
+				signer:     tt.fields.signer,
+				peerConfig: newPeerConfigSet(),
 			}
 			// we make a channel with a huge buffer so that we can do this linearly
 			// and not have goroutines and waits

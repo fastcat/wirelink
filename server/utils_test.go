@@ -36,6 +36,7 @@ func makePCS(t *testing.T, healthy, alive, aliveLong bool) *apply.PeerConfigStat
 		until,
 		nil,
 		now,
+		nil,
 	)
 	// make sure it worked
 	assert.Equal(t, healthy, ret.IsHealthy())

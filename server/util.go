@@ -13,8 +13,21 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-func (s *LinkServer) peerName(peer wgtypes.Key) string {
+func (s *LinkServer) peerConfigName(peer wgtypes.Key) string {
 	return s.config.Peers.Name(peer)
+}
+
+func (s *LinkServer) peerName(peer wgtypes.Key) string {
+	ret := s.peerConfigName(peer)
+	if len(ret) > 0 {
+		return ret
+	}
+	pcs, _ := s.peerConfig.Get(peer)
+	ret, _ = pcs.TryGetMetadata(fact.MemberName)
+	if len(ret) > 0 {
+		return ret
+	}
+	return peer.String()
 }
 
 func (s *LinkServer) formatFacts(
@@ -40,7 +53,14 @@ func (s *LinkServer) formatFacts(
 	}
 	str.WriteString("\nCurrent peers:")
 	s.peerConfig.ForEach(func(k wgtypes.Key, pcs *apply.PeerConfigState) {
-		fmt.Fprintf(&str, "\nPeer %s is %s", s.peerName(k), pcs.Describe(now))
+		peerName := s.peerConfigName(k)
+		if len(peerName) == 0 {
+			peerName, _ = pcs.TryGetMetadata(fact.MemberName)
+			if len(peerName) == 0 {
+				peerName = k.String()
+			}
+		}
+		fmt.Fprintf(&str, "\nPeer %s is %s", peerName, pcs.Describe(now))
 	})
 	str.WriteString("\nSelf: ")
 	str.WriteString(s.Describe())

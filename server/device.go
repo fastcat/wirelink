@@ -52,12 +52,18 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device, now time.Time) (ret []*fa
 	// these may duplicate other known facts, higher layers will dedupe
 	for pk, pc := range s.config.Peers {
 		// statically configured peers are always valid members
-		ret = append(ret, &fact.Fact{
+		f := &fact.Fact{
 			Attribute: fact.AttributeMember,
 			Subject:   &fact.PeerSubject{Key: pk},
 			Value:     &fact.EmptyValue{},
 			Expires:   expires,
-		})
+		}
+		if len(pc.Name) > 0 {
+			// we have metadata, replace it with a metadata member fact
+			f.Attribute = fact.AttributeMemberMetadata
+			f.Value = fact.BuildMemberMetadata(pc.Name)
+		}
+		ret = append(ret, f)
 		ret = s.handlePeerConfigAllowedIPs(pk, pc, expires, ret)
 		// skip endpoint lookups for self
 		// if other peers need these as static facts, they would have it in their config

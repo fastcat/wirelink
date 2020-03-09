@@ -15,13 +15,14 @@ import (
 
 // fact types, denoted as attributes of a subject
 const (
-	AttributeUnknown       Attribute = 0
-	AttributeAlive         Attribute = '!'
-	AttributeEndpointV4    Attribute = 'e'
-	AttributeEndpointV6    Attribute = 'E'
-	AttributeAllowedCidrV4 Attribute = 'a'
-	AttributeAllowedCidrV6 Attribute = 'A'
-	AttributeMember        Attribute = 'm'
+	AttributeUnknown        Attribute = 0
+	AttributeAlive          Attribute = '!'
+	AttributeEndpointV4     Attribute = 'e'
+	AttributeEndpointV6     Attribute = 'E'
+	AttributeAllowedCidrV4  Attribute = 'a'
+	AttributeAllowedCidrV6  Attribute = 'A'
+	AttributeMember         Attribute = 'm'
+	AttributeMemberMetadata Attribute = 'M'
 	// A signed group is a bit different from other facts
 	// in this case, the subject is actually the source,
 	// and the value is a signed aggregate of other facts.

@@ -18,12 +18,12 @@ func (p Peers) Has(peer wgtypes.Key) bool {
 	return ok && val != nil
 }
 
-// Name returns the name of the peer, if configured, or else its key string
+// Name returns the name of the peer, if configured, or else the empty string
 func (p Peers) Name(peer wgtypes.Key) string {
-	if config, ok := p[peer]; ok && len(config.Name) > 0 {
+	if config := p[peer]; config != nil {
 		return config.Name
 	}
-	return peer.String()
+	return ""
 }
 
 // Trust returns the configured trust level (if present and valid) or else the

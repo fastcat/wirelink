@@ -26,6 +26,7 @@ type PeerConfigState struct {
 	aliveUntil    time.Time
 	// the string key is really just the bytes value
 	endpointLastUsed map[string]time.Time
+	metadata         map[fact.MemberAttribute]string
 }
 
 // EnsureNotNil returns either its receiver if not nil, or else a new object suitable to be its receiver
@@ -63,11 +64,12 @@ func (pcs *PeerConfigState) Clone() *PeerConfigState {
 // TODO: give this access to the `peerKnowledgeSet` instead of passing in the alive state
 func (pcs *PeerConfigState) Update(
 	peer *wgtypes.Peer,
-	name string,
+	configName string,
 	newAlive bool,
 	aliveUntil time.Time,
 	bootID *uuid.UUID,
 	now time.Time,
+	facts []*fact.Fact,
 ) *PeerConfigState {
 	pcs = pcs.EnsureNotNil()
 	pcs.lastHandshake = peer.LastHandshakeTime
@@ -88,6 +90,31 @@ func (pcs *PeerConfigState) Update(
 	// don't forget the last bootID if we temporarily lose the peer, only reset it when it really changes
 	if bootID != nil {
 		pcs.lastBootID = bootID
+	}
+	// accumulate metadata
+	metadata := map[fact.MemberAttribute]string{}
+	var metaName string
+	for _, f := range facts {
+		if f.Attribute != fact.AttributeMemberMetadata {
+			continue
+		}
+		mv := f.Value.(*fact.MemberMetadata)
+		mv.ForEach(func(a fact.MemberAttribute, v string) {
+			// TODO: don't overwrite full string with empty string
+			metadata[a] = v
+			if a == fact.MemberName {
+				metaName = v
+			}
+		})
+	}
+	if len(metadata) > 0 {
+		pcs.metadata = metadata
+	} else {
+		pcs.metadata = nil
+	}
+	name := configName
+	if len(name) == 0 {
+		name = metaName
 	}
 	// don't log the first boot as a reboot
 	if bootChanged && !firstBoot {
@@ -145,6 +172,16 @@ func (pcs *PeerConfigState) AliveUntil() time.Time {
 		return pcs.aliveUntil
 	}
 	return time.Time{}
+}
+
+// TryGetMetadata fetches the value of the given member metadata attribute,
+// if it is known.
+func (pcs *PeerConfigState) TryGetMetadata(attr fact.MemberAttribute) (string, bool) {
+	if pcs == nil || pcs.metadata == nil {
+		return "", false
+	}
+	val, ok := pcs.metadata[attr]
+	return val, ok
 }
 
 const endpointInterval = device.RekeyTimeout + device.KeepaliveTimeout

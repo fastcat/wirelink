@@ -65,6 +65,7 @@ func TestPeerConfigState_Update(t *testing.T) {
 		aliveUntil time.Time
 		bootID     *uuid.UUID
 		now        time.Time
+		facts      []*fact.Fact
 	}
 	tests := []struct {
 		name   string
@@ -195,7 +196,7 @@ func TestPeerConfigState_Update(t *testing.T) {
 			if tt.fields.nil {
 				pcs = nil
 			}
-			got := pcs.Update(tt.args.peer, tt.args.name, tt.args.newAlive, tt.args.aliveUntil, tt.args.bootID, tt.args.now)
+			got := pcs.Update(tt.args.peer, tt.args.name, tt.args.newAlive, tt.args.aliveUntil, tt.args.bootID, tt.args.now, tt.args.facts)
 			assert.Equal(t, tt.want, got)
 		})
 	}
