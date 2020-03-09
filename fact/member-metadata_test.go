@@ -2,11 +2,26 @@ package fact
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
+func makeLongString(len int) string {
+	b := &strings.Builder{}
+	b.Grow(len)
+	for b.Len() < len {
+		if b.Len() == 0 {
+			b.WriteString("x")
+		} else if b.Len() <= len/2 {
+			b.WriteString(b.String())
+		} else {
+			b.WriteString(makeLongString(len - b.Len()))
+		}
+	}
+	return b.String()
+}
 func TestMemberMetadata_MarshalBinary(t *testing.T) {
 	type fields struct {
 		attributes map[MemberAttribute]string
@@ -71,6 +86,15 @@ func TestMemberMetadata_MarshalBinary(t *testing.T) {
 				},
 			},
 			assert.NoError,
+		},
+		{
+			"too much data",
+			fields{map[MemberAttribute]string{
+				MemberName: makeLongString(128 * 128 * 128),
+			}},
+			[][]byte{nil},
+			// TODO: assert the specific error
+			assert.Error,
 		},
 	}
 	for _, tt := range tests {
@@ -139,7 +163,38 @@ func TestMemberMetadata_DecodeFrom(t *testing.T) {
 			}},
 			assert.NoError,
 		},
-		// TODO: encoding error tests
+		// TODO: assert specific errors
+		{
+			"error decoding empty buffer",
+			[]byte{},
+			// an empty map would be fine here, nil is a side effect of test initialization
+			fields{nil},
+			assert.Error,
+		},
+		{
+			"truncated payload mode 1",
+			[]byte{16, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
+			fields{nil},
+			assert.Error,
+		},
+		{
+			"truncated payload mode 2",
+			[]byte{16},
+			fields{nil},
+			assert.Error,
+		},
+		{
+			"attribute length error",
+			[]byte{2, 1, 255},
+			fields{map[MemberAttribute]string{}},
+			assert.Error,
+		},
+		{
+			"attribute payload overrun",
+			[]byte{3, 1, 2, 1},
+			fields{map[MemberAttribute]string{}},
+			assert.Error,
+		},
 		// TODO: attribute repeat test with error
 	}
 	for _, tt := range tests {
