@@ -204,6 +204,7 @@ func (s *LinkServer) broadcastFacts(
 		log.Debug("Sending %d SGFs to %s", len(signedGroupFacts), s.peerName(p.PublicKey))
 		for j := range signedGroupFacts {
 			sg.Go(func() error {
+				log.Debug("Sending SGF of length %d to %s", len(signedGroupFacts[j].Value.(*fact.SignedGroupValue).InnerBytes), s.peerName(p.PublicKey))
 				err := s.sendFact(p, &signedGroupFacts[j], now)
 				errs <- err
 				return err
