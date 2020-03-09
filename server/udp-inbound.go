@@ -258,6 +258,9 @@ func (s *LinkServer) processOneChunk(
 		known := evaluator.IsKnown(rf.fact.Subject)
 		if trust.ShouldAccept(rf.fact.Attribute, known, level) {
 			newFactsChunk = append(newFactsChunk, rf.fact)
+			log.Debug("Accepting %v", rf)
+		} else {
+			log.Debug("Rejecting %v", rf)
 		}
 	}
 	uniqueFacts = fact.MergeList(newFactsChunk)
