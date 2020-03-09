@@ -62,6 +62,7 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device, now time.Time) (ret []*fa
 			// we have metadata, replace it with a metadata member fact
 			f.Attribute = fact.AttributeMemberMetadata
 			f.Value = fact.BuildMemberMetadata(pc.Name)
+			log.Debug("Collected member metadata: for %s: %v", pc.Name, f.Value)
 		}
 		ret = append(ret, f)
 		ret = s.handlePeerConfigAllowedIPs(pk, pc, expires, ret)

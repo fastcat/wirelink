@@ -35,6 +35,11 @@ FACTLOOP:
 			}
 			now := time.Now()
 			log.Debug("Got a new fact set of length %d", len(facts))
+			if log.IsDebug() {
+				for _, f := range facts {
+					log.Debug("Got a fact: %v", f)
+				}
+			}
 
 			dev, err := s.deviceState()
 			if err != nil {

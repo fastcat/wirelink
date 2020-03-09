@@ -82,7 +82,7 @@ func DeviceFacts(
 		}
 
 		if !config.ShouldReportIface(iface.Name()) {
-			log.Debug("Excluding local iface '%s'\n", iface.Name)
+			log.Debug("Excluding local iface '%s'\n", iface.Name())
 			continue
 		}
 		err := forEachAddr(iface, func(ipn net.IPNet) error {
