@@ -35,11 +35,6 @@ FACTLOOP:
 			}
 			now := time.Now()
 			log.Debug("Got a new fact set of length %d", len(facts))
-			if log.IsDebug() {
-				for _, f := range facts {
-					log.Debug("Got a fact: %v", f)
-				}
-			}
 
 			dev, err := s.deviceState()
 			if err != nil {
@@ -108,8 +103,9 @@ func (s *LinkServer) collectPeerFlags(
 		}) {
 			validPeers[peer] = true
 		} else {
+			// TODO: maybe only flag this if localPeer[peer], to reduce log noise in some corner cases
 			removePeer[peer] = true
-			log.Debug("Flagging peer %s for removal from %s: no membership", dev.PublicKey, peer)
+			log.Debug("Flagging peer %s for removal from %s: no membership", peer, dev.PublicKey)
 		}
 	}
 
