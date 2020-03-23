@@ -296,6 +296,8 @@ func (s *LinkServer) deletePeers(
 			PublicKey: peer.PublicKey,
 			Remove:    true,
 		})
+		// forget the peer in the config state
+		s.peerConfig.Set(peer.PublicKey, nil)
 	}
 
 	if len(cfg.Peers) != 0 {
@@ -360,13 +362,6 @@ func (s *LinkServer) configurePeer(
 			}
 		}
 
-		var addedAIP bool
-		pcfg, addedAIP = apply.EnsurePeerAutoIP(peer, pcfg)
-		if addedAIP {
-			log.Info("Adding IPv6-LL to %s", peerName)
-			logged = true
-		}
-
 		if state.TimeForNextEndpoint() {
 			nextEndpoint := state.NextEndpoint(facts, now)
 			if nextEndpoint == nil {
@@ -386,6 +381,13 @@ func (s *LinkServer) configurePeer(
 				s.peerKnowledge.forcePing(s.signer.PublicKey, peer.PublicKey)
 			}
 		}
+	}
+
+	var addedAIP bool
+	pcfg, addedAIP = apply.EnsurePeerAutoIP(peer, pcfg)
+	if addedAIP {
+		log.Info("Adding IPv6-LL to %s", peerName)
+		logged = true
 	}
 
 	if pcfg == nil {
