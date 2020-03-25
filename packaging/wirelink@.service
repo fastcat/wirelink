@@ -24,5 +24,8 @@ SecureBits=no-setuid-fixup no-setuid-fixup-locked keep-caps-locked
 SecureBits=noroot
 SecureBits=noroot-locked
 
+# workaround https://github.com/golang/go/issues/37436
+LimitMEMLOCK=infinity
+
 [Install]
 WantedBy=multi-user.target
