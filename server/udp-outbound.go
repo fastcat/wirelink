@@ -258,10 +258,11 @@ func (s *LinkServer) sendFact(peer *wgtypes.Peer, f *fact.Fact, now time.Time) e
 		if sysErr, ok := opErr.Err.(*os.SyscallError); ok {
 			if sysErr.Err == syscall.EDESTADDRREQ ||
 				sysErr.Err == syscall.ENETUNREACH ||
-				sysErr.Err == syscall.EPERM {
+				sysErr.Err == syscall.EPERM ||
+				sysErr.Err == syscall.ENOKEY {
 				// EDESTADDRREQ and ENETUNREACH happen when we have a bad address for
 				// talking to a peer, whether when inside the tunnel or for the tunnel
-				// endpoint. EPERM happens if we have an endpoint but no handshake.
+				// endpoint. EPERM and ENOKEY happens if we have no handshake.
 				return nil
 			}
 		}
