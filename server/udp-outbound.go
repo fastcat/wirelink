@@ -256,9 +256,12 @@ func (s *LinkServer) sendFact(peer *wgtypes.Peer, f *fact.Fact, now time.Time) e
 		// certain errors are expected
 		opErr := err.(*net.OpError)
 		if sysErr, ok := opErr.Err.(*os.SyscallError); ok {
-			if sysErr.Err == syscall.EDESTADDRREQ || sysErr.Err == syscall.ENETUNREACH {
-				// these happen when we have a bad address for talking to a peer,
-				// whether when inside the tunnel or for the tunnel endpoint
+			if sysErr.Err == syscall.EDESTADDRREQ ||
+				sysErr.Err == syscall.ENETUNREACH ||
+				sysErr.Err == syscall.EPERM {
+				// EDESTADDRREQ and ENETUNREACH happen when we have a bad address for
+				// talking to a peer, whether when inside the tunnel or for the tunnel
+				// endpoint. EPERM happens if we have an endpoint but no handshake.
 				return nil
 			}
 		}
