@@ -255,9 +255,12 @@ func (s *LinkServer) sendFact(peer *wgtypes.Peer, f *fact.Fact, now time.Time) e
 	if err != nil {
 		// certain errors are expected
 		opErr := err.(*net.OpError)
-		if sysErr, ok := opErr.Err.(*os.SyscallError); ok && sysErr.Err == syscall.EDESTADDRREQ {
-			// this is expected, ignore it
-			return nil
+		if sysErr, ok := opErr.Err.(*os.SyscallError); ok {
+			if sysErr.Err == syscall.EDESTADDRREQ || sysErr.Err == syscall.ENETUNREACH {
+				// these happen when we have a bad address for talking to a peer,
+				// whether when inside the tunnel or for the tunnel endpoint
+				return nil
+			}
 		}
 		// else
 		return errors.Wrapf(err, "Failed to send to peer %s", s.peerName(peer.PublicKey))
