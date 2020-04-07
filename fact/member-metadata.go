@@ -109,7 +109,8 @@ func (mm *MemberMetadata) String() string {
 
 	ret := &strings.Builder{}
 	for a, v := range mm.attributes {
-		fmt.Fprintf(ret, "%c:%s", a, v)
+		// some attributes are binary, so they need to be quoted (%q)
+		fmt.Fprintf(ret, "%c:%q", a, v)
 		break
 	}
 	if len(mm.attributes) > 1 {

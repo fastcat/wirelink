@@ -225,7 +225,21 @@ func TestMemberMetadata_String(t *testing.T) {
 			fields{map[MemberAttribute]string{
 				MemberName: "foo",
 			}},
-			[]string{"n:foo"},
+			[]string{"n:\"foo\""},
+		},
+		{
+			"binary 0",
+			fields{map[MemberAttribute]string{
+				MemberIsBasic: string(byte(0)),
+			}},
+			[]string{"b:\"\\x00\""},
+		},
+		{
+			"binary 1",
+			fields{map[MemberAttribute]string{
+				MemberIsBasic: string(byte(1)),
+			}},
+			[]string{"b:\"\\x01\""},
 		},
 		{
 			"many",
@@ -235,9 +249,9 @@ func TestMemberMetadata_String(t *testing.T) {
 				MemberAttribute('b'): "baz",
 			}},
 			[]string{
-				"n:foo,+2",
-				"a:bar,+2",
-				"b:baz,+2",
+				"n:\"foo\",+2",
+				"a:\"bar\",+2",
+				"b:\"baz\",+2",
 			},
 		},
 	}
