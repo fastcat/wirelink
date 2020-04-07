@@ -215,35 +215,44 @@ func TestMemberMetadata_String(t *testing.T) {
 		attributes map[MemberAttribute]string
 	}
 	tests := []struct {
-		name    string
-		fields  fields
-		wantOne []string
+		name   string
+		fields fields
+		want   string
 	}{
 		{
 			"empty",
 			fields{map[MemberAttribute]string{}},
-			[]string{"(empty)"},
+			"(empty)",
 		},
 		{
 			"one",
 			fields{map[MemberAttribute]string{
 				MemberName: "foo",
 			}},
-			[]string{"n:\"foo\""},
+			"n:\"foo\"",
 		},
 		{
 			"binary 0",
 			fields{map[MemberAttribute]string{
 				MemberIsBasic: string(byte(0)),
 			}},
-			[]string{"b:\"\\x00\""},
+			"b:\"\\x00\"",
 		},
 		{
 			"binary 1",
 			fields{map[MemberAttribute]string{
 				MemberIsBasic: string(byte(1)),
 			}},
-			[]string{"b:\"\\x01\""},
+			"b:\"\\x01\"",
+		},
+		{
+			"multiple",
+			fields{map[MemberAttribute]string{
+				MemberName:           "foo",
+				MemberAttribute('a'): "bar",
+				MemberAttribute('b'): "baz",
+			}},
+			"n:\"foo\",a:\"bar\",b:\"baz\"",
 		},
 		{
 			"many",
@@ -251,12 +260,11 @@ func TestMemberMetadata_String(t *testing.T) {
 				MemberName:           "foo",
 				MemberAttribute('a'): "bar",
 				MemberAttribute('b'): "baz",
+				MemberAttribute('c'): "bat",
+				MemberAttribute('d'): "qux",
+				MemberAttribute('e'): "wat",
 			}},
-			[]string{
-				"n:\"foo\",+2",
-				"a:\"bar\",+2",
-				"b:\"baz\",+2",
-			},
+			"n:\"foo\",a:\"bar\",b:\"baz\",+3",
 		},
 	}
 	for _, tt := range tests {
@@ -264,7 +272,7 @@ func TestMemberMetadata_String(t *testing.T) {
 			mm := &MemberMetadata{
 				attributes: tt.fields.attributes,
 			}
-			assert.Contains(t, tt.wantOne, mm.String())
+			assert.Equal(t, tt.want, mm.String())
 		})
 	}
 }

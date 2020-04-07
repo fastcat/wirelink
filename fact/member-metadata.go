@@ -43,11 +43,7 @@ func (mm *MemberMetadata) MarshalBinary() ([]byte, error) {
 	var l int
 
 	// important to sort the attributes for equality checks to work properly
-	attrs := make([]MemberAttribute, 0, len(mm.attributes))
-	for a := range mm.attributes {
-		attrs = append(attrs, a)
-	}
-	sort.Slice(attrs, func(i, j int) bool { return attrs[i] < attrs[j] })
+	attrs := mm.sortedAttrs()
 	for _, a := range attrs {
 		v := mm.attributes[a]
 		buf = append(buf, byte(a))
@@ -66,6 +62,24 @@ func (mm *MemberMetadata) MarshalBinary() ([]byte, error) {
 	copy(buf[start:], tmp[:l])
 
 	return buf[start:], nil
+}
+
+func (mm *MemberMetadata) sortedAttrs() []MemberAttribute {
+	attrs := make([]MemberAttribute, 0, len(mm.attributes))
+	for a := range mm.attributes {
+		attrs = append(attrs, a)
+	}
+	sort.Slice(attrs, func(i, j int) bool {
+		// special case: always put the name attribute first, for cosmetic reasons
+		if attrs[i] == MemberName {
+			return true
+		} else if attrs[j] == MemberName {
+			return false
+		} else {
+			return attrs[i] < attrs[j]
+		}
+	})
+	return attrs
 }
 
 // DecodeFrom implements Decodable
@@ -117,13 +131,21 @@ func (mm *MemberMetadata) String() string {
 	}
 
 	ret := &strings.Builder{}
-	for a, v := range mm.attributes {
+	numPrinted := 0
+	attrs := mm.sortedAttrs()
+	for _, a := range attrs {
+		if numPrinted > 0 {
+			ret.WriteRune(',')
+		}
 		// some attributes are binary, so they need to be quoted (%q)
-		fmt.Fprintf(ret, "%c:%q", a, v)
-		break
+		fmt.Fprintf(ret, "%c:%q", a, mm.attributes[a])
+		numPrinted++
+		if numPrinted > 2 || ret.Len() >= 32 {
+			break
+		}
 	}
-	if len(mm.attributes) > 1 {
-		fmt.Fprintf(ret, ",+%d", len(mm.attributes)-1)
+	if len(mm.attributes) > numPrinted {
+		fmt.Fprintf(ret, ",+%d", len(mm.attributes)-numPrinted)
 	}
 	return ret.String()
 }
