@@ -65,7 +65,8 @@ wirelink: generate
 lint: lint-golangci
 lint-golangci: generate
 	golangci-lint run
-test: lint test-go test-go-race
+# don't need to run non-race tests if we're gonna run race ones too
+test: lint test-go-race
 test-go: generate
 	go test -vet=off -timeout=20s ./...
 test-go-race: generate
