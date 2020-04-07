@@ -4,10 +4,12 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 
-	"github.com/fastcat/wirelink/util"
 	"github.com/pkg/errors"
+
+	"github.com/fastcat/wirelink/util"
 )
 
 // MemberAttribute is a single byte identifying some attribute of a member.
@@ -40,7 +42,14 @@ func (mm *MemberMetadata) MarshalBinary() ([]byte, error) {
 	tmp := make([]byte, binary.MaxVarintLen64)
 	var l int
 
-	for a, v := range mm.attributes {
+	// important to sort the attributes for equality checks to work properly
+	attrs := make([]MemberAttribute, 0, len(mm.attributes))
+	for a := range mm.attributes {
+		attrs = append(attrs, a)
+	}
+	sort.Slice(attrs, func(i, j int) bool { return attrs[i] < attrs[j] })
+	for _, a := range attrs {
+		v := mm.attributes[a]
 		buf = append(buf, byte(a))
 		l = binary.PutUvarint(tmp, uint64(len(v)))
 		buf = append(buf, tmp[:l]...)

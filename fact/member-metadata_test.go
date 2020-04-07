@@ -2,10 +2,14 @@ package fact
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 
+	"github.com/fastcat/wirelink/util"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func makeLongString(len int) string {
@@ -296,5 +300,25 @@ func TestBuildMemberMetadata(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.want, BuildMemberMetadata(tt.args.name, tt.args.basic))
 		})
+	}
+}
+
+func TestMemberMetadata_Equality(t *testing.T) {
+	// repeat this a bunch because hashes are unpredictable
+	for i := 0; i < 50; i++ {
+		name := fmt.Sprintf("foo%d", i)
+		basic := i%2 == 0
+		mm1 := BuildMemberMetadata(name, basic)
+		mm2 := BuildMemberMetadata(name, basic)
+
+		require.Equal(t, mm1, mm2)
+
+		b1 := util.MustBytes(mm1.MarshalBinary())
+		b2 := util.MustBytes(mm2.MarshalBinary())
+
+		require.Equal(t, b1, b2)
+
+		// this doesn't work
+		// assert.True(t, mm1 == mm2)
 	}
 }
