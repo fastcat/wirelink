@@ -216,6 +216,44 @@ func TestLinkServer_collectFacts(t *testing.T) {
 			},
 			false,
 		},
+		{
+			"replace device member with static metadata",
+			fields{
+				&config.Server{
+					Peers: config.Peers{
+						k1: &config.Peer{
+							Name:  "k1",
+							Basic: true,
+						},
+					},
+				},
+				func(t *testing.T) *mocks.Environment {
+					ret := &mocks.Environment{}
+					return ret
+				},
+				&peerConfigSet{
+					psm: &sync.Mutex{},
+					peerStates: map[wgtypes.Key]*apply.PeerConfigState{
+						k1: {},
+					},
+				},
+			},
+			args{&wgtypes.Device{
+				Name:       ifWg,
+				PublicKey:  k2,
+				ListenPort: p1,
+				Peers: []wgtypes.Peer{
+					{
+						PublicKey: k1,
+					},
+				},
+			}},
+			[]*fact.Fact{
+				// member
+				factutils.MemberMetadataFactFull(&k1, expires, "k1", true),
+			},
+			false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

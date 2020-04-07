@@ -99,10 +99,16 @@ func SortedCopy(facts []*Fact) []*Fact {
 // SliceHas returns true if and only if predicate returns true for a fact in the
 // given slice
 func SliceHas(facts []*Fact, predicate func(*Fact) bool) bool {
-	for _, f := range facts {
+	return SliceIndexOf(facts, predicate) >= 0
+}
+
+// SliceIndexOf returns the index of the first element in the slice for which
+// the predicate returns true, or -1 if there is no match or the slice is empty
+func SliceIndexOf(facts []*Fact, predicate func(*Fact) bool) int {
+	for i, f := range facts {
 		if predicate(f) {
-			return true
+			return i
 		}
 	}
-	return false
+	return -1
 }
