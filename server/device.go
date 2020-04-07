@@ -57,8 +57,8 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device, now time.Time) (ret []*fa
 			if f.Attribute != fact.AttributeMember {
 				return false
 			}
-			fv, ok := f.Value.(*fact.PeerSubject)
-			return ok && fv.Key == pk
+			fs, ok := f.Subject.(*fact.PeerSubject)
+			return ok && fs.Key == pk
 		})
 		var f *fact.Fact
 		if memberFactIdx >= 0 {
@@ -70,6 +70,7 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device, now time.Time) (ret []*fa
 				Value:     &fact.EmptyValue{},
 				Expires:   expires,
 			}
+			ret = append(ret, f)
 		}
 
 		if len(pc.Name) > 0 || pc.Basic {
@@ -78,7 +79,6 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device, now time.Time) (ret []*fa
 			f.Value = fact.BuildMemberMetadata(pc.Name, pc.Basic)
 			log.Debug("Collected member metadata: for %s: %v", pc.Name, f.Value)
 		}
-		ret = append(ret, f)
 		ret = s.handlePeerConfigAllowedIPs(pk, pc, expires, ret)
 		// skip endpoint lookups for self
 		// if other peers need these as static facts, they would have it in their config

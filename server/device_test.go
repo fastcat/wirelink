@@ -220,6 +220,8 @@ func TestLinkServer_collectFacts(t *testing.T) {
 			"replace device member with static metadata",
 			fields{
 				&config.Server{
+					Iface:       ifWg,
+					IsRouterNow: true,
 					Peers: config.Peers{
 						k1: &config.Peer{
 							Name:  "k1",
