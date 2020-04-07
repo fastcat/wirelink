@@ -73,6 +73,16 @@ func MemberFactFull(peer *wgtypes.Key, expires time.Time) *fact.Fact {
 	}
 }
 
+// MemberMetadataFactFull returns a member metadata fact for the given peer
+func MemberMetadataFactFull(peer *wgtypes.Key, expires time.Time, name string, basic bool) *fact.Fact {
+	return &fact.Fact{
+		Attribute: fact.AttributeMemberMetadata,
+		Subject:   &fact.PeerSubject{Key: *peer},
+		Expires:   expires,
+		Value:     fact.BuildMemberMetadata(name, basic),
+	}
+}
+
 // AliveFact generates an alive fact for the peer, with a zero boot ID
 func AliveFact(peer *wgtypes.Key, expires time.Time) *fact.Fact {
 	return &fact.Fact{

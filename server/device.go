@@ -51,6 +51,9 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device, now time.Time) (ret []*fa
 	// static facts from the config
 	// these may duplicate other known facts, higher layers will dedupe
 	for pk, pc := range s.config.Peers {
+		// TODO; if LocalFacts above added one of these, don't add another one,
+		// and replace it if we are doing the MemberMetadata
+
 		// statically configured peers are always valid members
 		f := &fact.Fact{
 			Attribute: fact.AttributeMember,
@@ -58,7 +61,7 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device, now time.Time) (ret []*fa
 			Value:     &fact.EmptyValue{},
 			Expires:   expires,
 		}
-		if len(pc.Name) > 0 {
+		if len(pc.Name) > 0 || pc.Basic {
 			// we have metadata, replace it with a metadata member fact
 			f.Attribute = fact.AttributeMemberMetadata
 			f.Value = fact.BuildMemberMetadata(pc.Name, pc.Basic)

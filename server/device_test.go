@@ -160,6 +160,62 @@ func TestLinkServer_collectFacts(t *testing.T) {
 			},
 			false,
 		},
+		{
+			"named",
+			fields{
+				&config.Server{
+					Peers: config.Peers{
+						k1: &config.Peer{
+							Name: "k1",
+						},
+					},
+				},
+				func(t *testing.T) *mocks.Environment {
+					ret := &mocks.Environment{}
+					return ret
+				},
+				&peerConfigSet{
+					psm: &sync.Mutex{},
+					peerStates: map[wgtypes.Key]*apply.PeerConfigState{
+						k1: {},
+					},
+				},
+			},
+			args{&wgtypes.Device{}},
+			[]*fact.Fact{
+				// member
+				factutils.MemberMetadataFactFull(&k1, expires, "k1", false),
+			},
+			false,
+		},
+		{
+			"unnamed, basic",
+			fields{
+				&config.Server{
+					Peers: config.Peers{
+						k1: &config.Peer{
+							Basic: true,
+						},
+					},
+				},
+				func(t *testing.T) *mocks.Environment {
+					ret := &mocks.Environment{}
+					return ret
+				},
+				&peerConfigSet{
+					psm: &sync.Mutex{},
+					peerStates: map[wgtypes.Key]*apply.PeerConfigState{
+						k1: {},
+					},
+				},
+			},
+			args{&wgtypes.Device{}},
+			[]*fact.Fact{
+				// member
+				factutils.MemberMetadataFactFull(&k1, expires, "", true),
+			},
+			false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
