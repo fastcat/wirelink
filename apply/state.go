@@ -189,6 +189,16 @@ func (pcs *PeerConfigState) TryGetMetadata(attr fact.MemberAttribute) (string, b
 	return val, ok
 }
 
+// IsBasic checks if there is a MemberIsBasic attribute present and its value
+// is truthy. If no attribute is present, it returns false.
+func (pcs *PeerConfigState) IsBasic() bool {
+	value, ok := pcs.TryGetMetadata(fact.MemberIsBasic)
+	if !ok || len(value) == 0 {
+		return false
+	}
+	return value[0] != 0
+}
+
 const endpointInterval = device.RekeyTimeout + device.KeepaliveTimeout
 
 // TimeForNextEndpoint returns if we should try another endpoint for the peer

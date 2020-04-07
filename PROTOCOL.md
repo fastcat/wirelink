@@ -90,6 +90,10 @@ Currently defined attributes are:
     UTF-8 entries that are 16 bytes or less and which consist entirely of
     printable non-whitespace characters. Senders SHOULD thus limit themselves
     to that domain.
+* `b`: Basic flag
+  * Value is a single byte, where 0 means the peer is not basic and runs
+    `wirelink`, and any other value (typically 1) means the peer is basic and
+    only runs `wireguard` but not `wirelink`.
 
 Clients MUST NOT reject facts that contain unrecognized attributes, they SHOULD
 simply ignore the unrecognized attributes and only use those they do.

@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/fastcat/wirelink/util"
 	"github.com/pkg/errors"
 )
 
@@ -15,6 +16,9 @@ type MemberAttribute byte
 const (
 	// MemberName is the friendly / display name to use for a peer
 	MemberName MemberAttribute = 'n'
+	// MemberIsBasic flags if the member is a "basic" member which only runs
+	// wireguard and not wirelink
+	MemberIsBasic MemberAttribute = 'b'
 )
 
 // MemberMetadata represents a set of attributes and their values for a single
@@ -145,10 +149,11 @@ func (mm *MemberMetadata) ForEach(visitor func(MemberAttribute, string)) {
 
 // BuildMemberMetadata creates a metadata structure with the MemberName
 // attribute set to the given value.
-func BuildMemberMetadata(name string) *MemberMetadata {
+func BuildMemberMetadata(name string, basic bool) *MemberMetadata {
 	return &MemberMetadata{
 		attributes: map[MemberAttribute]string{
-			MemberName: name,
+			MemberName:    name,
+			MemberIsBasic: util.Ternary(basic, string(byte(1)), string(byte(0))).(string),
 		},
 	}
 }

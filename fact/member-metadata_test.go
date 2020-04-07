@@ -250,3 +250,37 @@ func TestMemberMetadata_String(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildMemberMetadata(t *testing.T) {
+	type args struct {
+		name  string
+		basic bool
+	}
+	tests := []struct {
+		name string
+		args args
+		want *MemberMetadata
+	}{
+		{
+			"named and not basic",
+			args{"foo", false},
+			&MemberMetadata{map[MemberAttribute]string{
+				MemberName:    "foo",
+				MemberIsBasic: string([]byte{0}),
+			}},
+		},
+		{
+			"named and basic",
+			args{"foo", true},
+			&MemberMetadata{map[MemberAttribute]string{
+				MemberName:    "foo",
+				MemberIsBasic: string([]byte{1}),
+			}},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, BuildMemberMetadata(tt.args.name, tt.args.basic))
+		})
+	}
+}

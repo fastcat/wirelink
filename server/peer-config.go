@@ -312,6 +312,16 @@ func (s *LinkServer) deletePeers(
 	return
 }
 
+func (s *LinkServer) readyForAllowedIPs(
+	now time.Time,
+	state *apply.PeerConfigState,
+	peer *wgtypes.Peer,
+) bool {
+	return now.Add(s.ChunkPeriod/2).Before(state.AliveUntil()) ||
+		s.config.Peers.IsBasic(peer.PublicKey) ||
+		state.IsBasic()
+}
+
 func (s *LinkServer) configurePeer(
 	inputState *apply.PeerConfigState,
 	peer *wgtypes.Peer,
@@ -338,7 +348,7 @@ func (s *LinkServer) configurePeer(
 		// It is intentional that `healthy && !alive` results in doing nothing:
 		// this is a transient state that should clear soon, and so we leave it as
 		// hysteresis, esp. in case we miss alive pings a little.
-		if now.Add(s.ChunkPeriod/2).Before(state.AliveUntil()) || s.config.Peers.IsBasic(peer.PublicKey) {
+		if s.readyForAllowedIPs(now, state, peer) {
 			pcfg = apply.EnsureAllowedIPs(peer, facts, pcfg, allowDeconfigure)
 			if pcfg != nil && (len(pcfg.AllowedIPs) > 0 || pcfg.ReplaceAllowedIPs) {
 				if pcfg.ReplaceAllowedIPs {
