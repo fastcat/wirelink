@@ -34,6 +34,9 @@ func (s *PeerSubject) DecodeFrom(lengthHint int, reader io.Reader) error {
 	return util.DecodeFrom(s, wgtypes.KeyLen, reader)
 }
 
+// IsSubject implements Subject
+func (s *PeerSubject) IsSubject() {}
+
 // *PeerSubject must implement Subject
 // we do this with the pointer because if we do it with the struct, the pointer
 // matches too, and that confuses things, and critically because unmarshalling

@@ -12,6 +12,8 @@ type Subject interface {
 	fmt.Stringer
 	encoding.BinaryMarshaler
 	util.Decodable
+	// IsSubject tags Subjects as semantically different from Values
+	IsSubject()
 }
 
 // Value represents the value of a Fact
