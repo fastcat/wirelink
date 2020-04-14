@@ -100,6 +100,30 @@ func TestMemberMetadata_MarshalBinary(t *testing.T) {
 			// TODO: assert the specific error
 			assert.Error,
 		},
+		{
+			"invalid utf8 name",
+			fields{map[MemberAttribute]string{
+				MemberName: "\xf0\xf0\xf0\xf0",
+			}},
+			[][]byte{nil},
+			assert.Error,
+		},
+		{
+			"long basic value",
+			fields{map[MemberAttribute]string{
+				MemberIsBasic: "\x00\x00",
+			}},
+			[][]byte{nil},
+			assert.Error,
+		},
+		{
+			"invalid basic value",
+			fields{map[MemberAttribute]string{
+				MemberIsBasic: "\x02",
+			}},
+			[][]byte{nil},
+			assert.Error,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

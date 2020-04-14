@@ -6,9 +6,11 @@ import (
 	"io"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/pkg/errors"
 
+	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/util"
 )
 
@@ -31,6 +33,28 @@ type MemberMetadata struct {
 
 var _ Value = &MemberMetadata{}
 
+type stringValidator func(string) error
+
+// memberMetadataValidators provides a lookup table for validating the inner
+// elements of a MemberMetadata value
+var memberMetadataValidators map[MemberAttribute]stringValidator = map[MemberAttribute]stringValidator{
+	MemberName: func(value string) error {
+		if !utf8.ValidString(value) {
+			return errors.Errorf("Invalid string for MemberName: %q", value)
+		}
+		return nil
+	},
+	MemberIsBasic: func(value string) error {
+		if len(value) != 1 {
+			return errors.Errorf("Invalid boolean for MemberIsBasic, len=%d", len(value))
+		}
+		if value[0] != 0 && value[0] != 1 {
+			return errors.Errorf("Invalid boolean for MemberIsBasic, value=%d", int(value[0]))
+		}
+		return nil
+	},
+}
+
 // MarshalBinary implements BinaryEncoder
 func (mm *MemberMetadata) MarshalBinary() ([]byte, error) {
 	// start the buffer out with enough room for the length bytes that will be
@@ -46,6 +70,15 @@ func (mm *MemberMetadata) MarshalBinary() ([]byte, error) {
 	attrs := mm.sortedAttrs()
 	for _, a := range attrs {
 		v := mm.attributes[a]
+		validator := memberMetadataValidators[a]
+		if validator != nil {
+			if err := validator(v); err != nil {
+				return nil, errors.Wrap(err, "Invalid member attribute value")
+			}
+		} else {
+			// this is at debug because we re-send stuff we got from elsewhere
+			log.Debug("Encoding unrecognized member attribute %d", int(a))
+		}
 		buf = append(buf, byte(a))
 		l = binary.PutUvarint(tmp, uint64(len(v)))
 		buf = append(buf, tmp[:l]...)
@@ -117,8 +150,20 @@ func (mm *MemberMetadata) DecodeFrom(lengthHint int, reader io.Reader) error {
 		if p+int(al) > len(payload) {
 			return errors.Errorf("attribute length error at payload offset %d: +%d>%d", p, al, len(payload))
 		}
-		mm.attributes[a] = string(payload[p : p+int(al)])
+		v := string(payload[p : p+int(al)])
 		p += int(al)
+
+		validator := memberMetadataValidators[a]
+		if validator != nil {
+			if err := validator(v); err != nil {
+				return errors.Wrap(err, "Invalid member attribute value")
+			}
+		} else {
+			// not an error, we'll just ignore this value
+			log.Info("Decoding unrecognized member attribute %d", int(a))
+		}
+
+		mm.attributes[a] = v
 	}
 
 	return nil
