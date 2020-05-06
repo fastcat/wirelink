@@ -110,6 +110,9 @@ func TestParse(t *testing.T) {
 			configPathKey := fmt.Sprintf("%s_%s", strings.ToUpper(fakeName), "CONFIG_PATH")
 			os.Setenv(configPathKey, configPath)
 			defer os.Unsetenv(configPathKey)
+			if tt.wantRet != nil {
+				tt.wantRet.ConfigPath = configPath
+			}
 
 			// set per-test env, clear it at the end
 			for _, envPair := range tt.env {

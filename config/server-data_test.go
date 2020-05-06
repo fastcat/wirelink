@@ -42,7 +42,7 @@ func TestServerData_Parse(t *testing.T) {
 		Dump         bool
 		Help         bool
 		Version      bool
-		configPath   string
+		ConfigPath   string
 	}
 	type args struct {
 		vcfg *viper.Viper
@@ -188,7 +188,7 @@ func TestServerData_Parse(t *testing.T) {
 				Dump:         tt.fields.Dump,
 				Help:         tt.fields.Help,
 				Version:      tt.fields.Version,
-				configPath:   tt.fields.configPath,
+				ConfigPath:   tt.fields.ConfigPath,
 			}
 			gotRet, err := s.Parse(tt.args.vcfg, tt.args.wgc)
 			if tt.wantErr {
