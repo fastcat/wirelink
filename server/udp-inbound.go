@@ -6,6 +6,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 
 	"github.com/fastcat/wirelink/autopeer"
@@ -116,6 +117,7 @@ func (s *LinkServer) chunkPackets(
 
 	// send an empty chunk once at startup to prime things
 	newFacts <- nil
+	lastChunk := time.Now()
 
 	for done := false; !done; {
 		sendBuffer := false
@@ -141,9 +143,23 @@ func (s *LinkServer) chunkPackets(
 		}
 
 		if sendBuffer {
+			// bootID swap needs to happen before we emit the buffer so that the alive
+			// info we send immediately sees the new data.
+			// the point of this is to get peers to re-send us everything they know
+			// right away, since they may have thought we received stuff we didn't
+			// while we were suspended (OS or process level are plausible)
+			now := time.Now()
+			if now.Before(lastChunk) || now.Sub(lastChunk) > s.ChunkPeriod*2 {
+				log.Info("Detected wall clock discontinuity, updating bootID: %v -> %v", lastChunk, now)
+				// have to lock to avoid a data race when reading this in `broadcastFacts`
+				s.stateAccess.Lock()
+				s.bootID = uuid.Must(uuid.NewRandom())
+				s.stateAccess.Unlock()
+			}
 			newFacts <- buffer
 			// always make a new buffer after we send it
 			buffer = nil
+			lastChunk = now
 		}
 	}
 

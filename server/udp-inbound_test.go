@@ -19,6 +19,7 @@ import (
 	"github.com/fastcat/wirelink/internal/testutils/facts"
 	"github.com/fastcat/wirelink/signing"
 	"github.com/fastcat/wirelink/util"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
@@ -407,11 +408,12 @@ func TestLinkServer_chunkPackets(t *testing.T) {
 		chunkPeriod time.Duration
 	}
 	tests := []struct {
-		name       string
-		args       args
-		assertion  require.ErrorAssertionFunc
-		packets    []*ReceivedFact
-		wantChunks [][]*ReceivedFact
+		name             string
+		args             args
+		assertion        require.ErrorAssertionFunc
+		packets          []*ReceivedFact
+		wantChunks       [][]*ReceivedFact
+		wantBootIDChange bool
 		// testing timing is a different test setup
 	}{
 		{
@@ -423,6 +425,7 @@ func TestLinkServer_chunkPackets(t *testing.T) {
 			require.NoError,
 			nil,
 			[][]*ReceivedFact{},
+			false,
 		},
 		{
 			"chunk size",
@@ -437,29 +440,61 @@ func TestLinkServer_chunkPackets(t *testing.T) {
 				rfs(5, 6, 7, 8, 9),
 				rfs(10, 11),
 			},
+			false,
+		},
+		{
+			// can't test the issue of time going backwards here
+			"change bootID on time jump",
+			args{
+				maxChunk: 1,
+				// basically _any_ passage of time will be > 2x this
+				chunkPeriod: time.Nanosecond,
+			},
+			require.NoError,
+			rfs(0, 1),
+			[][]*ReceivedFact{
+				rfs(0),
+				rfs(1),
+			},
+			true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			origBootID := uuid.Must(uuid.NewRandom())
 			s := &LinkServer{
 				ChunkPeriod: tt.args.chunkPeriod,
+				bootID:      origBootID,
+				stateAccess: &sync.Mutex{},
 			}
 			// make deep channels to avoid buffering problems
 			packets := make(chan *ReceivedFact, len(tt.packets))
 			// need +1 because there is an extra empty chunk sent at start
-			newFacts := make(chan []*ReceivedFact, len(tt.packets)+1)
+			// add *2+10 to avoid deadlocking on bugs/errors
+			newFacts := make(chan []*ReceivedFact, len(tt.packets)*2+10)
 			for _, p := range tt.packets {
 				packets <- p
 			}
 			close(packets)
 			tt.assertion(t, s.chunkPackets(packets, newFacts, tt.args.maxChunk))
-			var gotChunks [][]*ReceivedFact
+			gotChunks := [][]*ReceivedFact{}
+			first := true
 			for chunk := range newFacts {
+				// there's always a nil startup chunk, don't require tests to specify that
+				// also ignore nil chunks in crazy-timing-bootID-changes mode
+				if chunk == nil && (first || tt.wantBootIDChange) {
+					first = false
+					continue
+				}
 				gotChunks = append(gotChunks, chunk)
+				first = false
 			}
-			// there's always a nil startup chunk, don't require tests to specify that
-			wantChunks := append([][]*ReceivedFact{nil}, tt.wantChunks...)
-			assert.Equal(t, wantChunks, gotChunks)
+			assert.Equal(t, tt.wantChunks, gotChunks)
+			if tt.wantBootIDChange {
+				assert.NotEqual(t, origBootID, s.bootID)
+			} else {
+				assert.Equal(t, origBootID, s.bootID)
+			}
 		})
 	}
 }
