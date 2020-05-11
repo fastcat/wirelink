@@ -171,12 +171,15 @@ func (s *LinkServer) broadcastFacts(
 	s.conn.SetWriteDeadline(now.Add(timeout))
 
 	errs := make(chan error)
+	// hold the mutex momentarily for safe reading of the bootID
+	s.stateAccess.Lock()
 	ping := &fact.Fact{
 		Subject:   &fact.PeerSubject{Key: self},
 		Attribute: fact.AttributeAlive,
 		Value:     &fact.UUIDValue{UUID: s.bootID},
 		Expires:   now.Add(s.FactTTL),
 	}
+	s.stateAccess.Unlock()
 
 	for i := range peers {
 		// avoid closure binding problems
