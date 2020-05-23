@@ -1,16 +1,18 @@
 package fact
 
 import (
-	"bytes"
 	"encoding/binary"
-	"io"
 	"math"
 	"net"
 	"time"
 
+	"github.com/fastcat/wirelink/util"
 	"github.com/pkg/errors"
 )
 
+// a decodeHinter is expected to initialize the Subject and Value fields of the
+// given Fact to the correct types, and return the expected length (in bytes)
+// of the encoded value, or -1 if that length is unknown or variable.
 type decodeHinter = func(*Fact) (valueLength int)
 
 // decodeHints provides a lookup table for how to decode each valid attribute value
@@ -57,36 +59,20 @@ var decodeHints map[Attribute]decodeHinter = map[Attribute]decodeHinter{
 	AttributeSignedGroup: func(f *Fact) int {
 		f.Subject = &PeerSubject{}
 		f.Value = &SignedGroupValue{}
-		// this is a variable length, have to parse what's coming to see how long
+		// this is a variable length, expected to consume everything until EOF
 		return -1
 	},
 }
 
 // DecodeFrom implements Decodable
-func (f *Fact) DecodeFrom(lengthHint int, now time.Time, reader io.Reader) error {
-	// TODO: generic reader support
-	var buf *bytes.Buffer
-	var ok bool
-	if buf, ok = reader.(*bytes.Buffer); !ok {
-		return errors.Errorf("Reading Fact is only supported from a Buffer, not a %T", reader)
-	}
+func (f *Fact) DecodeFrom(lengthHint int, now time.Time, reader util.ByteReader) error {
 	var err error
 
-	attrByte, err := buf.ReadByte()
+	attrByte, err := reader.ReadByte()
 	if err != nil {
 		return errors.Wrap(err, "Unable to read attribute byte from packet")
 	}
 	f.Attribute = Attribute(attrByte)
-
-	ttl, err := binary.ReadUvarint(buf)
-	if err != nil {
-		return errors.Wrap(err, "Unable to read ttl from packet")
-	}
-	// clamp TTL to valid range
-	if ttl > math.MaxUint16 {
-		return errors.Errorf("Received TTL outside range: %v", ttl)
-	}
-	f.Expires = now.Add(time.Duration(ttl) * timeScale)
 
 	hinter, ok := decodeHints[f.Attribute]
 	if !ok {
@@ -96,13 +82,24 @@ func (f *Fact) DecodeFrom(lengthHint int, now time.Time, reader io.Reader) error
 		}
 		return errors.Errorf("Unrecognized attribute 0x%02x", byte(f.Attribute))
 	}
+
+	ttl, err := binary.ReadUvarint(reader)
+	if err != nil {
+		return errors.Wrap(err, "Unable to read ttl from packet")
+	}
+	// clamp TTL to valid range
+	if ttl > math.MaxUint16 {
+		return errors.Errorf("Received TTL outside range: %v", ttl)
+	}
+	f.Expires = now.Add(time.Duration(ttl) * timeScale)
+
 	valueLength := hinter(f)
 
-	err = f.Subject.DecodeFrom(0, buf)
+	err = f.Subject.DecodeFrom(0, reader)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to unmarshal fact subject from packet for %v", f.Attribute)
 	}
-	err = f.Value.DecodeFrom(valueLength, buf)
+	err = f.Value.DecodeFrom(valueLength, reader)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to unmarshal fact value from packet for %v", f.Attribute)
 	}

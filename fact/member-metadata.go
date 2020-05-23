@@ -131,11 +131,9 @@ func (mm *MemberMetadata) DecodeFrom(lengthHint int, reader io.Reader) error {
 	// zero always for this value type
 
 	payload := make([]byte, payloadLen)
-	l, err := reader.Read(payload)
+	_, err = io.ReadFull(reader, payload)
 	if err != nil {
 		return errors.Wrap(err, "Unable to read member attributes payload")
-	} else if uint64(l) != payloadLen {
-		return errors.Errorf("Unable to read full member attributes payload, got %d of %d bytes", l, payloadLen)
 	}
 
 	mm.attributes = make(map[MemberAttribute]string)

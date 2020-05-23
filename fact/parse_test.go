@@ -237,9 +237,9 @@ func TestFact_DecodeFrom(t *testing.T) {
 	}{
 		{
 			"AttributeUnknown error",
-			args{0, []byte{byte(AttributeUnknown), 0}},
+			args{0, []byte{byte(AttributeUnknown)}},
 			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
-				return assert.Error(t, err, msgAndArgs) &&
+				return assert.Error(t, err, msgAndArgs...) &&
 					assert.Contains(t, err.Error(), "AttributeUnknown") &&
 					assert.Contains(t, err.Error(), "Legacy")
 			},
@@ -247,11 +247,44 @@ func TestFact_DecodeFrom(t *testing.T) {
 		},
 		{
 			"invalid attribute error",
-			args{0, []byte{0xff, 0}},
+			args{0, []byte{0xff}},
 			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
-				return assert.Error(t, err, msgAndArgs) &&
+				return assert.Error(t, err, msgAndArgs...) &&
 					assert.Contains(t, err.Error(), "Unrecognized attribute") &&
 					assert.Contains(t, err.Error(), "0xff")
+			},
+			nil,
+		},
+		{
+			"TTL read error",
+			args{0, []byte{byte(AttributeAlive)}},
+			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
+				return assert.Error(t, err, msgAndArgs...) &&
+					assert.Contains(t, err.Error(), "ttl")
+			},
+			nil,
+		},
+		{
+			"subject decode error",
+			args{0, func() []byte {
+				_, b := mustMockAlivePacket(t, nil, nil)
+				return b[:len(b)-uuidLen-1]
+			}()},
+			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
+				return assert.Error(t, err, msgAndArgs...) &&
+					assert.Contains(t, err.Error(), "subject")
+			},
+			nil,
+		},
+		{
+			"value decode error",
+			args{0, func() []byte {
+				_, b := mustMockAlivePacket(t, nil, nil)
+				return b[:len(b)-1]
+			}()},
+			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
+				return assert.Error(t, err, msgAndArgs...) &&
+					assert.Contains(t, err.Error(), "value")
 			},
 			nil,
 		},

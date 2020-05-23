@@ -28,7 +28,7 @@ func DecodeFrom(value encoding.BinaryUnmarshaler, readLen int, reader io.Reader)
 		}
 	default:
 		data = make([]byte, readLen)
-		n, err := r.Read(data)
+		n, err := io.ReadFull(r, data)
 		if err != nil {
 			return errors.Wrapf(err, "Unable to read %T (read %d of %d bytes)", value, n, readLen)
 		}

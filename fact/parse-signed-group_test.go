@@ -74,15 +74,15 @@ func TestParseSignedGroup_Trivial(t *testing.T) {
 func TestParseSignedGroup_Large(t *testing.T) {
 	now := time.Now()
 	longBytes := make([]byte, chacha20poly1305.NonceSizeX+poly1305.TagSize+1500)
-	n, err := rand.Read(longBytes)
+	// rand never returns partial results
+	_, err := rand.Read(longBytes)
+	require.Nil(t, err)
 	sgv := &SignedGroupValue{}
 	const l1 = chacha20poly1305.NonceSizeX
 	const l2 = l1 + poly1305.TagSize
 	copy(sgv.Nonce[:], longBytes[0:l1])
 	copy(sgv.Tag[:], longBytes[l1:l2])
 	sgv.InnerBytes = longBytes[l2:]
-	require.Nil(t, err)
-	assert.Equal(t, len(longBytes), n, "Should load random data for full array")
 	_, p := mustSerialize(t, &Fact{
 		Attribute: AttributeSignedGroup,
 		Subject:   &PeerSubject{},
