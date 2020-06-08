@@ -1,3 +1,4 @@
+GOPATH:=$(shell go env GOPATH)
 export PATH:=$(GOPATH)/bin:$(PATH)
 export GO111MODULE=on
 
@@ -29,6 +30,8 @@ info:
 	@echo PKGVERREL=$(PKGVERREL)
 	@echo PKGVER=$(PKGVER)
 	@echo PKGREL=$(PKGREL)
+	@echo GOPATH=$(GOPATH)
+	@echo PATH=$$PATH
 
 install-tools:
 	go get $(TOOLS)
