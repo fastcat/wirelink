@@ -15,6 +15,7 @@ __debug_bin
 
 # binaries
 wirelink
+wirelink-cross-*
 
 packaging/checkinstall/*.deb
 # everything in doc-pak/ is copied from elsewhere

@@ -63,8 +63,9 @@ fmt: generate
 compile: generate
 	go build -v ./...
 wirelink: generate
-# for some reason it only puts the exe in if you tell it to build just .
 	go build -v .
+wirelink-cross-%: generate
+	GOARCH=$* go build -o $@ -v .
 lint: lint-golangci
 lint-golangci: generate
 	golangci-lint run
@@ -98,21 +99,26 @@ sysinstall: wirelink
 	install wirelink $(PREFIX)/bin/
 	install -m 644 packaging/wirelink@.service /lib/systemd/system/
 	install -m 644 packaging/wl-quick@.service /lib/systemd/system/
+sysinstall-cross-%: wirelink-cross-%
+	install wirelink-cross-$* $(PREFIX)/bin/wirelink
+	install -m 644 packaging/wirelink@.service /lib/systemd/system/
+	install -m 644 packaging/wl-quick@.service /lib/systemd/system/
 
 checkinstall-clean:
 	rm -vf ./packaging/checkinstall/*.deb
 	rm -rvf ./packaging/checkinstall/doc-pak/
 
-checkinstall-prep: wirelink
+checkinstall-prep-%: wirelink-cross-%
 	mkdir -p ./packaging/checkinstall/doc-pak/
 	install -m 644 $(DOCSFILES) ./packaging/checkinstall/doc-pak/
-checkinstall: checkinstall-prep
+checkinstall-cross-%: checkinstall-prep-%
 # extra quoting on some args to work around checkinstall bugs:
 # https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=785441
 	cd ./packaging/checkinstall && fakeroot checkinstall \
 		--type=debian \
 		--install=no \
 		--fstrans=yes \
+		--pkgarch=$* \
 		--pkgname=wirelink \
 		--pkgversion=$(PKGVER) \
 		--pkgrelease=$(PKGREL) \
@@ -125,13 +131,13 @@ checkinstall: checkinstall-prep
 		--strip=yes \
 		--reset-uids=yes \
 		--backup=no \
-		make -C ../../ sysinstall \
+		make -C ../../ sysinstall-cross-$* \
 		</dev/null
 
 everything: fmt lint compile wirelink test
 
 clean: checkinstall-clean
-	rm -vf ./wirelink $(GENERATED_SOURCES) $(patsubst %,%.tmp,$(GENERATED_SOURCES)) $(GOGENERATED_SOURCES) ./coverage.out ./coverage.html
+	rm -vf ./wirelink ./wirelink-cross-* $(GENERATED_SOURCES) $(patsubst %,%.tmp,$(GENERATED_SOURCES)) $(GOGENERATED_SOURCES) ./coverage.out ./coverage.html
 #TODO: any way to clean the go cache for just this package?
 
 .PHONY: all info install-tools fmt generate compile run install everything clean
