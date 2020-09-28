@@ -66,9 +66,11 @@ wirelink: generate
 	go build -v .
 wirelink-cross-%: generate
 	GOARCH=$* go build -o $@ -v .
-lint: lint-golangci
+lint: lint-golangci lint-vet
 lint-golangci: generate
 	golangci-lint run
+lint-vet: generate
+	go vet ./...
 # don't need to run non-race tests if we're gonna run race ones too
 test: lint test-go-race
 test-go: generate

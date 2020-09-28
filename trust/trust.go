@@ -4,6 +4,7 @@ package trust
 
 import (
 	"net"
+	"strconv"
 
 	"github.com/fastcat/wirelink/fact"
 )
@@ -55,7 +56,7 @@ func (l Level) String() string {
 	if ok {
 		return s
 	}
-	return string(l)
+	return strconv.Itoa(int(l))
 }
 
 // Evaluator is an interface for implementations that can answer whether
