@@ -26,7 +26,7 @@ func IsPeerRouter(peer *wgtypes.Peer) bool {
 }
 
 // IsDeviceRouter tries to detect whether the local device is a router for other peers.
-// Currently it does this by assuming that, if nobody else is a router, it probably is.
+// Currently it does this by assuming that it is a router if and only if nobody else is.
 // TODO: try to check local networking config for signs of routing configuration
 func IsDeviceRouter(dev *wgtypes.Device) bool {
 	otherRouters := false

@@ -65,7 +65,7 @@
 		"-template=testify"
 	],
 	"go.testFlags": [
-		"-short",
+		"-short"
 	],
-	"go.lintTool": "golangci-lint",
+	"go.lintTool": "golangci-lint"
 }

@@ -18,6 +18,18 @@
 			"problemMatcher": "$go"
 		},
 		{
+			"label": "build app",
+			"type": "shell",
+			"command": "go",
+			"args": [
+				"build",
+				"-v",
+				"."
+			],
+			"group": "build",
+			"problemMatcher": "$go"
+		},
+		{
 			"label": "test",
 			"type": "shell",
 			"command": "go",

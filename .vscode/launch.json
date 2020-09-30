@@ -12,22 +12,23 @@
 			},
 			"args": [
 				"--iface=test",
-				"--dump",
+				"--dump"
 			]
 		},
 		{
 			"name": "Run for real",
 			"type": "go",
 			"request": "launch",
-			"mode": "auto",
+			"mode": "debug",
+			"preLaunchTask": "build app",
 			"program": "${workspaceFolder}",
 			"env": {
-				"WIRELINK_DEBUG_AS_ROOT": "true",
+				"WIRELINK_DEBUG_AS_ROOT": "true"
 			},
 			"args": [
 				"--iface=wg0",
-				"--debug",
+				"--debug"
 			]
-		},
+		}
 	]
 }

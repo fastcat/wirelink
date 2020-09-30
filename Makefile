@@ -142,6 +142,10 @@ clean: checkinstall-clean
 	rm -vf ./wirelink ./wirelink-cross-* $(GENERATED_SOURCES) $(patsubst %,%.tmp,$(GENERATED_SOURCES)) $(GOGENERATED_SOURCES) ./coverage.out ./coverage.html
 #TODO: any way to clean the go cache for just this package?
 
+dlv-run-real: compile wirelink
+	sudo $(GOPATH)/bin/dlv debug --only-same-user=false --headless --listen=:2345 --log --api-version=2 -- --debug --iface=wg0
+.PHONY: dlv-run-real
+
 .PHONY: all info install-tools fmt generate compile run install everything clean
 .PHONY: lint lint-golint test cover htmlcover
 .PHONY: test-go test-go-race test-stress test-stress-go test-stress-race
