@@ -223,6 +223,7 @@ func TestServerData_Dump(t *testing.T) {
 			nil,
 			nil,
 			map[string]interface{}{
+				"chatty":      false,
 				"config-path": configPath,
 				"debug":       false,
 				"iface":       "wg0",
@@ -233,6 +234,7 @@ func TestServerData_Dump(t *testing.T) {
 			[]string{"--iface", wgIface},
 			nil,
 			map[string]interface{}{
+				"chatty":      false,
 				"config-path": configPath,
 				"debug":       false,
 				"iface":       wgIface,
@@ -243,9 +245,32 @@ func TestServerData_Dump(t *testing.T) {
 			nil,
 			[][]string{envArg("iface", wgIface)},
 			map[string]interface{}{
+				"chatty":      false,
 				"config-path": configPath,
 				"debug":       false,
 				"iface":       wgIface,
+			},
+		},
+		{
+			"arg chatty",
+			[]string{"--chatty"},
+			nil,
+			map[string]interface{}{
+				"chatty":      true,
+				"config-path": configPath,
+				"debug":       false,
+				"iface":       "wg0",
+			},
+		},
+		{
+			"env chatty",
+			nil,
+			[][]string{envArg("chatty", "true")},
+			map[string]interface{}{
+				"chatty":      true,
+				"config-path": configPath,
+				"debug":       false,
+				"iface":       "wg0",
 			},
 		},
 		// TODO: more

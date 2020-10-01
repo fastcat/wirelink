@@ -15,29 +15,24 @@ import (
 	"github.com/fastcat/wirelink/log"
 )
 
-// DumpConfigFlag is the name of the flag to request config dumping
-const DumpConfigFlag = "dump"
-
-// VersionFlag is the name of the flag to request printing the program version
-const VersionFlag = "version"
-
-// HelpFlag is the name of the flag to request printing program usage
-const HelpFlag = "help"
-
-// DebugFlag enables debug logging
-const DebugFlag = "debug"
-
-// RouterFlag is the name of the flag to set router mode
-const RouterFlag = "router"
-
-// IfaceFlag is the name of the flag to set the wireguard interface to use
-const IfaceFlag = "iface"
-
-// ConfigPathFlag is the name of the setting for the config file base path
-const ConfigPathFlag = "config-path"
-
-// ChattyFlag is the name of the setting to enable chatty mode
-const ChattyFlag = "chatty"
+const (
+	// RouterFlag is the name of the flag to set router mode
+	RouterFlag = "router"
+	// IfaceFlag is the name of the flag to set the wireguard interface to use
+	IfaceFlag = "iface"
+	// DumpConfigFlag is the name of the flag to request config dumping
+	DumpConfigFlag = "dump"
+	// VersionFlag is the name of the flag to request printing the program version
+	VersionFlag = "version"
+	// HelpFlag is the name of the flag to request printing program usage
+	HelpFlag = "help"
+	// ConfigPathFlag is the name of the setting for the config file base path
+	ConfigPathFlag = "config-path"
+	// DebugFlag enables debug logging
+	DebugFlag = "debug"
+	// ChattyFlag is the name of the setting to enable chatty mode
+	ChattyFlag = "chatty"
+)
 
 func programName(args []string) string {
 	base := path.Base(args[0])
@@ -57,16 +52,32 @@ func Init(args []string) (flags *pflag.FlagSet, vcfg *viper.Viper) {
 	flags = pflag.NewFlagSet(programInfo(args), pflag.ContinueOnError)
 	vcfg = viper.New()
 
+	// need this for `AllSettings` to type things that come from the environment correctly
+	// this also requires explicitly specifying defaults for everything, not just relying on the flag default
+	vcfg.SetTypeByDefaultValue(true)
+
 	flags.Bool(RouterFlag, false, "Is the local device a router (bool, omit for autodetect)")
+
 	vcfg.SetDefault(IfaceFlag, "wg0")
 	flags.StringP(IfaceFlag, "i", "wg0", "Interface on which to operate")
+
 	vcfg.SetDefault(DumpConfigFlag, false)
 	flags.Bool(DumpConfigFlag, false, "Dump configuration instead of running")
+
+	vcfg.SetDefault(VersionFlag, false)
 	flags.Bool(VersionFlag, false, "Print program version")
+
+	vcfg.SetDefault(HelpFlag, false)
 	flags.BoolP(HelpFlag, "h", false, "Print program usage")
+
 	vcfg.SetDefault(ConfigPathFlag, "/etc/wireguard")
 	// no flag for config-path for now, only env
+
+	vcfg.SetDefault(DebugFlag, false)
 	flags.BoolP(DebugFlag, "d", false, "Enable debug logging output")
+
+	vcfg.SetDefault(ChattyFlag, false)
+	flags.Bool(ChattyFlag, false, "Enable chatty mode (for fact exchangers)")
 
 	err := vcfg.BindPFlags(flags)
 	// this should never happen, flags are constant

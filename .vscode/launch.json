@@ -8,7 +8,8 @@
 			"mode": "auto",
 			"program": "${workspaceFolder}",
 			"env": {
-				"WIRELINK_CONFIG_PATH": "."
+				"__DEBUG_BIN_CONFIG_PATH": ".",
+				"__DEBUG_BIN_CHATTY": "true"
 			},
 			"args": [
 				"--iface=test",
