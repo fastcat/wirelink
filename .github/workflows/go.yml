@@ -39,7 +39,6 @@ jobs:
         git diff --exit-code
 
     - name: Build
-      #run: go build -v .
       run: |
         make compile
         go mod tidy
@@ -63,7 +62,6 @@ jobs:
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         file: ./coverage.out
-        yml: ./.github/codecov.yml
         fail_ci_if_error: true
 
     - name: Test with race detector
