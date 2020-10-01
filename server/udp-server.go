@@ -122,6 +122,13 @@ func Create(
 	return ret, nil
 }
 
+func (s *LinkServer) newBootID() {
+	// have to lock to avoid a data race when reading this in `broadcastFacts`
+	s.stateAccess.Lock()
+	s.bootID = uuid.Must(uuid.NewRandom())
+	s.stateAccess.Unlock()
+}
+
 // MutateConfig allows adjusting the server config with an appropriate lock held
 func (s *LinkServer) MutateConfig(f func(c *config.Server)) {
 	s.stateAccess.Lock()
