@@ -43,7 +43,10 @@ jobs:
 
     - name: Build
       #run: go build -v .
-      run: make compile
+      run: |
+        make compile
+        go mod tidy
+        git diff --exit-code
 
     - name: Format check
       run: |
