@@ -110,6 +110,7 @@ checkinstall-clean:
 	rm -rvf ./packaging/*checkinstall/doc-pak/
 
 checkinstall-prep-%: wirelink-cross-%
+	go mod tidy
 	mkdir -p ./packaging/checkinstall/doc-pak/
 	install -m 644 $(DOCSFILES) ./packaging/checkinstall/doc-pak/
 checkinstall-cross-%: checkinstall-prep-%
