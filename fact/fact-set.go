@@ -10,7 +10,7 @@ import (
 // Key is a comparable version of the subject, attribute, and value of a Fact
 type Key struct {
 	// Attribute is a byte, nothing to worry about in comparisons
-	attribute Attribute
+	Attribute Attribute
 	// subject/value are likely to contain slices which are not comparable in a useful sense
 	// so instead convert to bytes and then coerce that to a "string"
 	subject string
@@ -25,7 +25,7 @@ func KeyOf(fact *Fact) Key {
 		valueBytes = []byte{}
 	}
 	return Key{
-		attribute: fact.Attribute,
+		Attribute: fact.Attribute,
 		subject:   string(util.MustBytes(fact.Subject.MarshalBinary())),
 		value:     string(valueBytes),
 	}
@@ -58,12 +58,17 @@ func (s factSet) delete(fact *Fact) {
 }
 */
 
-// MergeList merges duplicate facts in a slice, keeping the latest Expires value
-func MergeList(facts []*Fact) []*Fact {
+func setOf(facts []*Fact) factSet {
 	s := make(factSet)
 	for _, f := range facts {
 		s.upsert(f)
 	}
+	return s
+}
+
+// MergeList merges duplicate facts in a slice, keeping the latest Expires value
+func MergeList(facts []*Fact) []*Fact {
+	s := setOf(facts)
 	ret := make([]*Fact, 0, len(s))
 	for _, fact := range s {
 		ret = append(ret, fact)
@@ -111,4 +116,23 @@ func SliceIndexOf(facts []*Fact, predicate func(*Fact) bool) int {
 		}
 	}
 	return -1
+}
+
+// KeysDifference computes the fact keys that are different between two slices
+func KeysDifference(old, new []*Fact) (onlyOld, onlyNew []Key) {
+	oldSet := setOf(old)
+	newSet := setOf(new)
+
+	for k := range oldSet {
+		if _, ok := newSet[k]; !ok {
+			onlyOld = append(onlyOld, k)
+		}
+	}
+	for k := range newSet {
+		if _, ok := oldSet[k]; !ok {
+			onlyOld = append(onlyNew, k)
+		}
+	}
+
+	return
 }

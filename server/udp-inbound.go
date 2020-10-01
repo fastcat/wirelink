@@ -220,27 +220,10 @@ func (s *LinkServer) processOneChunk(
 	// accumulate all the still valid and newly valid facts
 	newFactsChunk := make([]*fact.Fact, 0, len(currentFacts)+len(chunk))
 	// add all the not-expired facts
-	expiredCritical := 0
 	for _, f := range currentFacts {
 		if now.Before(f.Expires) {
 			newFactsChunk = append(newFactsChunk, f)
-		} else {
-			// if we expire certain important kinds of facts which affect connectivity
-			// to peers, we want to get a full refresh to ensure this is not a false
-			// expiration due to packet loss or the like.
-			switch f.Attribute {
-			case fact.AttributeAllowedCidrV4:
-			case fact.AttributeAllowedCidrV6:
-			case fact.AttributeMember:
-			case fact.AttributeMemberMetadata:
-				expiredCritical++
-			}
 		}
-	}
-	if expiredCritical != 0 {
-		log.Info("Expired %v critical facts, updating bootID", expiredCritical)
-		// if we expire any critical facts, request a refresh by cycling our boot id
-		s.newBootID()
 	}
 	dev, err := s.deviceState()
 	if err != nil {
@@ -299,6 +282,37 @@ func (s *LinkServer) processOneChunk(
 	uniqueFacts = fact.MergeList(newFactsChunk)
 	// at this point, ignore any prior error we got
 	err = nil
-	// TODO: log new/removed facts, ignoring TTL
+
+	// compare original vs new facts, act on some changes there
+	expiredFacts, newFacts := fact.KeysDifference(currentFacts, uniqueFacts)
+
+	// TODO: these debug logs won't be very useful, as the subject/value are
+	// stored as strings to make them comparable
+	if len(expiredFacts) != 0 {
+		log.Debug("Expired some facts: %v", expiredFacts)
+	}
+	if len(newFacts) != 0 {
+		log.Debug("Got new facts: %v", newFacts)
+	}
+
+	// if we expire certain important kinds of facts which affect connectivity
+	// to peers, we want to get a full refresh to ensure this is not a false
+	// expiration due to packet loss or the like.
+	expiredCritical := 0
+	for _, fk := range expiredFacts {
+		switch fk.Attribute {
+		case fact.AttributeAllowedCidrV4:
+		case fact.AttributeAllowedCidrV6:
+		case fact.AttributeMember:
+		case fact.AttributeMemberMetadata:
+			expiredCritical++
+		}
+	}
+	if expiredCritical != 0 {
+		log.Info("Expired %d critical facts, updating bootID", expiredCritical)
+		// if we expire any critical facts, request a refresh by cycling our boot id
+		s.newBootID()
+	}
+
 	return
 }
