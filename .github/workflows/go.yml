@@ -17,10 +17,11 @@ jobs:
 
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
+      with:
+        fetch-depth: 20
     - name: Get tags to make version.go
       run: |
-        git fetch --deepen=10 origin +refs/tags/*:refs/tags/*
-        d=20
+        d=30
         while ! make info ; do
           git fetch --deepen=$d origin +refs/tags/*:refs/tags/*
           d=$((d+10))
