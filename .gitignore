@@ -17,9 +17,9 @@ __debug_bin
 wirelink
 wirelink-cross-*
 
-packaging/checkinstall/*.deb
+packaging/*checkinstall/*.deb
 # everything in doc-pak/ is copied from elsewhere
-packaging/checkinstall/doc-pak/*
+packaging/*checkinstall/doc-pak/*
 
 coverage.out
 coverage.html

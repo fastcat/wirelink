@@ -1,0 +1,13 @@
+fast, modern, secure kernel VPN tunnel (userland Go implementation)
+ .
+ WireGuard is a novel VPN that uses state-of-the-art cryptography (the
+ "Noise" protocol). It aims to be faster, simpler, leaner, and more
+ useful than IPSec, while avoiding the massive headache. It intends to
+ be considerably more performant than OpenVPN. WireGuard is designed as
+ a general purpose VPN for running on embedded interfaces and super
+ computers alike, fit for many different circumstances. It runs over
+ UDP.
+ .
+ This package contains the user-space Go implementation, for use in
+ places where the Linux Kernel module cannot be used, such as ChromeOS
+ Crostini containers.
