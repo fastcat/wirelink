@@ -33,6 +33,14 @@ jobs:
         # a pull request then we can checkout the head.
         # fetch more than that so git describe --tags will work
         fetch-depth: 20
+    - name: Get tags to make version.go
+      run: |
+        git fetch origin +refs/tags/*:refs/tags/*
+        d=30
+        while ! make info ; do
+          git fetch --deepen=$d origin +refs/tags/*:refs/tags/*
+          d=$((d+10))
+        done
 
     # If this run was triggered by a pull request event, then checkout
     # the head of the pull request instead of the merge commit.

@@ -21,6 +21,7 @@ jobs:
         fetch-depth: 20
     - name: Get tags to make version.go
       run: |
+        git fetch origin +refs/tags/*:refs/tags/*
         d=30
         while ! make info ; do
           git fetch --deepen=$d origin +refs/tags/*:refs/tags/*
