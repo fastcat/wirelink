@@ -72,7 +72,7 @@ type Evaluator interface {
 	IsKnown(subject fact.Subject) bool
 }
 
-//go:generate mockery -testonly -inpkg -name Evaluator
+//go:generate go run github.com/vektra/mockery/cmd/mockery -testonly -inpkg -name Evaluator
 
 // ShouldAccept checks whether a fact Attribute should be accepted, given the
 // trust level of the source, and whether the peer is already locally

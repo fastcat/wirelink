@@ -2,7 +2,7 @@
 // for the testify mock library, generated via go generate and mockery.
 package mocks
 
-//go:generate mockery -dir ../ -output ./ -name "Environment|Interface|UDPConn"
+//go:generate go run github.com/vektra/mockery/cmd/mockery -dir ../ -output ./ -name "Environment|Interface|UDPConn"
 
 import (
 	"context"

@@ -15,7 +15,6 @@ DOCSFILES:=LICENSE README.md TODO.md
 TOOLS:=\
 	golang.org/x/tools/cmd/goimports \
 	golang.org/x/lint/golint \
-	github.com/vektra/mockery/.../ \
 	github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
 	$(NULL)
 # tools needed to develop the package
