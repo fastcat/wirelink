@@ -14,7 +14,6 @@ DOCSFILES:=LICENSE README.md TODO.md
 # tools needed to build the package
 TOOLS:=\
 	golang.org/x/tools/cmd/goimports \
-	golang.org/x/lint/golint \
 	github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
 	$(NULL)
 # tools needed to develop the package
@@ -195,7 +194,7 @@ dlv-run-real: compile wirelink
 .PHONY: dlv-run-real
 
 .PHONY: all info install-tools fmt generate compile run install everything clean
-.PHONY: lint lint-golint test cover htmlcover
+.PHONY: lint test cover htmlcover
 .PHONY: test-go test-go-race test-stress test-stress-go test-stress-race
 .PHONY: checkinstall checkinstall-prep checkinstall-clean
 # wirelink isn't actually phony, but we can't compute deps for it, so pretend
