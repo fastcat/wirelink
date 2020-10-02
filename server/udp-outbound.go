@@ -112,7 +112,7 @@ func (s *LinkServer) prepareFactsForPeer(p *wgtypes.Peer, facts []*fact.Fact, ga
 			continue
 		}
 		// don't tell peers other things they already know
-		if !s.peerKnowledge.peerNeeds(p, f, s.ChunkPeriod+time.Second) {
+		if !s.peerKnowledge.peerNeeds(p, f, s.FactTTL/2+s.ChunkPeriod) {
 			// log.Debug("Peer %s already knows %v", s.peerName(p.PublicKey), f)
 			continue
 		}
