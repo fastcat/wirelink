@@ -241,9 +241,7 @@ func (pcs *PeerConfigState) NextEndpoint(peerFacts []*fact.Fact, now time.Time) 
 
 	for _, pf := range peerFacts {
 		switch pf.Attribute {
-		case fact.AttributeEndpointV4:
-			fallthrough
-		case fact.AttributeEndpointV6:
+		case fact.AttributeEndpointV4, fact.AttributeEndpointV6:
 			// this logic relies on the zero value of a Time being very far in the past
 			lu := pcs.endpointLastUsed[string(util.MustBytes(pf.Value.MarshalBinary()))]
 			if lu.Before(bestLastUsed) {

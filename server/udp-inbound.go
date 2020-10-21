@@ -301,10 +301,7 @@ func (s *LinkServer) processOneChunk(
 	expiredCritical := 0
 	for _, fk := range expiredFacts {
 		switch fk.Attribute {
-		case fact.AttributeAllowedCidrV4:
-		case fact.AttributeAllowedCidrV6:
-		case fact.AttributeMember:
-		case fact.AttributeMemberMetadata:
+		case fact.AttributeAllowedCidrV4, fact.AttributeAllowedCidrV6, fact.AttributeMember, fact.AttributeMemberMetadata:
 			expiredCritical++
 		}
 	}

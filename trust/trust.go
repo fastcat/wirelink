@@ -90,19 +90,13 @@ func ShouldAccept(attr fact.Attribute, known bool, level *Level) bool {
 		// these are just "ping" packets, we should never store or relay them
 		// we only keep track of who has sent us one
 		return false
-	case fact.AttributeEndpointV4:
-		fallthrough
-	case fact.AttributeEndpointV6:
+	case fact.AttributeEndpointV4, fact.AttributeEndpointV6:
 		threshold = Endpoint
 
-	case fact.AttributeAllowedCidrV4:
-		fallthrough
-	case fact.AttributeAllowedCidrV6:
+	case fact.AttributeAllowedCidrV4, fact.AttributeAllowedCidrV6:
 		threshold = AllowedIPs
 
-	case fact.AttributeMember:
-		fallthrough
-	case fact.AttributeMemberMetadata:
+	case fact.AttributeMember, fact.AttributeMemberMetadata:
 		threshold = Membership
 
 	default:

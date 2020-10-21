@@ -66,9 +66,7 @@ func EnsureAllowedIPs(
 
 	for _, f := range facts {
 		switch f.Attribute {
-		case fact.AttributeAllowedCidrV4:
-			fallthrough
-		case fact.AttributeAllowedCidrV6:
+		case fact.AttributeAllowedCidrV4, fact.AttributeAllowedCidrV6:
 			key := fvKey(f.Value)
 			aipFlags[key] |= aipValid
 			if aipFlags[key]&aipAlreadyMask != aipNone {
