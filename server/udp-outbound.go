@@ -37,7 +37,24 @@ func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) er
 
 func (s *LinkServer) broadcastFactUpdatesOnce(newFacts []*fact.Fact, dev *wgtypes.Device) {
 	now := time.Now()
-	_, errs := s.broadcastFacts(dev.PublicKey, dev.Peers, newFacts, now, s.ChunkPeriod-time.Second)
+	// don't share info about dead peers
+	// filtering this out from trust sources will result in offline peers being
+	// cleared from leaf configs when the offline one ages out, reducing noise
+	filteredFacts := make([]*fact.Fact, 0, len(newFacts))
+	for _, f := range newFacts {
+		switch f.Attribute {
+		case fact.AttributeMember, fact.AttributeMemberMetadata:
+			ps := f.Subject.(*fact.PeerSubject)
+			if pcs, ok := s.peerConfig.Get(ps.Key); ok && !pcs.IsAlive() && !pcs.IsHealthy() {
+				// peer is known but dead, don't send membership data
+				break
+			}
+			fallthrough
+		default:
+			filteredFacts = append(filteredFacts, f)
+		}
+	}
+	_, errs := s.broadcastFacts(dev.PublicKey, dev.Peers, filteredFacts, now, s.ChunkPeriod-time.Second)
 	if errs != nil {
 		// don't print more than a handful of errors
 		if len(errs) > 5 {
