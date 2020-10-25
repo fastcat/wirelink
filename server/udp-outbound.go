@@ -43,7 +43,7 @@ func (s *LinkServer) broadcastFactUpdatesOnce(newFacts []*fact.Fact, dev *wgtype
 	filteredFacts := make([]*fact.Fact, 0, len(newFacts))
 	for _, f := range newFacts {
 		switch f.Attribute {
-		case fact.AttributeMember, fact.AttributeMemberMetadata:
+		case fact.AttributeMember, fact.AttributeMemberMetadata, fact.AttributeAllowedCidrV4, fact.AttributeAllowedCidrV6, fact.AttributeEndpointV4, fact.AttributeEndpointV6:
 			ps := f.Subject.(*fact.PeerSubject)
 			if pcs, ok := s.peerConfig.Get(ps.Key); ok && !pcs.IsAlive() && !pcs.IsHealthy() {
 				// peer is known but dead, don't send membership data
