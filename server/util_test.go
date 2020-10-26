@@ -13,6 +13,7 @@ import (
 	"github.com/fastcat/wirelink/internal"
 	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/fastcat/wirelink/internal/testutils/facts"
+	"github.com/fastcat/wirelink/signing"
 	"github.com/fastcat/wirelink/util"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -140,6 +141,8 @@ func TestLinkServer_formatFacts(t *testing.T) {
 				config:      tt.fields.config,
 				peerConfig:  tt.fields.peerConfig,
 				stateAccess: &sync.Mutex{},
+				// just a placeholder for code that wants to check the local public key
+				signer: &signing.Signer{},
 			}
 			got := s.formatFacts(now, tt.args.facts)
 			if tt.wantRegexp {

@@ -696,6 +696,8 @@ func TestLinkServer_deletePeers(t *testing.T) {
 					peerStates: tt.fields.peerStates,
 					psm:        &sync.Mutex{},
 				},
+				// just a placeholder for code that wants to check the local public key
+				signer: &signing.Signer{},
 			}
 			err := s.deletePeers(tt.args.dev, tt.args.removePeer, now)
 			if tt.wantErr {

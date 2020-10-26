@@ -27,6 +27,10 @@ func (s *LinkServer) peerName(peer wgtypes.Key) string {
 	if len(ret) > 0 {
 		return ret
 	}
+	// TODO: don't rely on signer for this
+	if peer == s.signer.PublicKey {
+		return "self"
+	}
 	return peer.String()
 }
 
@@ -53,6 +57,11 @@ func (s *LinkServer) formatFacts(
 	}
 	str.WriteString("\nCurrent peers:")
 	s.peerConfig.ForEach(func(k wgtypes.Key, pcs *apply.PeerConfigState) {
+		// local device will generally be in this list, but we don't want to list it
+		// TODO: don't rely on signer for this
+		if k == s.signer.PublicKey {
+			return
+		}
 		peerName := s.peerConfigName(k)
 		if len(peerName) == 0 {
 			peerName, _ = pcs.TryGetMetadata(fact.MemberName)

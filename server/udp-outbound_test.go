@@ -156,6 +156,8 @@ func TestLinkServer_shouldSendTo(t *testing.T) {
 				config:      tt.fields.config,
 				stateAccess: &sync.Mutex{},
 				peerConfig:  newPeerConfigSet(),
+				// just a placeholder for code that wants to check the local public key
+				signer: &signing.Signer{},
 			}
 			assert.Equal(t, tt.want, s.shouldSendTo(tt.args.p))
 		})
@@ -605,6 +607,8 @@ func TestLinkServer_shouldSend(t *testing.T) {
 			s := &LinkServer{
 				peerConfig: pcs,
 				config:     &config.Server{},
+				// just a placeholder for code that wants to check the local public key
+				signer: &signing.Signer{},
 			}
 			assert.Equal(t, tt.want, s.shouldSend(tt.args.f, tt.args.self))
 		})
