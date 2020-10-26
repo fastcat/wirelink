@@ -130,7 +130,9 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 	}{
 		{
 			"no-op",
-			fields{},
+			fields{
+				peerStates: map[wgtypes.Key]*apply.PeerConfigState{},
+			},
 			args{
 				dev:       &wgtypes.Device{},
 				startTime: now,
