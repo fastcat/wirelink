@@ -87,5 +87,16 @@
 	"go.formatTool": "goreturns",
 	"go.gotoSymbol.includeImports": true,
 	"files.insertFinalNewline": true,
-	"files.trimFinalNewlines": true
+	"files.trimFinalNewlines": true,
+	"go.delveConfig": {
+		"dlvLoadConfig": {
+			// "followPointers": true,
+			// "maxVariableRecurse": 1,
+			"maxStringLen": 256,
+			// "maxArrayValues": 64,
+			// "maxStructFields": -1
+		},
+		// "apiVersion": 2,
+		// "showGlobalVariables": false
+	}
 }

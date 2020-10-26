@@ -188,7 +188,7 @@ func Test_Cmd_VNet1(t *testing.T) {
 			assert.NotNil(t, p.Endpoint(), "%s: should have an endpoint")
 			// can't use greater/less with durations nicely
 			receiveAge := time.Since(p.LastReceive())
-			assert.True(t, receiveAge <= chunkPeriod, "%s: should have recent data from peer: %v > %v", msg, receiveAge, chunkPeriod)
+			require.True(t, receiveAge <= chunkPeriod, "%s: should have recent data from peer: %v > %v", msg, receiveAge, chunkPeriod)
 			if aip {
 				pa := p.Addrs()
 				assert.Condition(t, func() bool {
@@ -245,8 +245,8 @@ func Test_Cmd_VNet1(t *testing.T) {
 	assertHealthy(client2, "wg1", h1pub, false, "1a: c2 knows h")
 
 	// one more cycle after pings, AIPs should be alive in both directions
-	// peers should have added endpoints for each other and pinged,
-	// but may not have registered that yet, depending on race conditions
+	// server should be sending data about the peers out to each other now, but
+	// peers may not have everything online yet
 	time.Sleep(chunkPeriod) // after 3c
 	printAll("Printing state 1b: host/client AIPs")
 	assertHealthy(host1, "wg0", c1pub, true, "1b: h knows c1")
@@ -256,8 +256,10 @@ func Test_Cmd_VNet1(t *testing.T) {
 	// assertHealthy(client1, "wg1", c2pub, false, "1b: c1 knows c2")
 	// assertHealthy(client2, "wg1", c1pub, false, "1b: c2 knows c1")
 
-	// one more cycle clients should definitely have handshakes and may have AIPs
-	time.Sleep(chunkPeriod) // after 4c
+	// it may take two more cycles for clients to get info about each other from
+	// the server, they definitely should know each other by then and may have
+	// AIPs, but also may not due to race conditions
+	time.Sleep(2 * chunkPeriod) // after 5c
 	printAll("Printing state 2a: host/client AIPs and client/client handshakes")
 	assertHealthy(host1, "wg0", c1pub, true, "2a: h knows c1")
 	assertHealthy(host1, "wg0", c2pub, true, "2a: h knows c2")
@@ -267,7 +269,7 @@ func Test_Cmd_VNet1(t *testing.T) {
 	assertHealthy(client2, "wg1", c1pub, false, "2a: c2 knows c1")
 
 	// one more cycle should definitely have AIPs
-	time.Sleep(chunkPeriod) // after 5c
+	time.Sleep(chunkPeriod) // after 6c
 	printAll("Printing state 2b: full AIPs")
 	assertHealthy(host1, "wg0", c1pub, true, "2b: h knows c1")
 	assertHealthy(host1, "wg0", c2pub, true, "2b: h knows c2")
@@ -275,6 +277,9 @@ func Test_Cmd_VNet1(t *testing.T) {
 	assertHealthy(client2, "wg1", h1pub, true, "2b: c2 knows h")
 	assertHealthy(client1, "wg1", c2pub, true, "2b: c1 knows c2")
 	assertHealthy(client2, "wg1", c1pub, true, "2b: c2 knows c1")
+
+	// TODO: instead of de-authing client2, simply take it offline and make sure
+	// it is removed from client1
 
 	// de-auth client2
 	log.Debug("Removing client2 = %s", c2pub)

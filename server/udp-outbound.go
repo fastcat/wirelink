@@ -37,22 +37,7 @@ func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) er
 
 func (s *LinkServer) broadcastFactUpdatesOnce(newFacts []*fact.Fact, dev *wgtypes.Device) {
 	now := time.Now()
-	// don't share info about dead peers
-	// filtering this out from trust sources will result in offline peers being
-	// cleared from leaf configs when the offline one ages out, reducing noise
-	filteredFacts := make([]*fact.Fact, 0, len(newFacts))
-	for _, f := range newFacts {
-		if ps, ok := f.Subject.(*fact.PeerSubject); ok {
-			// always broadcast information about ourselves
-			if ps.Key != dev.PublicKey {
-				if pcs, ok := s.peerConfig.Get(ps.Key); ok && !pcs.IsAlive() && !pcs.IsHealthy() {
-					// peer is known but dead, don't send membership data
-					continue
-				}
-			}
-		}
-		filteredFacts = append(filteredFacts, f)
-	}
+	filteredFacts := s.factsToSend(newFacts, dev)
 	_, errs := s.broadcastFacts(dev.PublicKey, dev.Peers, filteredFacts, now, s.ChunkPeriod-time.Second)
 	if errs != nil {
 		// don't print more than a handful of errors
@@ -62,6 +47,33 @@ func (s *LinkServer) broadcastFactUpdatesOnce(newFacts []*fact.Fact, dev *wgtype
 			log.Error("Failed to send some facts: %v", errs)
 		}
 	}
+}
+
+func (s *LinkServer) factsToSend(facts []*fact.Fact, dev *wgtypes.Device) []*fact.Fact {
+	filteredFacts := make([]*fact.Fact, 0, len(facts))
+	for _, f := range facts {
+		if s.shouldSend(f, dev.PublicKey) {
+			filteredFacts = append(filteredFacts, f)
+		}
+	}
+	return filteredFacts
+}
+
+func (s *LinkServer) shouldSend(f *fact.Fact, self wgtypes.Key) bool {
+	if ps, ok := f.Subject.(*fact.PeerSubject); ok {
+		// always send info about ourselves, we may not be in peerConfig, but we are
+		// definitely online from our own perspective
+		if ps.Key != self {
+			if pcs, ok := s.peerConfig.Get(ps.Key); ok && !pcs.IsAlive() && !pcs.IsHealthy() {
+				// don't share info about dead peers: filtering this out from trust
+				// sources will result in offline peers being cleared from leaf configs
+				// when the offline one ages out, reducing noise
+				log.Debug("Don't send %s/%s: offline", s.peerName(ps.Key), f.Attribute)
+				return false
+			}
+		}
+	}
+	return true
 }
 
 type sendLevel int

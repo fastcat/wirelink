@@ -1,6 +1,7 @@
 package fact
 
 import (
+	"fmt"
 	"sort"
 	"time"
 
@@ -15,6 +16,10 @@ type Key struct {
 	// so instead convert to bytes and then coerce that to a "string"
 	subject string
 	value   string
+}
+
+func (k *Key) String() string {
+	return fmt.Sprintf("[a:%c s:%s v:%s]", k.Attribute, k.subject, k.value)
 }
 
 // KeyOf returns the FactKey for a Fact

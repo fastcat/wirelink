@@ -30,6 +30,13 @@
 				"--iface=wg0",
 				"--debug"
 			]
+		},
+		{
+			"name": "Test current package",
+			"type": "go",
+			"request": "launch",
+			"mode": "test",
+			"program": "${fileDirname}",
 		}
 	]
 }

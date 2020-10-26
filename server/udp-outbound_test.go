@@ -10,8 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-
+	"github.com/fastcat/wirelink/apply"
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/config"
 	"github.com/fastcat/wirelink/fact"
@@ -22,10 +21,10 @@ import (
 	"github.com/fastcat/wirelink/signing"
 	"github.com/fastcat/wirelink/trust"
 	"github.com/fastcat/wirelink/util"
-
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-
+	"github.com/stretchr/testify/require"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
@@ -490,6 +489,124 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 			assert.Equal(t, tt.wantSendErrors, gotSendErrors)
 			conn.AssertExpectations(t)
 			ctrl.AssertExpectations(t)
+		})
+	}
+}
+
+func TestLinkServer_shouldSend(t *testing.T) {
+	type peerState struct {
+		healthy bool
+		alive   bool
+	}
+	type args struct {
+		f    *fact.Fact
+		self wgtypes.Key
+	}
+	k1 := testutils.MustKey(t)
+	k2 := testutils.MustKey(t)
+	now := time.Now()
+	then := now.Add(time.Hour)
+	kf := func(key wgtypes.Key, attr fact.Attribute, value fact.Value) *fact.Fact {
+		return &fact.Fact{
+			Subject:   &fact.PeerSubject{Key: key},
+			Attribute: attr,
+			Value:     value,
+			Expires:   then,
+		}
+	}
+	// TODO: replicate or fuzz tests by attribute
+	tests := []struct {
+		name       string
+		peerStates map[wgtypes.Key]peerState
+		args       args
+		want       bool
+	}{
+		{
+			"send unknowns",
+			map[wgtypes.Key]peerState{},
+			args{
+				kf(k1, fact.AttributeMember, &fact.EmptyValue{}),
+				k2,
+			},
+			true,
+		},
+		{
+			"no send unhealthy unalive",
+			map[wgtypes.Key]peerState{
+				k1: {false, false},
+			},
+			args{
+				kf(k1, fact.AttributeMember, &fact.EmptyValue{}),
+				k2,
+			},
+			false,
+		},
+		{
+			"send unhealthy alive",
+			map[wgtypes.Key]peerState{
+				k1: {false, true},
+			},
+			args{
+				kf(k1, fact.AttributeMember, &fact.EmptyValue{}),
+				k2,
+			},
+			true,
+		},
+		{
+			"send healthy unalive",
+			map[wgtypes.Key]peerState{
+				k1: {true, false},
+			},
+			args{
+				kf(k1, fact.AttributeMember, &fact.EmptyValue{}),
+				k2,
+			},
+			true,
+		},
+		{
+			"send healthy alive",
+			map[wgtypes.Key]peerState{
+				k1: {true, true},
+			},
+			args{
+				kf(k1, fact.AttributeMember, &fact.EmptyValue{}),
+				k2,
+			},
+			true,
+		},
+		{
+			"send self",
+			map[wgtypes.Key]peerState{
+				k1: {false, false},
+			},
+			args{
+				kf(k1, fact.AttributeAlive, &fact.EmptyValue{}),
+				k1,
+			},
+			true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pcs := newPeerConfigSet()
+			for k, s := range tt.peerStates {
+				var state *apply.PeerConfigState
+				p := &wgtypes.Peer{}
+				if s.healthy {
+					p.LastHandshakeTime = now
+					// just needs to be non-nil
+					p.Endpoint = &net.UDPAddr{IP: net.IPv4zero}
+				}
+				state = state.Update(p, "", s.alive, then, nil, now, nil)
+				require.Equal(t, s.alive, state.IsAlive())
+				require.Equal(t, s.healthy, state.IsHealthy())
+				pcs.Set(k, state)
+			}
+			s := &LinkServer{
+				peerConfig: pcs,
+				config:     &config.Server{},
+			}
+			assert.Equal(t, tt.want, s.shouldSend(tt.args.f, tt.args.self))
 		})
 	}
 }
