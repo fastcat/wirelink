@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/fastcat/wirelink/internal/testutils"
-
 	"github.com/stretchr/testify/assert"
 )
 
@@ -30,6 +29,51 @@ func TestFactKeyEquality(t *testing.T) {
 	factKey2 := KeyOf(&fact2)
 
 	assert.Exactly(t, factKey1, factKey2, "Keys for same fact should be equal")
+}
+
+func TestKey_String(t *testing.T) {
+	type fields struct {
+		Attribute Attribute
+		subject   string
+		value     string
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   string
+	}{
+		{
+			"zeros",
+			fields{
+				Attribute: AttributeUnknown,
+				subject:   "",
+				value:     "",
+			},
+			`[a:'\x00' s:"" v:""]`,
+		},
+		{
+			"semi-real",
+			fields{
+				Attribute: AttributeMember,
+				subject: string([]byte{
+					0xe4, 0x25, 0x0c, 0xb1, 0xc9, 0x4b, 0xcd, 0x4e, 0xeb, 0x4e, 0x09, 0x06, 0xab, 0x81, 0x8a, 0x3a,
+					0x8c, 0x05, 0xe2, 0x3c, 0xfd, 0x6e, 0x38, 0x4f, 0xca, 0x8d, 0x5b, 0x73, 0xef, 0xb1, 0x0b, 0x18,
+				}),
+				value: "xyzzy",
+			},
+			`[a:'m' s:5CUMsclLzU7rTgkGq4GKOowF4jz9bjhPyo1bc++xCxg= v:"xyzzy"]`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			k := &Key{
+				Attribute: tt.fields.Attribute,
+				subject:   tt.fields.subject,
+				value:     tt.fields.value,
+			}
+			assert.Equal(t, tt.want, k.String())
+		})
+	}
 }
 
 func TestMergeList(t *testing.T) {

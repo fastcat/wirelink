@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/fastcat/wirelink/util"
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
 // Key is a comparable version of the subject, attribute, and value of a Fact
@@ -19,7 +20,11 @@ type Key struct {
 }
 
 func (k *Key) String() string {
-	return fmt.Sprintf("[a:%c s:%s v:%s]", k.Attribute, k.subject, k.value)
+	if len(k.subject) == wgtypes.KeyLen {
+		kk, _ := wgtypes.NewKey([]byte(k.subject))
+		return fmt.Sprintf("[a:%q s:%s v:%q]", k.Attribute, kk, k.value)
+	}
+	return fmt.Sprintf("[a:%q s:%q v:%q]", k.Attribute, k.subject, k.value)
 }
 
 // KeyOf returns the FactKey for a Fact

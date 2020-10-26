@@ -51,8 +51,12 @@ func IsGloballyRoutable(ip net.IP) bool {
 		// TODO: more ranges?
 	}
 	if ip6 := ip.To16(); ip6 != nil {
-		// fc00::/7 ~ ipv6 equivalent of 10/8-ish
+		// fc00::/7 ~ unique local addr ipv6 equivalent of 10/8-ish
 		if ip6[0] == 0xfc || ip6[0] == 0xfd {
+			return false
+		}
+		// fec0::/10 ~ deprecated site-local
+		if ip6[0] == 0xfe && ip6[1] >= 0xc0 {
 			return false
 		}
 	}

@@ -1,6 +1,7 @@
 package util
 
 import (
+	"math/rand"
 	"net"
 	"testing"
 
@@ -129,6 +130,70 @@ func TestIsIPv6LLMatch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := IsIPv6LLMatch(tt.args.expected, tt.args.actual, tt.args.local)
 			assert.Equal(t, tt.want, got, "IsIPv6LLMatch()")
+		})
+	}
+}
+
+func TestIsGloballyRoutable(t *testing.T) {
+	rb := func(l int, prefix ...byte) []byte {
+		r := make([]byte, l)
+		rand.Read(r)
+		copy(r, prefix)
+		return r
+	}
+	tests := []struct {
+		name string
+		ip   net.IP
+		want bool
+	}{
+		{
+			"ipv4: localhost",
+			net.IPv4(127, 0, 0, 1),
+			false,
+		},
+		{
+			"ipv6: localhost",
+			net.IPv6loopback,
+			false,
+		},
+		{
+			"ipv4: CG-NAT",
+			// 100.64/10
+			net.IPv4(100, byte(64+rand.Intn(64)), byte(rand.Intn(256)), byte(rand.Intn(256))),
+			false,
+		},
+		{
+			"ipv4: google",
+			net.IPv4(8, 8, 8, 8),
+			true,
+		},
+		{
+			"ipv6: google",
+			net.ParseIP("2001:4860:4860::8888"),
+			true,
+		},
+		{
+			// fec0::/10: this is deprecated in ipv6, but still not routeable
+			"ipv6: site-local",
+			net.IP(rb(16, 0xfe, byte(0xc0+rand.Intn(64)))),
+			false,
+		},
+		{
+			// fe80::/7
+			"ipv6: link-local",
+			net.IP(rb(16, 0xfe, byte(0x80+rand.Intn(64)))),
+			false,
+		},
+		{
+			// fc00/7
+			"ipv6: ula",
+			net.IP(rb(16, byte(0xfc+rand.Intn(2)))),
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, IsGloballyRoutable(tt.ip))
 		})
 	}
 }

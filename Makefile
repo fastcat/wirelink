@@ -88,6 +88,7 @@ coverage.out: generate
 cover: coverage.out
 coverage.html: coverage.out
 	go tool cover -html=coverage.out -o=coverage.html
+htmlcover: coverage.html
 
 run: generate
 	go run -exec sudo .
