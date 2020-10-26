@@ -108,7 +108,7 @@ func (s *LinkServer) collectPeerFlags(
 			now.Add(s.FactTTL),
 			&s.bootID,
 			now,
-			nil,
+			factsByPeer[dev.PublicKey],
 		)
 		s.peerConfig.Set(dev.PublicKey, ps)
 	}
