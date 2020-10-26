@@ -68,7 +68,7 @@ func (s *LinkServer) shouldSend(f *fact.Fact, self wgtypes.Key) bool {
 				// don't share info about dead peers: filtering this out from trust
 				// sources will result in offline peers being cleared from leaf configs
 				// when the offline one ages out, reducing noise
-				log.Debug("Don't send %s/%s: offline", s.peerName(ps.Key), f.Attribute)
+				log.Debug("Don't send %s/%q: offline", s.peerName(ps.Key), f.Attribute)
 				return false
 			}
 		}
@@ -131,13 +131,20 @@ func (s *LinkServer) shouldSendTo(p *wgtypes.Peer) sendLevel {
 
 func (s *LinkServer) prepareFactsForPeer(p *wgtypes.Peer, facts []*fact.Fact, ga *fact.GroupAccumulator) {
 	for _, f := range facts {
-		// don't tell peers things about themselves
-		// they won't accept it unless we are a router,
-		// the only way this would be useful would be to tell them their external endpoint,
-		// but that's only useful if they can tell others and we can't, but if they can tell others,
-		// then those others don't need to know it because they are already connected
-		if ps, ok := f.Subject.(*fact.PeerSubject); ok && *ps == (fact.PeerSubject{Key: p.PublicKey}) {
-			continue
+		// don't tell peers most things about themselves: they won't accept it
+		// unless we are a router, and mostly it wouldn't be useful anyways.
+		switch f.Attribute {
+		case fact.AttributeMemberMetadata:
+			// do tell peers their name for logging purposes
+
+		// FUTURE: tell peers their AIPs so they can configure their local
+		// interface. not used for now, esp. since we sometimes want the AIPs to not
+		// always match the interface addressing.
+
+		default:
+			if ps, ok := f.Subject.(*fact.PeerSubject); ok && *ps == (fact.PeerSubject{Key: p.PublicKey}) {
+				continue
+			}
 		}
 		// don't tell peers other things they already know
 		if !s.peerKnowledge.peerNeeds(p, f, s.FactTTL/2+s.ChunkPeriod) {

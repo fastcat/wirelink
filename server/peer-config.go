@@ -1,6 +1,7 @@
 package server
 
 import (
+	"net"
 	"time"
 
 	"github.com/pkg/errors"
@@ -91,6 +92,25 @@ func (s *LinkServer) collectPeerFlags(
 		ps, _ := s.peerConfig.Get(peer.PublicKey)
 		ps = ps.Update(peer, s.peerConfigName(peer.PublicKey), newAlive, aliveUntil, bootID, now, peerFacts)
 		s.peerConfig.Set(peer.PublicKey, ps)
+	}
+	// do the same, slightly fake for the local peer
+	{
+		localPeers[dev.PublicKey] = true
+		ps, _ := s.peerConfig.Get(dev.PublicKey)
+		ps = ps.Update(
+			// fake a live local peer for the local node
+			&wgtypes.Peer{
+				LastHandshakeTime: now,
+				Endpoint:          &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)},
+			},
+			s.peerConfigName(dev.PublicKey),
+			true,
+			now.Add(s.FactTTL),
+			&s.bootID,
+			now,
+			nil,
+		)
+		s.peerConfig.Set(dev.PublicKey, ps)
 	}
 
 	// loop over the facts to identify valid and invalid peers from that list
