@@ -179,7 +179,7 @@ func KeysDifference(old, new []*Fact) (onlyOld, onlyNew []Key) {
 	}
 	for k := range newSet {
 		if _, ok := oldSet[k]; !ok {
-			onlyOld = append(onlyNew, k)
+			onlyNew = append(onlyNew, k)
 		}
 	}
 
