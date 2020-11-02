@@ -1,12 +1,13 @@
 package fact
 
 import (
+	"bytes"
 	"fmt"
 	"sort"
 	"time"
 
 	"github.com/fastcat/wirelink/util"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+	"github.com/pkg/errors"
 )
 
 // Key is a comparable version of the subject, attribute, and value of a Fact
@@ -20,11 +21,23 @@ type Key struct {
 }
 
 func (k *Key) String() string {
-	if len(k.subject) == wgtypes.KeyLen {
-		kk, _ := wgtypes.NewKey([]byte(k.subject))
-		return fmt.Sprintf("[a:%q s:%s v:%q]", k.Attribute, kk, k.value)
+	f, err := k.ToFact()
+	if f == nil || err != nil {
+		return fmt.Sprintf("[a:%q s:%q v:%q]", k.Attribute, k.subject, k.value)
 	}
-	return fmt.Sprintf("[a:%q s:%q v:%q]", k.Attribute, k.subject, k.value)
+	return fmt.Sprintf("[a:%c s:%s v:%s]", f.Attribute, f.Subject, f.Value)
+}
+
+// FancyString formats the fact as a string using a custom helper to format
+// the subject, most commonly to replace peer keys with names
+func (k *Key) FancyString(
+	subjectFormatter func(s Subject) string,
+) string {
+	f, err := k.ToFact()
+	if f == nil || err != nil {
+		return fmt.Sprintf("[a:%q s:%q v:%q]", k.Attribute, k.subject, k.value)
+	}
+	return fmt.Sprintf("[a:%c s:%s v:%s]", f.Attribute, subjectFormatter(f.Subject), f.Value)
 }
 
 // KeyOf returns the FactKey for a Fact
@@ -39,6 +52,32 @@ func KeyOf(fact *Fact) Key {
 		subject:   string(util.MustBytes(fact.Subject.MarshalBinary())),
 		value:     string(valueBytes),
 	}
+}
+
+// ToFact turns a key back into a corresponding fact, with a zero TTL
+func (k *Key) ToFact() (*Fact, error) {
+	if k == nil {
+		return nil, nil
+	}
+
+	ret := &Fact{}
+	ret.Attribute = k.Attribute
+
+	dh := decodeHints[k.Attribute]
+	if dh == nil {
+		return nil, errors.Errorf("Unrecognized attribute 0x%02x", byte(k.Attribute))
+	}
+	dh(ret)
+	err := ret.Subject.DecodeFrom(len(k.subject), bytes.NewBuffer([]byte(k.subject)))
+	if err != nil {
+		return nil, err
+	}
+	err = ret.Value.DecodeFrom(len(k.value), bytes.NewBuffer([]byte(k.value)))
+	if err != nil {
+		return nil, err
+	}
+
+	return ret, nil
 }
 
 // factSet is used to map fact keys to the "best" fact for that key

@@ -34,6 +34,15 @@ func (s *LinkServer) peerName(peer wgtypes.Key) string {
 	return peer.String()
 }
 
+// peerNamer is meant to be passed as the subjectFormatter to Fact.FancyString
+// or FactKey.FancyString.
+func (s *LinkServer) peerNamer(fs fact.Subject) string {
+	if ps, ok := fs.(*fact.PeerSubject); ok {
+		return s.peerName(ps.Key)
+	}
+	return fs.String()
+}
+
 func (s *LinkServer) formatFacts(
 	now time.Time,
 	facts []*fact.Fact,
@@ -42,18 +51,12 @@ func (s *LinkServer) formatFacts(
 	facts = fact.SortedCopy(facts)
 	var str strings.Builder
 	str.WriteString("Current facts:")
-	peerNamer := func(fs fact.Subject) string {
-		if ps, ok := fs.(*fact.PeerSubject); ok {
-			return s.peerName(ps.Key)
-		}
-		return fs.String()
-	}
 	// protect against tests mutating config while we read it
 	s.stateAccess.Lock()
 	defer s.stateAccess.Unlock()
 	for _, fact := range facts {
 		str.WriteRune('\n')
-		str.WriteString(fact.FancyString(peerNamer, now))
+		str.WriteString(fact.FancyString(s.peerNamer, now))
 	}
 	str.WriteString("\nCurrent peers:")
 	s.peerConfig.ForEach(func(k wgtypes.Key, pcs *apply.PeerConfigState) {
