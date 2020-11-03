@@ -70,14 +70,18 @@ func (pcs *PeerConfigState) Update(
 	bootID *uuid.UUID,
 	now time.Time,
 	facts []*fact.Fact,
+	quiet bool,
 ) *PeerConfigState {
 	pcs = pcs.EnsureNotNil()
 	// clone before updates to prevent data races
 	pcs = pcs.Clone()
 	pcs.lastHandshake = peer.LastHandshakeTime
 	newHealthy := isHealthy(pcs, peer)
-	bootChanged := bootID != nil && pcs.lastBootID != nil && *bootID != *pcs.lastBootID
-	firstBoot := bootID != nil && pcs.lastBootID == nil
+	var bootChanged, firstBoot bool
+	if bootID != nil {
+		bootChanged = pcs.lastBootID != nil && *bootID != *pcs.lastBootID
+		firstBoot = pcs.lastBootID == nil
+	}
 	changed := newHealthy != pcs.lastHealthy || newAlive != pcs.lastAlive || bootChanged
 	if changed && newHealthy && newAlive {
 		pcs.aliveSince = now
@@ -121,11 +125,13 @@ func (pcs *PeerConfigState) Update(
 			name = peer.PublicKey.String()
 		}
 	}
-	// don't log the first boot as a reboot
-	if bootChanged && !firstBoot {
-		log.Info("Peer %s is now %s (rebooted)", name, pcs.Describe(now))
-	} else if changed {
-		log.Info("Peer %s is now %s", name, pcs.Describe(now))
+	if !quiet {
+		// don't log the first boot as a reboot
+		if bootChanged && !firstBoot {
+			log.Info("Peer %s is now %s (rebooted)", name, pcs.Describe(now))
+		} else if changed {
+			log.Info("Peer %s is now %s", name, pcs.Describe(now))
+		}
 	}
 	return pcs
 }

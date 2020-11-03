@@ -599,7 +599,7 @@ func TestLinkServer_shouldSend(t *testing.T) {
 					// just needs to be non-nil
 					p.Endpoint = &net.UDPAddr{IP: net.IPv4zero}
 				}
-				state = state.Update(p, "", s.alive, then, nil, now, nil)
+				state = state.Update(p, "", s.alive, then, nil, now, nil, false)
 				require.Equal(t, s.alive, state.IsAlive())
 				require.Equal(t, s.healthy, state.IsHealthy())
 				pcs.Set(k, state)

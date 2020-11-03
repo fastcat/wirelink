@@ -90,7 +90,7 @@ func (s *LinkServer) collectPeerFlags(
 		// is still valid now
 		newAlive, aliveUntil, bootID := s.peerKnowledge.peerAlive(peer.PublicKey)
 		ps, _ := s.peerConfig.Get(peer.PublicKey)
-		ps = ps.Update(peer, s.peerConfigName(peer.PublicKey), newAlive, aliveUntil, bootID, now, peerFacts)
+		ps = ps.Update(peer, s.peerConfigName(peer.PublicKey), newAlive, aliveUntil, bootID, now, peerFacts, false)
 		s.peerConfig.Set(peer.PublicKey, ps)
 	}
 	// do the same, slightly fake for the local peer
@@ -101,6 +101,7 @@ func (s *LinkServer) collectPeerFlags(
 			// fake a live local peer for the local node
 			&wgtypes.Peer{
 				LastHandshakeTime: now,
+				PublicKey:         dev.PublicKey,
 				Endpoint:          &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)},
 			},
 			s.peerConfigName(dev.PublicKey),
@@ -109,6 +110,8 @@ func (s *LinkServer) collectPeerFlags(
 			&s.bootID,
 			now,
 			factsByPeer[dev.PublicKey],
+			// quiet: no reason to log "changes" to the local peer
+			true,
 		)
 		s.peerConfig.Set(dev.PublicKey, ps)
 	}
