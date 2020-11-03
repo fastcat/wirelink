@@ -20,7 +20,9 @@ type Key struct {
 	value   string
 }
 
-func (k *Key) String() string {
+func (k Key) String() string {
+	// have to implement this on the value type in order for value slices to
+	// auto-stringify in fmt.Print* properly
 	f, err := k.ToFact()
 	if f == nil || err != nil {
 		return fmt.Sprintf("[a:%q s:%q v:%q]", k.Attribute, k.subject, k.value)
@@ -169,21 +171,18 @@ func SliceIndexOf(facts []*Fact, predicate func(*Fact) bool) int {
 }
 
 // KeysDifference computes the fact keys that are different between two slices
-func KeysDifference(old, new []*Fact) (onlyOld, onlyNew []*Key) {
+func KeysDifference(old, new []*Fact) (onlyOld, onlyNew []Key) {
 	oldSet := SetOf(old)
 	newSet := SetOf(new)
 
 	for k := range oldSet {
 		if _, ok := newSet[k]; !ok {
-			// don't capture loop var
-			k := k
-			onlyOld = append(onlyOld, &k)
+			onlyOld = append(onlyOld, k)
 		}
 	}
 	for k := range newSet {
 		if _, ok := oldSet[k]; !ok {
-			k := k
-			onlyNew = append(onlyNew, &k)
+			onlyNew = append(onlyNew, k)
 		}
 	}
 

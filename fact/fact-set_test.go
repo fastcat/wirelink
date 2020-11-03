@@ -1,11 +1,13 @@
 package fact
 
 import (
+	"fmt"
 	"net"
 	"testing"
 	"time"
 
 	"github.com/fastcat/wirelink/internal/testutils"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -71,7 +73,17 @@ func TestKey_String(t *testing.T) {
 				subject:   tt.fields.subject,
 				value:     tt.fields.value,
 			}
+			// check that String works properly both on pointer and value and
+			// slice-of-pointer and slice-of-value
 			assert.Equal(t, tt.want, k.String())
+			assert.Equal(t, tt.want, fmt.Sprintf("%v", k))
+			kk := *k
+			assert.Equal(t, tt.want, kk.String())
+			assert.Equal(t, tt.want, fmt.Sprintf("%v", kk))
+			ks := []*Key{k}
+			assert.Equal(t, "["+tt.want+"]", fmt.Sprintf("%v", ks))
+			kks := []Key{kk}
+			assert.Equal(t, "["+tt.want+"]", fmt.Sprintf("%v", kks))
 		})
 	}
 }
@@ -165,6 +177,166 @@ func TestSliceHas(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.want, SliceHas(tt.args.facts, tt.args.predicate))
+		})
+	}
+}
+
+func TestKeysDifference(t *testing.T) {
+	k1 := testutils.MustKey(t)
+	k2 := testutils.MustKey(t)
+	k3 := testutils.MustKey(t)
+	boot1 := uuid.New()
+	boot2 := uuid.New()
+	boot3 := uuid.New()
+
+	type args struct {
+		old []*Fact
+		new []*Fact
+	}
+	tests := []struct {
+		name        string
+		args        args
+		wantOnlyOld []Key
+		wantOnlyNew []Key
+	}{
+		{
+			"empty",
+			args{nil, nil},
+			nil, nil,
+		},
+		{
+			"all new",
+			args{
+				nil,
+				[]*Fact{
+					{
+						Attribute: AttributeAlive,
+						Subject:   &PeerSubject{k1},
+						Value:     &UUIDValue{boot1},
+					},
+				},
+			},
+			nil,
+			[]Key{KeyOf(&Fact{
+				Attribute: AttributeAlive,
+				Subject:   &PeerSubject{k1},
+				Value:     &UUIDValue{boot1},
+			})},
+		},
+		{
+			"all old",
+			args{
+				[]*Fact{
+					{
+						Attribute: AttributeAlive,
+						Subject:   &PeerSubject{k1},
+						Value:     &UUIDValue{boot1},
+					},
+				},
+				nil,
+			},
+			[]Key{KeyOf(&Fact{
+				Attribute: AttributeAlive,
+				Subject:   &PeerSubject{k1},
+				Value:     &UUIDValue{boot1},
+			})},
+			nil,
+		},
+		{
+			"all same",
+			args{
+				[]*Fact{
+					{
+						Attribute: AttributeAlive,
+						Subject:   &PeerSubject{k1},
+						Value:     &UUIDValue{boot1},
+					},
+				},
+				[]*Fact{
+					{
+						Attribute: AttributeAlive,
+						Subject:   &PeerSubject{k1},
+						Value:     &UUIDValue{boot1},
+					},
+				},
+			},
+			nil,
+			nil,
+		},
+		{
+			"all different",
+			args{
+				[]*Fact{
+					{
+						Attribute: AttributeAlive,
+						Subject:   &PeerSubject{k1},
+						Value:     &UUIDValue{boot1},
+					},
+				},
+				[]*Fact{
+					{
+						Attribute: AttributeAlive,
+						Subject:   &PeerSubject{k2},
+						Value:     &UUIDValue{boot2},
+					},
+				},
+			},
+			[]Key{KeyOf(&Fact{
+				Attribute: AttributeAlive,
+				Subject:   &PeerSubject{k1},
+				Value:     &UUIDValue{boot1},
+			})},
+			[]Key{KeyOf(&Fact{
+				Attribute: AttributeAlive,
+				Subject:   &PeerSubject{k2},
+				Value:     &UUIDValue{boot2},
+			})},
+		},
+		{
+			"overlap",
+			args{
+				[]*Fact{
+					{
+						Attribute: AttributeAlive,
+						Subject:   &PeerSubject{k1},
+						Value:     &UUIDValue{boot1},
+					},
+					{
+						Attribute: AttributeAlive,
+						Subject:   &PeerSubject{k2},
+						Value:     &UUIDValue{boot2},
+					},
+				},
+				[]*Fact{
+					{
+						Attribute: AttributeAlive,
+						Subject:   &PeerSubject{k2},
+						Value:     &UUIDValue{boot2},
+					},
+					{
+						Attribute: AttributeAlive,
+						Subject:   &PeerSubject{k3},
+						Value:     &UUIDValue{boot3},
+					},
+				},
+			},
+			[]Key{KeyOf(&Fact{
+				Attribute: AttributeAlive,
+				Subject:   &PeerSubject{k1},
+				Value:     &UUIDValue{boot1},
+			})},
+			[]Key{KeyOf(&Fact{
+				Attribute: AttributeAlive,
+				Subject:   &PeerSubject{k3},
+				Value:     &UUIDValue{boot3},
+			})},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotOnlyOld, gotOnlyNew := KeysDifference(tt.args.old, tt.args.new)
+			assert.Equal(t, tt.wantOnlyOld, gotOnlyOld)
+			assert.Equal(t, tt.wantOnlyNew, gotOnlyNew)
 		})
 	}
 }
