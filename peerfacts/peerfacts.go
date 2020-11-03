@@ -63,7 +63,8 @@ func LocalFacts(
 	}
 
 	if trustLocalMembership {
-		addAttr(fact.AttributeMember, &fact.EmptyValue{})
+		// always use MemberMetadata even if we don't have any metadata
+		addAttr(fact.AttributeMemberMetadata, &fact.MemberMetadata{})
 	}
 
 	return ret, nil

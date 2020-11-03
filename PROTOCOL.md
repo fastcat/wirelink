@@ -26,6 +26,9 @@ The following attributes are defined, mostly as 1 byte ASCII values:
     otherwise forgets things and needs to be re-told them.
 * `m`: `Member`: An indicator that the peer is a valid member of the network
   * Value is empty (zero bytes)
+  * This fact is deprecated and should not be used. Instead the `MemberMetadata`
+    fact should be used, with value payload with (embedded) length zero if no
+    metadata is known.
 * `M`: `MemberWithMetadata`: An indicator that the peer is a valid member of the
   network, but with additional metadata
   * Value is the metadata structure including information about the peer,

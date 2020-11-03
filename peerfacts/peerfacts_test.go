@@ -161,7 +161,7 @@ func TestLocalFacts(t *testing.T) {
 				now,
 			},
 			[]*fact.Fact{
-				facts.MemberFactFull(&k1, expires),
+				facts.MemberMetadataFactEmpty(&k1, expires),
 			},
 			false,
 		},

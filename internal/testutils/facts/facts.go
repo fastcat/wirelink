@@ -63,7 +63,8 @@ func AllowedIPFactFull(aip net.IPNet, peer *wgtypes.Key, expires time.Time) *fac
 	return ret
 }
 
-// MemberFactFull returns a membership fact for the given peer
+// MemberFactFull returns a membership fact for the given peer.
+// Deprecated: AttributeMember should not be generated any more
 func MemberFactFull(peer *wgtypes.Key, expires time.Time) *fact.Fact {
 	return &fact.Fact{
 		Attribute: fact.AttributeMember,
@@ -79,7 +80,17 @@ func MemberMetadataFactFull(peer *wgtypes.Key, expires time.Time, name string, b
 		Attribute: fact.AttributeMemberMetadata,
 		Subject:   &fact.PeerSubject{Key: *peer},
 		Expires:   expires,
-		Value:     fact.BuildMemberMetadata(name, basic),
+		Value:     (&fact.MemberMetadata{}).With(name, basic),
+	}
+}
+
+// MemberMetadataFactEmpty returns a member metadata fact for the given peer
+func MemberMetadataFactEmpty(peer *wgtypes.Key, expires time.Time) *fact.Fact {
+	return &fact.Fact{
+		Attribute: fact.AttributeMemberMetadata,
+		Subject:   &fact.PeerSubject{Key: *peer},
+		Expires:   expires,
+		Value:     &fact.MemberMetadata{},
 	}
 }
 

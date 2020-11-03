@@ -222,13 +222,19 @@ func (mm *MemberMetadata) ForEach(visitor func(MemberAttribute, string)) {
 	}
 }
 
-// BuildMemberMetadata creates a metadata structure with the MemberName
-// attribute set to the given value.
-func BuildMemberMetadata(name string, basic bool) *MemberMetadata {
-	return &MemberMetadata{
-		attributes: map[MemberAttribute]string{
-			MemberName:    name,
-			MemberIsBasic: util.Ternary(basic, string(byte(1)), string(byte(0))).(string),
-		},
+// With returns a copy of the member metadata with the given info updated: name
+// will be assigned if non-empty, basic will be assigned if true, or if not
+// present in the initial value.
+func (mm *MemberMetadata) With(name string, basic bool) *MemberMetadata {
+	ret := *mm
+	if ret.attributes == nil {
+		ret.attributes = make(map[MemberAttribute]string, 2)
 	}
+	if len(name) != 0 {
+		ret.attributes[MemberName] = name
+	}
+	if _, ok := ret.attributes[MemberIsBasic]; basic || !ok {
+		ret.attributes[MemberIsBasic] = util.Ternary(basic, string(byte(1)), string(byte(0))).(string)
+	}
+	return &ret
 }

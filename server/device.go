@@ -54,7 +54,7 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device, now time.Time) (ret []*fa
 		// statically configured peers are always valid members
 
 		memberFactIdx := fact.SliceIndexOf(ret, func(f *fact.Fact) bool {
-			if f.Attribute != fact.AttributeMember {
+			if f.Attribute != fact.AttributeMember && f.Attribute != fact.AttributeMemberMetadata {
 				return false
 			}
 			fs, ok := f.Subject.(*fact.PeerSubject)
@@ -63,22 +63,23 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device, now time.Time) (ret []*fa
 		var f *fact.Fact
 		if memberFactIdx >= 0 {
 			f = ret[memberFactIdx]
+			if f.Attribute == fact.AttributeMember {
+				// fixup legacy data
+				f.Attribute = fact.AttributeMemberMetadata
+				f.Value = &fact.MemberMetadata{}
+			}
 		} else {
 			f = &fact.Fact{
-				Attribute: fact.AttributeMember,
+				Attribute: fact.AttributeMemberMetadata,
 				Subject:   &fact.PeerSubject{Key: pk},
-				Value:     &fact.EmptyValue{},
+				Value:     &fact.MemberMetadata{},
 				Expires:   expires,
 			}
 			ret = append(ret, f)
 		}
 
-		if len(pc.Name) > 0 || pc.Basic {
-			// we have metadata, replace it with a metadata member fact
-			f.Attribute = fact.AttributeMemberMetadata
-			f.Value = fact.BuildMemberMetadata(pc.Name, pc.Basic)
-			log.Debug("Collected member metadata: for %s: %v", pc.Name, f.Value)
-		}
+		f.Value = f.Value.(*fact.MemberMetadata).With(pc.Name, pc.Basic)
+		log.Debug("Collected member metadata: for %s: %v", pc.Name, f.Value)
 		ret = s.handlePeerConfigAllowedIPs(pk, pc, expires, ret)
 		// skip endpoint lookups for self
 		// if other peers need these as static facts, they would have it in their config

@@ -112,7 +112,7 @@ func TestLinkServer_collectFacts(t *testing.T) {
 				// should know the remote AIP
 				factutils.AllowedIPFactFull(ipn3, &k2, expires),
 				// should know the remote as a member
-				factutils.MemberFactFull(&k2, expires),
+				factutils.MemberMetadataFactEmpty(&k2, expires),
 			},
 			false,
 		},
@@ -150,7 +150,7 @@ func TestLinkServer_collectFacts(t *testing.T) {
 			args{&wgtypes.Device{}},
 			[]*fact.Fact{
 				// member
-				factutils.MemberFactFull(&k1, expires),
+				factutils.MemberMetadataFactFull(&k1, expires, "", false),
 				// ipv4 and ipv6 endpoints
 				factutils.EndpointFactFull(ep1, &k1, expires),
 				factutils.EndpointFactFull(ep2, &k1, expires),

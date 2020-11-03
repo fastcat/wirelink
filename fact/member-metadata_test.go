@@ -301,7 +301,7 @@ func TestMemberMetadata_String(t *testing.T) {
 	}
 }
 
-func TestBuildMemberMetadata(t *testing.T) {
+func TestMemberMetadata_With(t *testing.T) {
 	type args struct {
 		name  string
 		basic bool
@@ -330,7 +330,7 @@ func TestBuildMemberMetadata(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.want, BuildMemberMetadata(tt.args.name, tt.args.basic))
+			assert.Equal(t, tt.want, (&MemberMetadata{}).With(tt.args.name, tt.args.basic))
 		})
 	}
 }
@@ -340,8 +340,8 @@ func TestMemberMetadata_Equality(t *testing.T) {
 	for i := 0; i < 50; i++ {
 		name := fmt.Sprintf("foo%d", i)
 		basic := i%2 == 0
-		mm1 := BuildMemberMetadata(name, basic)
-		mm2 := BuildMemberMetadata(name, basic)
+		mm1 := (&MemberMetadata{}).With(name, basic)
+		mm2 := (&MemberMetadata{}).With(name, basic)
 
 		require.Equal(t, mm1, mm2)
 

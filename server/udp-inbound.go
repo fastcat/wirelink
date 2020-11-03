@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/config"
@@ -300,38 +299,9 @@ func (s *LinkServer) processOneChunk(
 	// to peers, we want to get a full refresh to ensure this is not a false
 	// expiration due to packet loss or the like.
 	expiredCritical := 0
-	var validMembers map[wgtypes.Key]bool
 	for _, fk := range expiredFacts {
 		switch fk.Attribute {
-		case fact.AttributeMember:
-			// don't count expiring an AttributeMember if we still have an
-			// AttributeMemberMetadata for the same peer
-			if validMembers == nil {
-				// lazy init
-				validMembers = make(map[wgtypes.Key]bool)
-				for _, f := range uniqueFacts {
-					if f.Attribute == fact.AttributeMemberMetadata {
-						if s, ok := f.Subject.(*fact.PeerSubject); ok {
-							validMembers[s.Key] = true
-						}
-					}
-				}
-			}
-			if f, e := fk.ToFact(); f != nil && e == nil {
-				if s, ok := f.Subject.(*fact.PeerSubject); ok {
-					if validMembers[s.Key] {
-						log.Info("Ignoring member fact, superseded by MemberMetadata")
-						// expiring AttributeMember is backed by an equivalent
-						// AttributeMemberMetadata, ignore it
-						break
-					}
-				}
-			}
-			// expiring AttributeMember has no equivalent AttributeMemberMetadata, it
-			// is critical
-			log.Info("Expriging member fact for real")
-			fallthrough
-		case fact.AttributeAllowedCidrV4, fact.AttributeAllowedCidrV6, fact.AttributeMemberMetadata:
+		case fact.AttributeAllowedCidrV4, fact.AttributeAllowedCidrV6, fact.AttributeMember, fact.AttributeMemberMetadata:
 			log.Info("Expiring critical fact: %s", fk.FancyString(s.peerNamer))
 			expiredCritical++
 		}
