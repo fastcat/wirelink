@@ -380,7 +380,7 @@ func TestLinkServer_processSignedGroup(t *testing.T) {
 	}
 }
 
-func TestLinkServer_chunkPackets(t *testing.T) {
+func TestLinkServer_chunkReceived(t *testing.T) {
 	now := time.Now()
 	expires := now.Add(DefaultFactTTL)
 
@@ -476,7 +476,7 @@ func TestLinkServer_chunkPackets(t *testing.T) {
 				packets <- p
 			}
 			close(packets)
-			tt.assertion(t, s.chunkPackets(packets, newFacts, tt.args.maxChunk))
+			tt.assertion(t, s.chunkReceived(packets, newFacts, tt.args.maxChunk))
 			gotChunks := [][]*ReceivedFact{}
 			first := true
 			for chunk := range newFacts {
@@ -499,7 +499,7 @@ func TestLinkServer_chunkPackets(t *testing.T) {
 	}
 }
 
-func TestLinkServer_chunkPackets_slow(t *testing.T) {
+func TestLinkServer_chunkReceived_slow(t *testing.T) {
 	timeZero := time.Now()
 	expires := timeZero.Add(DefaultFactTTL)
 
@@ -675,7 +675,7 @@ func TestLinkServer_chunkPackets_slow(t *testing.T) {
 					gotChunks = append(gotChunks, receive{time.Since(start), chunk})
 				}
 			}()
-			tt.assertion(t, s.chunkPackets(packets, newFacts, tt.args.maxChunk))
+			tt.assertion(t, s.chunkReceived(packets, newFacts, tt.args.maxChunk))
 			// wait for goroutines
 			<-doneSend
 			<-doneReceive

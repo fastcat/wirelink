@@ -168,11 +168,11 @@ func (s *LinkServer) Start() (err error) {
 
 	// ok, network resources are initialized, start all the goroutines!
 
-	packets := make(chan *ReceivedFact, MaxChunk)
-	s.eg.Go(func() error { return s.readPackets(packets) })
+	received := make(chan *ReceivedFact, MaxChunk)
+	s.eg.Go(func() error { return s.readPackets(received) })
 
 	newFacts := make(chan []*ReceivedFact, 1)
-	s.eg.Go(func() error { return s.chunkPackets(packets, newFacts, MaxChunk) })
+	s.eg.Go(func() error { return s.chunkReceived(received, newFacts, MaxChunk) })
 
 	factsRefreshed := make(chan []*fact.Fact, 1)
 	factsRefreshedForBroadcast := make(chan []*fact.Fact, 1)

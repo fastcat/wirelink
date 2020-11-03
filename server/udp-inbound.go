@@ -16,6 +16,9 @@ import (
 	"github.com/fastcat/wirelink/trust"
 )
 
+// readPackets will process UDP packets from the socket, parse them into facts,
+// and send them on the received channel, which it will close when the UDP
+// socket is closed.
 func (s *LinkServer) readPackets(received chan<- *ReceivedFact) error {
 	defer close(received)
 
@@ -97,10 +100,10 @@ func (s *LinkServer) processSignedGroup(
 	return nil
 }
 
-// chunkPackets takes a continuous stream of ReceivedFacts and lumps them into
+// chunkReceived takes a continuous stream of ReceivedFacts and lumps them into
 // chunks based on a maximum chunk size and a maximum delay time.
-func (s *LinkServer) chunkPackets(
-	packets <-chan *ReceivedFact,
+func (s *LinkServer) chunkReceived(
+	received <-chan *ReceivedFact,
 	newFacts chan<- []*ReceivedFact,
 	maxChunk int,
 ) error {
@@ -121,7 +124,7 @@ func (s *LinkServer) chunkPackets(
 	for done := false; !done; {
 		sendBuffer := false
 		select {
-		case p, ok := <-packets:
+		case p, ok := <-received:
 			if !ok {
 				// upstream has closed the channel, we're done
 				// we don't care much about transmitting the accumulated facts to peers,
@@ -135,6 +138,8 @@ func (s *LinkServer) chunkPackets(
 				if len(buffer) >= maxChunk {
 					sendBuffer = true
 				}
+				// TODO: send soon, but not immediately, if we see certain key facts,
+				// such as membership or AIP info
 			}
 
 		case <-chunkTicker.C:
