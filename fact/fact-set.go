@@ -80,8 +80,8 @@ func (k *Key) ToFact() (*Fact, error) {
 	return ret, nil
 }
 
-// factSet is used to map fact keys to the "best" fact for that key
-type factSet map[Key]*Fact
+// Set is used to map fact keys to the "best" fact for that key
+type Set map[Key]*Fact
 
 /*
 func (s factSet) has(fact *Fact) bool {
@@ -90,7 +90,7 @@ func (s factSet) has(fact *Fact) bool {
 }
 */
 
-func (s factSet) upsert(fact *Fact) time.Time {
+func (s Set) upsert(fact *Fact) time.Time {
 	key := KeyOf(fact)
 
 	best, ok := s[key]
@@ -107,8 +107,9 @@ func (s factSet) delete(fact *Fact) {
 }
 */
 
-func setOf(facts []*Fact) factSet {
-	s := make(factSet)
+// SetOf makes a new FactSet out of a slice of Facts
+func SetOf(facts []*Fact) Set {
+	s := make(Set)
 	for _, f := range facts {
 		s.upsert(f)
 	}
@@ -117,7 +118,7 @@ func setOf(facts []*Fact) factSet {
 
 // MergeList merges duplicate facts in a slice, keeping the latest Expires value
 func MergeList(facts []*Fact) []*Fact {
-	s := setOf(facts)
+	s := SetOf(facts)
 	ret := make([]*Fact, 0, len(s))
 	for _, fact := range s {
 		ret = append(ret, fact)
@@ -168,18 +169,21 @@ func SliceIndexOf(facts []*Fact, predicate func(*Fact) bool) int {
 }
 
 // KeysDifference computes the fact keys that are different between two slices
-func KeysDifference(old, new []*Fact) (onlyOld, onlyNew []Key) {
-	oldSet := setOf(old)
-	newSet := setOf(new)
+func KeysDifference(old, new []*Fact) (onlyOld, onlyNew []*Key) {
+	oldSet := SetOf(old)
+	newSet := SetOf(new)
 
 	for k := range oldSet {
 		if _, ok := newSet[k]; !ok {
-			onlyOld = append(onlyOld, k)
+			// don't capture loop var
+			k := k
+			onlyOld = append(onlyOld, &k)
 		}
 	}
 	for k := range newSet {
 		if _, ok := oldSet[k]; !ok {
-			onlyNew = append(onlyNew, k)
+			k := k
+			onlyNew = append(onlyNew, &k)
 		}
 	}
 
