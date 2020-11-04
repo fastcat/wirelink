@@ -97,30 +97,10 @@ func (pcs *PeerConfigState) Update(
 	if bootID != nil {
 		pcs.lastBootID = bootID
 	}
-	// accumulate metadata
-	metadata := map[fact.MemberAttribute]string{}
-	var metaName string
-	for _, f := range facts {
-		if f.Attribute != fact.AttributeMemberMetadata {
-			continue
-		}
-		mv := f.Value.(*fact.MemberMetadata)
-		mv.ForEach(func(a fact.MemberAttribute, v string) {
-			// TODO: don't overwrite full string with empty string
-			metadata[a] = v
-			if a == fact.MemberName {
-				metaName = v
-			}
-		})
-	}
-	if len(metadata) > 0 {
-		pcs.metadata = metadata
-	} else {
-		pcs.metadata = nil
-	}
+	pcs.metadata = mergeMetadata(facts)
 	name := configName
 	if len(name) == 0 {
-		name = metaName
+		name = pcs.metadata[fact.MemberName]
 		if len(name) == 0 {
 			name = peer.PublicKey.String()
 		}
@@ -134,6 +114,24 @@ func (pcs *PeerConfigState) Update(
 		}
 	}
 	return pcs
+}
+
+func mergeMetadata(facts []*fact.Fact) map[fact.MemberAttribute]string {
+	metadata := map[fact.MemberAttribute]string{}
+	for _, f := range facts {
+		if f.Attribute != fact.AttributeMemberMetadata {
+			continue
+		}
+		mv := f.Value.(*fact.MemberMetadata)
+		mv.ForEach(func(a fact.MemberAttribute, v string) {
+			// TODO: don't overwrite full string with empty string
+			metadata[a] = v
+		})
+	}
+	if len(metadata) == 0 {
+		metadata = nil
+	}
+	return metadata
 }
 
 // Describe gives a textual summary of the state.
