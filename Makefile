@@ -55,8 +55,7 @@ $(GOGENERATED_SOURCES):
 	go generate ./...
 
 fmt: generate
-	go fmt ./...
-	find -type f -name \*.go -print0 | xargs -0 -n4 -P0 gofmt -s -w
+	gofmt -l -s -w .
 	goimports -w -l .
 compile: generate
 	go build -v ./...
@@ -65,7 +64,9 @@ wirelink: generate
 wirelink-cross-%: generate
 # build these stripped
 	GOARCH=$* go build -ldflags "-s -w" -o $@ -v .
-lint: lint-golangci lint-vet
+lint: lint-fmt lint-golangci lint-vet
+lint-fmt:
+	! gofmt -l -s . | grep .
 lint-golangci: generate
 	golangci-lint run
 lint-vet: generate
