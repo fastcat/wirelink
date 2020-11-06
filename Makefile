@@ -56,7 +56,7 @@ $(GOGENERATED_SOURCES):
 
 fmt: generate
 	go fmt ./...
-	gofmt -s -w $$(find -type f -name \*.go)
+	find -type f -name \*.go -print0 | xargs -0 -n4 -P0 gofmt -s -w
 	goimports -w -l .
 compile: generate
 	go build -v ./...
