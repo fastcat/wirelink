@@ -18,7 +18,7 @@ TOOLS:=\
 	$(NULL)
 # tools needed to develop the package
 TOOLS_DEV:=\
-	github.com/cweill/gotests/...@develop \
+	github.com/cweill/gotests/...@master \
 	github.com/go-delve/delve/cmd/dlv \
 	$(NULL)
 
