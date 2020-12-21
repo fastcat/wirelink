@@ -17,7 +17,7 @@ for f in ./packaging/wg-go-checkinstall/wireguard-go*.deb ; do
 		newdebs+=("$f")
 	fi
 done
-adddebs "${newdebs[@]}"
+adddebs release=buster "${newdebs[@]}"
 
 # only install wirelink, wireguard-go is not normally installed
 sudo dpkg --install ./packaging/checkinstall/wirelink*$(go env GOARCH).deb
