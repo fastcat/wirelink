@@ -13,13 +13,13 @@ DOCSFILES:=LICENSE README.md TODO.md
 
 # tools needed to build the package
 TOOLS:=\
-	golang.org/x/tools/cmd/goimports \
+	golang.org/x/tools/cmd/goimports@latest \
 	github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
 	$(NULL)
 # tools needed to develop the package
 TOOLS_DEV:=\
-	github.com/cweill/gotests/... \
-	github.com/go-delve/delve/cmd/dlv \
+	github.com/cweill/gotests/gotests@latest \
+	github.com/go-delve/delve/cmd/dlv@latest \
 	$(NULL)
 
 all: everything
@@ -32,9 +32,9 @@ info:
 	@echo PATH=$$PATH
 
 install-tools:
-	go get $(TOOLS)
+	set -xe ; for t in $(TOOLS) ; do go install $$t ; done
 install-tools-dev:
-	go get $(TOOLS) $(TOOLS_DEV)
+	set -xe ; for t in $(TOOLS) $(TOOLS_DEV) ; do go install $$t ; done
 
 GENERATED_SOURCES:=\
 	internal/version.go \
