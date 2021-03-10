@@ -2,11 +2,11 @@ package native
 
 import (
 	"context"
+	"errors"
 	"net"
 	"time"
 
 	"github.com/fastcat/wirelink/internal/networking"
-	"github.com/fastcat/wirelink/util"
 )
 
 // GoUDPConn implements networking.UDPConn by wrapping net.UDPConn
@@ -69,7 +69,7 @@ READLOOP:
 			now := time.Now()
 
 			if err != nil {
-				if util.IsNetClosing(err) {
+				if errors.Is(err, net.ErrClosed) {
 					// the socket has been closed, we're done
 					break READLOOP
 				}

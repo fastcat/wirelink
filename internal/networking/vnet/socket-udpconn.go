@@ -85,7 +85,7 @@ func (sc *socketUDPConn) ReadFromUDP(b []byte) (n int, addr *net.UDPAddr, err er
 	inbound := sc.inbound
 	sc.s.m.Unlock()
 	if inbound == nil {
-		err = errors.New(util.NetClosingErrorString)
+		err = net.ErrClosed
 		return
 	}
 	p := <-sc.inbound
