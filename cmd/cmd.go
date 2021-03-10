@@ -53,8 +53,7 @@ func (w *WirelinkCmd) Init(env networking.Environment) error {
 	}
 
 	if w.Config, err = configData.Parse(vcfg, w.wgc); err != nil {
-		// TODO: this doesn't print the program name header
-		flags.PrintDefaults()
+		flags.Usage()
 		return errors.Wrapf(err, "Unable to load configuration")
 	}
 	if w.Config == nil {

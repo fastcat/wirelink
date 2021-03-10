@@ -50,6 +50,10 @@ func programInfo(args []string) string {
 // Init sets up the config flags and other parsing setup
 func Init(args []string) (flags *pflag.FlagSet, vcfg *viper.Viper) {
 	flags = pflag.NewFlagSet(programInfo(args), pflag.ContinueOnError)
+	flags.Usage = func() {
+		fmt.Fprintf(flags.Output(), "Usage of %s:\n", programInfo(args))
+		flags.PrintDefaults()
+	}
 	vcfg = viper.New()
 
 	// need this for `AllSettings` to type things that come from the environment correctly
@@ -96,8 +100,7 @@ func Init(args []string) (flags *pflag.FlagSet, vcfg *viper.Viper) {
 func Parse(flags *pflag.FlagSet, vcfg *viper.Viper, args []string) (ret *ServerData, err error) {
 	err = flags.Parse(args[1:])
 	if err != nil {
-		// TODO: this causes the error to be printed twice: once by flags and once by `main`
-		// TODO: this also causes an error to be printed & returned when run with `--help`
+		flags.Usage()
 		return
 	}
 	// activate debug logging immediately
@@ -108,11 +111,8 @@ func Parse(flags *pflag.FlagSet, vcfg *viper.Viper, args []string) (ret *ServerD
 	// handle --version and --help specially
 	if help, _ := flags.GetBool(HelpFlag); help {
 		// if help is requested explicitly, don't send it to stderr
-		// have to do this by hand here for now as can't write a Usage
-		// func that can see flags.output
 		flags.SetOutput(os.Stdout)
-		fmt.Fprintf(os.Stdout, "Usage of %s:\n", programInfo(args))
-		flags.PrintDefaults()
+		flags.Usage()
 		return nil, nil
 	}
 	if version, _ := flags.GetBool(VersionFlag); version {
@@ -138,8 +138,7 @@ func Parse(flags *pflag.FlagSet, vcfg *viper.Viper, args []string) (ret *ServerD
 	// load peer configurations
 	ret = new(ServerData)
 	if err = vcfg.UnmarshalExact(ret); err != nil {
-		fmt.Fprintf(os.Stderr, "Usage of %s:\n", programInfo(args))
-		flags.PrintDefaults()
+		flags.Usage()
 		return nil, errors.Wrapf(err, "Unable to parse config")
 	}
 
