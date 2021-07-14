@@ -27,7 +27,7 @@ func TestGoEnvironment_Interfaces(t *testing.T) {
 			func(t *testing.T, ifaces []*GoInterface, err error) {
 				assert.True(t, containsIface(ifaces, func(iface *GoInterface) bool {
 					require.NotNil(t, iface)
-					return iface.Name() == "lo"
+					return iface.Name() == localhostInterfaceName
 				}), "Should find a localhost interface")
 				assert.GreaterOrEqual(t, len(ifaces), 2)
 			},
@@ -66,12 +66,12 @@ func TestGoEnvironment_InterfaceByName(t *testing.T) {
 		{
 			"reasonable localhost results",
 			&GoEnvironment{},
-			args{"lo"},
+			args{localhostInterfaceName},
 			nil,
 			false,
 			func(t *testing.T, iface *GoInterface, err error) {
 				require.NotNil(t, iface)
-				assert.Equal(t, iface.Name(), "lo")
+				assert.Equal(t, iface.Name(), localhostInterfaceName)
 				assert.True(t, iface.IsUp())
 			},
 		},

@@ -23,7 +23,7 @@ func TestGoInterface_Addrs(t *testing.T) {
 	}{
 		{
 			"localhost",
-			fields{*mustNetInterface(t)(net.InterfaceByName("lo"))},
+			fields{*mustNetInterface(t)(net.InterfaceByName(localhostInterfaceName))},
 			nil,
 			false,
 			func(t *testing.T, addrs []net.IPNet, err error) {
