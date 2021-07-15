@@ -1,74 +1,75 @@
 name: Go
 on: [push]
 jobs:
-
   build:
     name: Build
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest macos-latest]
+    runs-on: ${{ matrix.os }}
     env:
       GO111MODULE: "on"
     steps:
+      - name: Set up Go 1.16
+        uses: actions/setup-go@v2
+        with:
+          go-version: "^1.16"
+        id: go
 
-    - name: Set up Go 1.16
-      uses: actions/setup-go@v2
-      with:
-        go-version: "^1.16"
-      id: go
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 20
+      - name: Get tags to make version.go
+        run: |
+          git fetch origin +refs/tags/*:refs/tags/*
+          d=30
+          while ! gmake info ; do
+            git fetch --deepen=$d origin +refs/tags/*:refs/tags/*
+            d=$((d+10))
+          done
 
-    - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
-      with:
-        fetch-depth: 20
-    - name: Get tags to make version.go
-      run: |
-        git fetch origin +refs/tags/*:refs/tags/*
-        d=30
-        while ! make info ; do
-          git fetch --deepen=$d origin +refs/tags/*:refs/tags/*
-          d=$((d+10))
-        done
+      - name: Get dependencies
+        run: |
+          go get -v -t -d ./...
+      - name: Get tools
+        run: |
+          git diff --exit-code
+          gmake install-tools
+          go mod tidy
+          git diff --exit-code
 
-    - name: Get dependencies
-      run: |
-        go get -v -t -d ./...
-    - name: Get tools
-      run: |
-        git diff --exit-code
-        make install-tools
-        go mod tidy
-        git diff --exit-code
+      - name: Build
+        run: |
+          gmake compile
+          go mod tidy
+          git diff --exit-code
 
-    - name: Build
-      run: |
-        make compile
-        go mod tidy
-        git diff --exit-code
+      - name: Format check
+        run: |
+          gmake fmt
+          git diff --exit-code
 
-    - name: Format check
-      run: |
-        make fmt
-        git diff --exit-code
+      - name: Lint
+        run: gmake lint
 
-    - name: Lint
-      run: make lint
+      - name: Test with coverage
+        # building the coverage output runs the tests
+        run: gmake coverage.html
 
-    - name: Test with coverage
-      # building the coverage output runs the tests
-      run: make coverage.html
+      # upload to codecov as soon as we can to view reports
+      - name: Upload coverage (codecov)
+        uses: codecov/codecov-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage.out
+          fail_ci_if_error: true
 
-    # upload to codecov as soon as we can to view reports
-    - name: Upload coverage (codecov)
-      uses: codecov/codecov-action@v1
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./coverage.out
-        fail_ci_if_error: true
+      - name: Test with race detector
+        run: gmake test-go-race
 
-    - name: Test with race detector
-      run: make test-go-race
-
-    - name: Upload coverage (artifact)
-      uses: actions/upload-artifact@v1.0.0
-      with:
-        name: coverage.html
-        path: ./coverage.html
+      - name: Upload coverage (artifact)
+        uses: actions/upload-artifact@v1.0.0
+        with:
+          name: coverage.html
+          path: ./coverage.html
