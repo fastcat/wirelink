@@ -18,11 +18,12 @@ import (
 
 // WirelinkCmd represents an instance of the app command line
 type WirelinkCmd struct {
-	args    []string
-	wgc     internal.WgClient
-	Config  *config.Server
-	Server  *server.LinkServer
-	signals chan os.Signal
+	args            []string
+	wgc             internal.WgClient
+	Config          *config.Server
+	Server          *server.LinkServer
+	signals         chan os.Signal
+	platformSignals chan os.Signal
 }
 
 // New creates a new command instance using the given os.Args value
@@ -78,24 +79,20 @@ func (w *WirelinkCmd) Run() error {
 	}
 
 	w.signals = make(chan os.Signal, 5)
-
 	w.Server.AddHandler(func(ctx context.Context) error {
-		signal.Notify(w.signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
+		signal.Notify(w.signals, syscall.SIGINT, syscall.SIGTERM)
 		for {
 			select {
 			case sig := <-w.signals:
-				if sig == syscall.SIGUSR1 {
-					w.Server.RequestPrint()
-				} else {
-					log.Info("Received signal %v, stopping", sig)
-					// this will just initiate the shutdown, not block waiting for it
-					w.Server.RequestStop()
-				}
+				log.Info("Received signal %v, stopping", sig)
+				// this will just initiate the shutdown, not block waiting for it
+				w.Server.RequestStop()
 			case <-ctx.Done():
 				return nil
 			}
 		}
 	})
+	w.addPlatformSignalHandlers()
 
 	log.Info("Server running: %s", w.Server.Describe())
 
