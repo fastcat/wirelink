@@ -23,7 +23,7 @@ jobs:
         run: |
           set -x
           if [ ! -x /usr/bin/gmake ]; then
-            ln -snfv /usr/bin/make /usr/bin/gmake
+            sudo ln -snfv /usr/bin/make /usr/bin/gmake
           fi
 
       - name: Check out code into the Go module directory
