@@ -20,6 +20,7 @@ jobs:
         run: |
           brew install make
       - name: Set up Linux
+        if: matrix.os == 'ubuntu-latest'
         run: |
           set -x
           if [ ! -x /usr/bin/gmake ]; then
