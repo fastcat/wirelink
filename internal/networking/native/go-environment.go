@@ -21,12 +21,12 @@ type GoEnvironment struct {
 // var _ networking.Environment = &GoEnvironment{}
 
 // Interfaces implements Environment
-func (e *GoEnvironment) Interfaces() ([]*GoInterface, error) {
+func (e *GoEnvironment) Interfaces() ([]networking.Interface, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return nil, err
 	}
-	ret := make([]*GoInterface, len(ifaces))
+	ret := make([]networking.Interface, len(ifaces))
 	for i, iface := range ifaces {
 		ret[i] = &GoInterface{iface}
 	}
@@ -35,7 +35,7 @@ func (e *GoEnvironment) Interfaces() ([]*GoInterface, error) {
 }
 
 // InterfaceByName implements Environment by wrapping net.InterfaceByName
-func (e *GoEnvironment) InterfaceByName(name string) (*GoInterface, error) {
+func (e *GoEnvironment) InterfaceByName(name string) (networking.Interface, error) {
 	iface, err := net.InterfaceByName(name)
 	if err != nil {
 		return nil, err
@@ -56,3 +56,10 @@ func (e *GoEnvironment) ListenUDP(network string, laddr *net.UDPAddr) (networkin
 func (e *GoEnvironment) NewWgClient() (internal.WgClient, error) {
 	return wgctrl.New()
 }
+
+// Close implements Environment by doing nothing and returning nil
+func (e *GoEnvironment) Close() error {
+	return nil
+}
+
+var _ networking.Environment = (*GoEnvironment)(nil)

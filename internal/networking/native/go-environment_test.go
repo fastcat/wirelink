@@ -42,8 +42,17 @@ func TestGoEnvironment_Interfaces(t *testing.T) {
 			} else {
 				require.Nil(t, err)
 			}
+			var gotGo []*GoInterface
+			if got != nil {
+				gotGo = make([]*GoInterface, len(got))
+				for i, iface := range got {
+					if assert.IsType(t, &GoInterface{}, iface) {
+						gotGo[i] = iface.(*GoInterface)
+					}
+				}
+			}
 			if tt.wantCheck != nil {
-				tt.wantCheck(t, got, err)
+				tt.wantCheck(t, gotGo, err)
 			} else {
 				assert.Equal(t, tt.want, got)
 			}
@@ -93,10 +102,14 @@ func TestGoEnvironment_InterfaceByName(t *testing.T) {
 			} else {
 				require.Nil(t, err)
 			}
+			var gotGo *GoInterface
+			if got != nil {
+				gotGo = got.(*GoInterface)
+			}
 			if tt.wantCheck != nil {
-				tt.wantCheck(t, got, err)
+				tt.wantCheck(t, gotGo, err)
 			} else {
-				assert.Equal(t, tt.want, got)
+				assert.Equal(t, tt.want, gotGo)
 			}
 		})
 	}

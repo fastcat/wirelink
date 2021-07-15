@@ -47,7 +47,7 @@ func (e *linuxEnvironment) Interfaces() ([]networking.Interface, error) {
 	ret := make([]networking.Interface, len(ifaces))
 	for i := range ifaces {
 		// TODO: may be faster to fetch all links and join them?
-		ret[i], err = e.interfaceFromGo(ifaces[i])
+		ret[i], err = e.interfaceFromGo(ifaces[i].(*native.GoInterface))
 		if err != nil {
 			return nil, err
 		}
@@ -60,7 +60,7 @@ func (e *linuxEnvironment) InterfaceByName(name string) (networking.Interface, e
 	if err != nil {
 		return nil, err
 	}
-	return e.interfaceFromGo(iface)
+	return e.interfaceFromGo(iface.(*native.GoInterface))
 }
 
 func (e *linuxEnvironment) interfaceFromGo(iface *native.GoInterface) (*linuxInterface, error) {
@@ -76,6 +76,9 @@ func (e *linuxEnvironment) Close() error {
 		e.nlh.Delete()
 		e.nlh = nil
 	}
+	if err := e.GoEnvironment.Close(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -85,7 +88,7 @@ type linuxInterface struct {
 	env  *linuxEnvironment
 }
 
-var _ networking.Interface = &linuxInterface{}
+var _ networking.Interface = (*linuxInterface)(nil)
 
 func (i *linuxInterface) AddAddr(addr net.IPNet) error {
 	err := i.env.nlh.AddrAdd(i.link, &netlink.Addr{

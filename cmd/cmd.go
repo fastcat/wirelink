@@ -78,18 +78,21 @@ func (w *WirelinkCmd) Run() error {
 	}
 
 	w.signals = make(chan os.Signal, 5)
-
 	w.Server.AddHandler(func(ctx context.Context) error {
-		signal.Notify(w.signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
+		signal.Notify(w.signals, syscall.SIGINT, syscall.SIGTERM)
+		w.addPlatformSignalHandlers()
 		for {
 			select {
 			case sig := <-w.signals:
-				if sig == syscall.SIGUSR1 {
-					w.Server.RequestPrint()
-				} else {
+				if sig == syscall.SIGINT || sig == syscall.SIGTERM {
 					log.Info("Received signal %v, stopping", sig)
 					// this will just initiate the shutdown, not block waiting for it
 					w.Server.RequestStop()
+
+					// also give platform handler an opportunity to do things
+					w.handlePlatformSignal(sig)
+				} else if !w.handlePlatformSignal(sig) {
+					log.Error("Received unexpected signal %v, ignoring", sig)
 				}
 			case <-ctx.Done():
 				return nil

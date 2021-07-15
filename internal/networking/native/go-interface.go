@@ -3,6 +3,7 @@ package native
 import (
 	"net"
 
+	"github.com/fastcat/wirelink/internal/networking"
 	"github.com/fastcat/wirelink/log"
 )
 
@@ -38,3 +39,10 @@ func (i *GoInterface) Addrs() ([]net.IPNet, error) {
 	}
 	return ret, nil
 }
+
+// AddAddr implements Interface, returns ErrAddAddrUnsupported
+func (i *GoInterface) AddAddr(net.IPNet) error {
+	return networking.ErrAddAddrUnsupported
+}
+
+var _ networking.Interface = (*GoInterface)(nil)

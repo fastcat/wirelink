@@ -3,7 +3,6 @@ package cmd
 import (
 	"os"
 	"strings"
-	"syscall"
 	"testing"
 
 	"github.com/pkg/errors"
@@ -20,7 +19,7 @@ func TestWirelinkCmd_Init(t *testing.T) {
 	const wgFake = "wgNotRealLongerThanIFNAMSIZ"
 	// for safety we ensure this cannot possibly be a valid interface name
 	// TODO: this is linux-specific
-	require.Greater(t, len(wgFake), syscall.IFNAMSIZ)
+	require.Greater(t, len(wgFake), platformIFNAMSIZ)
 
 	// don't use the real wirelink program name, to avoid possible collisions with
 	// "real" environment settings

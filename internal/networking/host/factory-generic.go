@@ -3,12 +3,11 @@
 package host
 
 import (
-	"errors"
-
 	"github.com/fastcat/wirelink/internal/networking"
+	"github.com/fastcat/wirelink/internal/networking/native"
 )
 
 // CreateHost creates the default Environment implementation for the host OS
 func CreateHost() (networking.Environment, error) {
-	return nil, errors.New("no network wrapper for this platform")
+	return &native.GoEnvironment{}, nil
 }
