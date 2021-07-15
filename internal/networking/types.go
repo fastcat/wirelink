@@ -2,6 +2,7 @@ package networking
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net"
 	"time"
@@ -32,6 +33,10 @@ type Interface interface {
 	Addrs() ([]net.IPNet, error)
 	AddAddr(net.IPNet) error
 }
+
+// ErrAddAddrUnsupported is returned from Interface.AddAddr on platforms where a
+// network interface configuration API is not yet supported
+var ErrAddAddrUnsupported = errors.New("this platform doesn't support interface configuration yet")
 
 // UDPConn abstracts net.UDPConn
 type UDPConn interface {
