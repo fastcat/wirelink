@@ -23,6 +23,7 @@ func TestGoUDPConn_ReadPackets(t *testing.T) {
 	packet1 := make([]byte, 1+rand.Intn(1400))
 	packet2 := make([]byte, 1+rand.Intn(1400))
 	testutils.MustRandBytes(t, packet1)
+	testutils.MustRandBytes(t, packet2)
 
 	type args struct {
 		maxSize int
@@ -234,7 +235,7 @@ func TestGoUDPConn_ReadPackets(t *testing.T) {
 				gotOffset := got.Time.Sub(sendStarted)
 				wantOffset := want.Time.Sub(now)
 				assert.GreaterOrEqual(t, int64(gotOffset), int64(wantOffset), "packet %d earliest receive time", i)
-				assert.LessOrEqual(t, int64(gotOffset), int64(wantOffset+2*time.Millisecond), "packet %d latest receive time", i)
+				assert.LessOrEqual(t, int64(gotOffset), int64(wantOffset+15*time.Millisecond), "packet %d latest receive time", i)
 			}
 		})
 	}
