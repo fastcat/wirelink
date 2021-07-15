@@ -164,7 +164,7 @@ func Test_Cmd_VNet1(t *testing.T) {
 		log.Debug(msg)
 		for _, c := range []*WirelinkCmd{host1cmd, client1cmd, client2cmd} {
 			if printWithSignals {
-				c.signals <- syscall.SIGUSR1
+				c.sendPrintRequestSignal()
 			} else {
 				c.Server.RequestPrint()
 			}
@@ -185,7 +185,7 @@ func Test_Cmd_VNet1(t *testing.T) {
 		ps := peer.String()
 		if assert.Contains(t, wgp, ps, "%s: should know peer", msg) {
 			p := wgp[ps]
-			assert.NotNil(t, p.Endpoint(), "%s: should have an endpoint")
+			assert.NotNil(t, p.Endpoint(), "%s: should have an endpoint", msg)
 			// can't use greater/less with durations nicely
 			receiveAge := time.Since(p.LastReceive())
 			require.True(t, receiveAge <= chunkPeriod, "%s: should have recent data from peer: %v > %v", msg, receiveAge, chunkPeriod)

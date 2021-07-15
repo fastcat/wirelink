@@ -109,7 +109,7 @@ func TestGoEnvironment_InterfaceByName(t *testing.T) {
 			if tt.wantCheck != nil {
 				tt.wantCheck(t, gotGo, err)
 			} else {
-				assert.Equal(t, tt.want, got)
+				assert.Equal(t, tt.want, gotGo)
 			}
 		})
 	}
