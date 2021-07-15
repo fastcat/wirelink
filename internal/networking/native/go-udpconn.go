@@ -86,6 +86,10 @@ READLOOP:
 			if n > 0 {
 				data = make([]byte, n)
 				copy(data, buffer[:n])
+			} else if err == nil {
+				// macOS sometimes gives us an empty read response and no error, ignore
+				// those
+				continue
 			}
 
 			packets <- &networking.UDPPacket{

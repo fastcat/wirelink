@@ -3,7 +3,6 @@ package server
 import (
 	"net"
 	"os"
-	"syscall"
 	"time"
 
 	"github.com/pkg/errors"
@@ -294,13 +293,7 @@ func (s *LinkServer) sendFact(peer *wgtypes.Peer, f *fact.Fact, now time.Time) e
 		// certain errors are expected
 		opErr := err.(*net.OpError)
 		if sysErr, ok := opErr.Err.(*os.SyscallError); ok {
-			if sysErr.Err == syscall.EDESTADDRREQ ||
-				sysErr.Err == syscall.ENETUNREACH ||
-				sysErr.Err == syscall.EPERM ||
-				sysErr.Err == syscall.ENOKEY {
-				// EDESTADDRREQ and ENETUNREACH happen when we have a bad address for
-				// talking to a peer, whether when inside the tunnel or for the tunnel
-				// endpoint. EPERM and ENOKEY happens if we have no handshake.
+			if isSysErrUnreachable(sysErr) {
 				return nil
 			}
 		}
