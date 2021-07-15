@@ -15,6 +15,16 @@ jobs:
         with:
           go-version: "^1.16"
         id: go
+      - name: Set up macOS
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install make
+      - name: Set up Linux
+        run: |
+          set -x
+          if [ ! -x /usr/bin/gmake ]; then
+            ln -snfv /usr/bin/make /usr/bin/gmake
+          fi
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
