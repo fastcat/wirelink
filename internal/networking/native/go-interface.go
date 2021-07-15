@@ -44,3 +44,5 @@ func (i *GoInterface) Addrs() ([]net.IPNet, error) {
 func (i *GoInterface) AddAddr(net.IPNet) error {
 	return networking.ErrAddAddrUnsupported
 }
+
+var _ networking.Interface = (*GoInterface)(nil)
