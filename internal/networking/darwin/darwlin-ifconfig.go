@@ -6,6 +6,7 @@ import (
 
 	"github.com/fastcat/wirelink/internal/networking"
 	"github.com/fastcat/wirelink/internal/networking/native"
+	"github.com/fastcat/wirelink/log"
 	"github.com/pkg/errors"
 )
 
@@ -64,8 +65,10 @@ var _ networking.Interface = (*darwinInterface)(nil)
 func (i *darwinInterface) AddAddr(addr net.IPNet) error {
 	// probably have to run as root because of this
 	cmd := exec.Command("ifconfig", i.Name(), addr.String(), "alias")
-	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(err, "Unable to add %v to %s", addr, i.Name())
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return errors.Wrapf(err, "Unable to add %v to %s: %s", addr, i.Name(), string(output))
+	} else {
+		log.Debug("ifconfig results: %s", string(output))
 	}
 	return nil
 }
