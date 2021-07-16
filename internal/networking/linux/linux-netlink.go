@@ -36,7 +36,7 @@ type linuxEnvironment struct {
 }
 
 // linuxEnvironment implements networking.Environment
-var _ networking.Environment = &linuxEnvironment{}
+var _ networking.Environment = (*linuxEnvironment)(nil)
 
 // Interfaces implements Environment
 func (e *linuxEnvironment) Interfaces() ([]networking.Interface, error) {
