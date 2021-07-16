@@ -1,3 +1,6 @@
+// Package darwin provides an implementation of networking.Environment for the
+// host darwin (macOS) system, leveraging the Go native package, and then
+// filling in the gaps by exececuting command line tools such as ifconfig.
 package darwin
 
 import (
@@ -10,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// CreateDarwin makes an environment for the host using ifconfig
 func CreateDarwin() (networking.Environment, error) {
 	return &darwinEnvironment{}, nil
 }
@@ -28,10 +32,7 @@ func (e *darwinEnvironment) Interfaces() ([]networking.Interface, error) {
 	ret := make([]networking.Interface, len(ifaces))
 	for i := range ifaces {
 		// TODO: may be faster to fetch all links and join them?
-		ret[i], err = e.interfaceFromGo(ifaces[i].(*native.GoInterface))
-		if err != nil {
-			return nil, err
-		}
+		ret[i] = e.interfaceFromGo(ifaces[i].(*native.GoInterface))
 	}
 	return ret, nil
 }
@@ -41,11 +42,11 @@ func (e *darwinEnvironment) InterfaceByName(name string) (networking.Interface, 
 	if err != nil {
 		return nil, err
 	}
-	return e.interfaceFromGo(iface.(*native.GoInterface))
+	return e.interfaceFromGo(iface.(*native.GoInterface)), nil
 }
 
-func (e *darwinEnvironment) interfaceFromGo(iface *native.GoInterface) (*darwinInterface, error) {
-	return &darwinInterface{*iface, e}, nil
+func (e *darwinEnvironment) interfaceFromGo(iface *native.GoInterface) *darwinInterface {
+	return &darwinInterface{*iface, e}
 }
 
 func (e *darwinEnvironment) Close() error {
@@ -69,10 +70,10 @@ func (i *darwinInterface) AddAddr(addr net.IPNet) error {
 	}
 	// probably have to run as root because of this
 	cmd := exec.Command("ifconfig", i.Name(), family, addr.String(), "alias")
-	if output, err := cmd.CombinedOutput(); err != nil {
+	output, err := cmd.CombinedOutput()
+	if err != nil {
 		return errors.Wrapf(err, "Unable to add %v to %s: %s", addr, i.Name(), string(output))
-	} else {
-		log.Debug("ifconfig results: %s", string(output))
 	}
+	log.Debug("ifconfig results: %s", string(output))
 	return nil
 }
