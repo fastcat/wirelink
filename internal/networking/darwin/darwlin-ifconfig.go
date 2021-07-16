@@ -63,8 +63,12 @@ type darwinInterface struct {
 var _ networking.Interface = (*darwinInterface)(nil)
 
 func (i *darwinInterface) AddAddr(addr net.IPNet) error {
+	family := "inet6"
+	if addr.IP.To4() != nil {
+		family = "inet"
+	}
 	// probably have to run as root because of this
-	cmd := exec.Command("ifconfig", i.Name(), addr.String(), "alias")
+	cmd := exec.Command("ifconfig", i.Name(), family, addr.String(), "alias")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		return errors.Wrapf(err, "Unable to add %v to %s: %s", addr, i.Name(), string(output))
 	} else {
