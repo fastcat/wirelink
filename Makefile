@@ -46,7 +46,11 @@ GOGENERATED_SOURCES:=\
 	internal/networking/mocks/Interface.go \
 	internal/networking/mocks/UDPConn.go \
 	$(NULL)
-generate: $(GENERATED_SOURCES) $(GOGENERATED_SOURCES)
+GENERATED:=\
+	$(GENERATED_SOURCES) \
+	$(GOGENERATED_SOURCES) \
+	$(NULL)
+generate: $(GENERATED)
 #TODO: use go generate for this step ... requires making a tool that duplicates the version computation above
 internal/version.go: internal/version.go.in .git/HEAD .git/index
 	cat $< | sed -e "s/__GIT_VERSION__/$(PKGVERREL)/" > $@.tmp
@@ -84,12 +88,10 @@ test-stress-go:
 	go test -vet=off -short -timeout=2m -count=1000 ./...
 test-stress-race:
 	go test -vet=off -short -timeout=5m -race -count=1000 ./...
-coverage.out: generate
+test-cover: generate
 	go test -vet=off -timeout=1m -covermode=atomic -coverpkg=./... -coverprofile=coverage.out ./...
-cover: coverage.out
 coverage.html: coverage.out
 	go tool cover -html=coverage.out -o=coverage.html
-htmlcover: coverage.html
 
 run: generate
 	go run -exec sudo .
@@ -197,8 +199,8 @@ dlv-run-real: compile wirelink
 .PHONY: dlv-run-real
 
 .PHONY: all info install-tools fmt generate compile run install everything clean
-.PHONY: lint test cover htmlcover
-.PHONY: test-go test-go-race test-stress test-stress-go test-stress-race
+.PHONY: lint test
+.PHONY: test-go test-cover test-go-race test-stress test-stress-go test-stress-race
 .PHONY: checkinstall checkinstall-prep checkinstall-clean
 # wirelink isn't actually phony, but we can't compute deps for it, so pretend
 .PHONY: wirelink

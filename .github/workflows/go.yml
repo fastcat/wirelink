@@ -67,12 +67,11 @@ jobs:
 
       - name: Test with coverage
         # building the coverage output runs the tests
-        run: gmake coverage.out
+        run: gmake test-cover
       - name: Generate coverage report
         # even if tests fail, generate the report
         if: ${{ always() }}
         run: gmake coverage.html
-
       # upload to codecov as soon as we can to view reports
       - name: Upload coverage (codecov)
         if: ${{ always() }}
