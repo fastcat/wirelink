@@ -149,7 +149,7 @@ WG_GO_DIR:=$(WG_GO_DIR_b)
 else
 WG_GO_DIR=$(error Cannot find wireguard-go sources)
 endif
-WG_GO_DOCSFILES:=README.md COPYING
+WG_GO_DOCSFILES:=README.md LICENSE
 WG_GO_PKGVERREL_git=$(shell git -C "$(WG_GO_DIR)" describe --long --dirty=+)
 WG_GO_PKGVERREL=$(if $(WG_GO_PKGVERREL_git),$(patsubst v%,%,$(WG_GO_PKGVERREL_git)),$(error git describe failed))
 WG_GO_PKGVER=$(firstword $(subst -, ,$(WG_GO_PKGVERREL)))
