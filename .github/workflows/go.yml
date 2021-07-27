@@ -67,21 +67,26 @@ jobs:
 
       - name: Test with coverage
         # building the coverage output runs the tests
+        run: gmake coverage.out
+      - name: Generate coverage report
+        # even if tests fail, generate the report
+        if: ${{ always() }}
         run: gmake coverage.html
 
       # upload to codecov as soon as we can to view reports
       - name: Upload coverage (codecov)
+        if: ${{ always() }}
         uses: codecov/codecov-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./coverage.out
           fail_ci_if_error: true
-
-      - name: Test with race detector
-        run: gmake test-go-race
-
       - name: Upload coverage (artifact)
+        if: ${{ always() }}
         uses: actions/upload-artifact@v1.0.0
         with:
           name: coverage.html
           path: ./coverage.html
+
+      - name: Test with race detector
+        run: gmake test-go-race
