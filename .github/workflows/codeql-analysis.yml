@@ -33,6 +33,14 @@ jobs:
         # a pull request then we can checkout the head.
         # fetch more than that so git describe --tags will work
         fetch-depth: 20
+
+    # requires 1.16 to build
+    - name: Set up Go 1.16
+      uses: actions/setup-go@v2
+      with:
+        go-version: "^1.16"
+      id: go
+
     - name: Get tags to make version.go
       run: |
         git fetch origin +refs/tags/*:refs/tags/*
@@ -48,7 +56,7 @@ jobs:
       with:
         languages: ${{ matrix.language }}
         # If you wish to specify custom queries, you can do so here or in a config file.
-        # By default, queries listed here will override any specified in a config file. 
+        # By default, queries listed here will override any specified in a config file.
         # Prefix the list here with "+" to use these queries and those in the config file.
         # queries: ./path/to/local/query, your-org/your-repo/queries@main
 
@@ -65,7 +73,9 @@ jobs:
     #    uses a compiled language
 
     - run: |
-       make generate
+       make compile
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v1
+      env:
+        CODEQL_EXTRACTOR_GO_BUILD_COMMAND: "make compile"
