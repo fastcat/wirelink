@@ -1,4 +1,5 @@
-//+build linux
+//go:build linux
+// +build linux
 
 // Package linux provides an implementation of networking.Environment for the
 // host Linux system, leveraging the Go native package, and then filling in the
