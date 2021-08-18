@@ -17,11 +17,11 @@ jobs:
           go-version: "^1.17"
         id: go
       - name: Set up macOS
-        if: matrix.os == 'macos-latest'
+        if: startsWith(matrix.os, 'macos-')
         run: |
           brew install make
       - name: Set up Linux
-        if: matrix.os == 'ubuntu-latest'
+        if: startsWith(matrix.os, 'ubuntu-latest')
         run: |
           set -x
           if [ ! -x /usr/bin/gmake ]; then
