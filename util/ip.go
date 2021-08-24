@@ -43,6 +43,9 @@ func IsGloballyRoutable(ip net.IP) bool {
 	if !ip.IsGlobalUnicast() {
 		return false
 	}
+	if ip.IsPrivate() {
+		return false
+	}
 	if ip4 := ip.To4(); ip4 != nil {
 		// ignore the CG-NAT subnet 100.64.0.0/10 (https://tools.ietf.org/html/rfc6598)
 		if ip4[0] == 0x64 && ip4[1] >= 0x40 && ip4[1] <= 0x7f {
