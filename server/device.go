@@ -146,9 +146,10 @@ func (s *LinkServer) handlePeerConfigEndpoints(
 		}
 
 		for _, ip := range ips {
-			// don't publish localhost-ish or link-local addresses,
-			// these are not going to be useful, but may appear if we ourselves
-			// are listed with a static endpoint that resolves oddly locally
+			// don't publish localhost-ish or link-local addresses, these are not
+			// going to be useful, but may appear if we ourselves are listed with a
+			// static endpoint that resolves oddly locally. do publish private
+			// (RFC1918-ish) addresses however as they're valid VPN traffic.
 			if !ip.IsGlobalUnicast() {
 				continue
 			}

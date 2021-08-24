@@ -5,23 +5,23 @@ jobs:
     name: Build
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-18.04, ubuntu-20.04, macos-10.15, macos-11]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     env:
       GO111MODULE: "on"
     steps:
-      - name: Set up Go 1.16
+      - name: Set up Go 1.17
         uses: actions/setup-go@v2
         with:
-          go-version: "^1.16"
+          go-version: "^1.17"
         id: go
       - name: Set up macOS
-        if: matrix.os == 'macos-latest'
+        if: startsWith(matrix.os, 'macos-')
         run: |
           brew install make
       - name: Set up Linux
-        if: matrix.os == 'ubuntu-latest'
+        if: startsWith(matrix.os, 'ubuntu-')
         run: |
           set -x
           if [ ! -x /usr/bin/gmake ]; then

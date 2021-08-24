@@ -114,7 +114,9 @@ func forEachAddr(iface networking.Interface, handler func(ipn net.IPNet) error) 
 	}
 	for _, addr := range addrs {
 		if !addr.IP.IsGlobalUnicast() {
-			// ignore localhost for sure, and link local addresses at least for now
+			// ignore localhost for sure, and link local addresses at least for now,
+			// but not private (RFC1918) addresses, as they are valid as endpoints and
+			// allowed IP subnets.
 			continue
 		}
 		err = handler(addr)

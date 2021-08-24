@@ -13,6 +13,8 @@ import (
 // IP with a CIDR mask less than the full IP
 func IsPeerRouter(peer *wgtypes.Peer) bool {
 	for _, aip := range peer.AllowedIPs {
+		// don't ignore private (RFC1918-ish) subnets here, as they are a valid
+		// thing to be a router for
 		if !aip.IP.IsGlobalUnicast() {
 			continue
 		}
