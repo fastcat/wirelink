@@ -539,10 +539,10 @@ func TestLinkServer_chunkReceived_slow(t *testing.T) {
 	}
 
 	sendAtMs := func(ms, index int) send {
-		return send{offset: time.Duration(ms) * time.Millisecond, packet: rf(index)}
+		return send{offset: time.Duration(ms) * testutils.CIScaleMs, packet: rf(index)}
 	}
 	receiveAtMs := func(ms int, indexes ...int) receive {
-		return receive{offset: time.Duration(ms) * time.Millisecond, chunk: rfs(indexes...)}
+		return receive{offset: time.Duration(ms) * testutils.CIScaleMs, chunk: rfs(indexes...)}
 	}
 
 	tests := []struct {
@@ -597,11 +597,11 @@ func TestLinkServer_chunkReceived_slow(t *testing.T) {
 				sendAtMs(55, 1),
 				sendAtMs(250, 2),
 				sendAtMs(255, 3),
-				{offset: 350 * time.Millisecond},
+				{offset: 350 * testutils.CIScaleMs},
 			},
 			[]receive{
 				receiveAtMs(100, 0, 1),
-				{offset: 200 * time.Millisecond},
+				{offset: 200 * testutils.CIScaleMs},
 				receiveAtMs(300, 2, 3),
 			},
 			true,
@@ -617,7 +617,7 @@ func TestLinkServer_chunkReceived_slow(t *testing.T) {
 				sendAtMs(40, 3),
 				sendAtMs(110, 4),
 				sendAtMs(120, 5),
-				{offset: 210 * time.Millisecond},
+				{offset: 210 * testutils.CIScaleMs},
 			},
 			[]receive{
 				receiveAtMs(30, 0, 1, 2),
@@ -633,9 +633,10 @@ func TestLinkServer_chunkReceived_slow(t *testing.T) {
 			if tt.long && testing.Short() {
 				t.SkipNow()
 			}
+			t.Logf("using CI scale: %d", testutils.CIScaleFactor)
 
 			s := &LinkServer{
-				ChunkPeriod: tt.args.chunkPeriod,
+				ChunkPeriod: tt.args.chunkPeriod * testutils.CIScaleFactorDuration,
 			}
 			// for this test, use the same limited buffer for the incoming packets as
 			// the real server
@@ -683,15 +684,18 @@ func TestLinkServer_chunkReceived_slow(t *testing.T) {
 			wantChunks := append([]receive{{0, nil}}, tt.wantChunks...)
 			assert.Len(t, gotChunks, len(wantChunks))
 			for i := 0; i < len(gotChunks) && i < len(wantChunks); i++ {
+				t.Logf("chunk %d: expected ~ %d, received ~ %d", i, wantChunks[i].offset.Milliseconds(), gotChunks[i].offset.Milliseconds())
 				assert.Equal(t, wantChunks[i].chunk, gotChunks[i].chunk, "Received chunk %d", i)
 				// need to allow some slop in the receive timing
 				// using `assert.InDelta` would be nice, but we really need an asymmetric behavior
 				// it's OK if things are a little late due to timing issues,
 				// but if they are early, there is definitely a bug
 				// have to cast to int64 because of https://github.com/stretchr/testify/issues/780
-				assert.GreaterOrEqual(t, int64(gotChunks[i].offset), int64(wantChunks[i].offset),
+				assert.GreaterOrEqual(t, gotChunks[i].offset.Milliseconds(), wantChunks[i].offset.Milliseconds(),
 					"Received timing %d: must not be early", i)
-				assert.LessOrEqual(t, int64(gotChunks[i].offset), int64(wantChunks[i].offset+10*time.Millisecond),
+				assert.LessOrEqual(t,
+					gotChunks[i].offset.Milliseconds(),
+					(wantChunks[i].offset + 10*testutils.CIScaleMs).Milliseconds(),
 					"Received timing %d: must not be late", i)
 			}
 		})

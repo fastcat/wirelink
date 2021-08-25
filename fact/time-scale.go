@@ -6,7 +6,7 @@ import "time"
 // It is only present as a mutable parameter for use in tests where we want to run scenarios
 // faster than normal realtime would permit. Changing this on a live service is a breaking
 // change to the wire protocol.
-var timeScale time.Duration = time.Second
+var timeScale = time.Second
 
 // ScaleExpirationQuantumForTests reconfigures how the fact TTL is represented on the wire to permit
 // faster than normal tests

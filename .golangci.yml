@@ -8,7 +8,7 @@ linters:
     - gocyclo
     - gofmt
     - goimports
-    - golint
+    - revive
     - misspell
     - prealloc
     - stylecheck

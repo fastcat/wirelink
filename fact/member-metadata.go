@@ -37,7 +37,7 @@ type stringValidator func(string) error
 
 // memberMetadataValidators provides a lookup table for validating the inner
 // elements of a MemberMetadata value
-var memberMetadataValidators map[MemberAttribute]stringValidator = map[MemberAttribute]stringValidator{
+var memberMetadataValidators = map[MemberAttribute]stringValidator{
 	MemberName: func(value string) error {
 		if !utf8.ValidString(value) {
 			return errors.Errorf("Invalid string for MemberName: %q", value)
