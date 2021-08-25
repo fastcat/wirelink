@@ -539,10 +539,10 @@ func TestLinkServer_chunkReceived_slow(t *testing.T) {
 	}
 
 	sendAtMs := func(ms, index int) send {
-		return send{offset: time.Duration(ms) * time.Millisecond, packet: rf(index)}
+		return send{offset: time.Duration(ms) * time.Millisecond * testutils.CIScaleFactorDuration, packet: rf(index)}
 	}
 	receiveAtMs := func(ms int, indexes ...int) receive {
-		return receive{offset: time.Duration(ms) * time.Millisecond, chunk: rfs(indexes...)}
+		return receive{offset: time.Duration(ms) * time.Millisecond * testutils.CIScaleFactorDuration, chunk: rfs(indexes...)}
 	}
 
 	tests := []struct {
@@ -636,7 +636,7 @@ func TestLinkServer_chunkReceived_slow(t *testing.T) {
 			t.Logf("using CI scale: %d", testutils.CIScaleFactor)
 
 			s := &LinkServer{
-				ChunkPeriod: tt.args.chunkPeriod,
+				ChunkPeriod: tt.args.chunkPeriod * testutils.CIScaleFactorDuration,
 			}
 			// for this test, use the same limited buffer for the incoming packets as
 			// the real server
