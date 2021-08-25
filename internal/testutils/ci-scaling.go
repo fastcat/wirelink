@@ -2,6 +2,8 @@ package testutils
 
 import (
 	"math"
+	"os"
+	"runtime"
 	"time"
 )
 
@@ -42,6 +44,11 @@ func init() {
 		CIScaleFactor = 1
 	} else {
 		CIScaleFactor = int(math.Ceil(float64(baseline) / float64(thisMachine)))
+	}
+	// macOS runners just seem to be SLOW, beyond what we can measure in crude
+	// micro-benchmarks
+	if runtime.GOOS == "darwin" && os.Getenv("CI") != "" {
+		CIScaleFactor++
 	}
 	CIScaleFactorDuration = time.Duration(CIScaleFactor)
 }

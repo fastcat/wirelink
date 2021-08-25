@@ -500,8 +500,6 @@ func TestLinkServer_chunkReceived(t *testing.T) {
 }
 
 func TestLinkServer_chunkReceived_slow(t *testing.T) {
-	t.Logf("using CI scale: %d", testutils.CIScaleFactor)
-
 	timeZero := time.Now()
 	expires := timeZero.Add(DefaultFactTTL)
 
@@ -635,6 +633,7 @@ func TestLinkServer_chunkReceived_slow(t *testing.T) {
 			if tt.long && testing.Short() {
 				t.SkipNow()
 			}
+			t.Logf("using CI scale: %d", testutils.CIScaleFactor)
 
 			s := &LinkServer{
 				ChunkPeriod: tt.args.chunkPeriod,
