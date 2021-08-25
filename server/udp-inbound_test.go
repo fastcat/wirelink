@@ -601,7 +601,7 @@ func TestLinkServer_chunkReceived_slow(t *testing.T) {
 			},
 			[]receive{
 				receiveAtMs(100, 0, 1),
-				{offset: 200 * time.Millisecond},
+				{offset: 200 * time.Millisecond * testutils.CIScaleFactorDuration},
 				receiveAtMs(300, 2, 3),
 			},
 			true,
@@ -617,7 +617,7 @@ func TestLinkServer_chunkReceived_slow(t *testing.T) {
 				sendAtMs(40, 3),
 				sendAtMs(110, 4),
 				sendAtMs(120, 5),
-				{offset: 210 * time.Millisecond},
+				{offset: 210 * time.Millisecond * testutils.CIScaleFactorDuration},
 			},
 			[]receive{
 				receiveAtMs(30, 0, 1, 2),
