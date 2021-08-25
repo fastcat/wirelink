@@ -4,6 +4,7 @@ import (
 	"math"
 	"os"
 	"runtime"
+	"strconv"
 	"time"
 )
 
@@ -42,9 +43,15 @@ func measurePerf(target time.Duration) int {
 
 func init() {
 	CIScaleFactor = 1
-	// macOS runners seem to be super slow, try to compensate with a
-	// micro-benchmark to compare vs. a reference system
-	if runtime.GOOS == "darwin" && os.Getenv("CI") != "" {
+	if ciScaleStr, ok := os.LookupEnv("CISCALE"); ok {
+		if ciSFParsed, err := strconv.ParseInt(ciScaleStr, 0, 16); err != nil {
+			panic(err)
+		} else {
+			CIScaleFactor = int(ciSFParsed)
+		}
+	} else if runtime.GOOS == "darwin" && os.Getenv("CI") != "" {
+		// macOS runners seem to be super slow, try to compensate with a
+		// micro-benchmark to compare vs. a reference system
 		thisMachine := measurePerf(time.Millisecond)
 		if thisMachine >= baseline {
 			CIScaleFactor = 1
