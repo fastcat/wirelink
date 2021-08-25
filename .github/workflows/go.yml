@@ -90,5 +90,5 @@ jobs:
       - name: Test with race detector
         # combination of macos runners being slow and race detector messing with
         # timing makes this combination too flaky for now
-        if: startsWith(matrix.os, 'macos-')
+        if: "!startsWith(matrix.os, 'macos-')"
         run: gmake test-go-race
