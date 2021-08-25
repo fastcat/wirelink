@@ -690,9 +690,11 @@ func TestLinkServer_chunkReceived_slow(t *testing.T) {
 				// it's OK if things are a little late due to timing issues,
 				// but if they are early, there is definitely a bug
 				// have to cast to int64 because of https://github.com/stretchr/testify/issues/780
-				assert.GreaterOrEqual(t, int64(gotChunks[i].offset), int64(wantChunks[i].offset),
+				assert.GreaterOrEqual(t, gotChunks[i].offset.Milliseconds(), wantChunks[i].offset.Milliseconds(),
 					"Received timing %d: must not be early", i)
-				assert.LessOrEqual(t, int64(gotChunks[i].offset), int64(wantChunks[i].offset+10*time.Millisecond*testutils.CIScaleFactorDuration),
+				assert.LessOrEqual(t,
+					gotChunks[i].offset.Milliseconds(),
+					(wantChunks[i].offset + 10*time.Millisecond*testutils.CIScaleFactorDuration).Milliseconds(),
 					"Received timing %d: must not be late", i)
 			}
 		})
