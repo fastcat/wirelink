@@ -684,6 +684,7 @@ func TestLinkServer_chunkReceived_slow(t *testing.T) {
 			wantChunks := append([]receive{{0, nil}}, tt.wantChunks...)
 			assert.Len(t, gotChunks, len(wantChunks))
 			for i := 0; i < len(gotChunks) && i < len(wantChunks); i++ {
+				t.Logf("chunk %d: expected ~ %d, received ~ %d", i, wantChunks[i].offset.Milliseconds(), gotChunks[i].offset.Milliseconds())
 				assert.Equal(t, wantChunks[i].chunk, gotChunks[i].chunk, "Received chunk %d", i)
 				// need to allow some slop in the receive timing
 				// using `assert.InDelta` would be nice, but we really need an asymmetric behavior
