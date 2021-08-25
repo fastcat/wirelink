@@ -26,6 +26,8 @@ import (
 const wgPort = 51820
 
 func Test_Cmd_VNet1(t *testing.T) {
+	t.Logf("using CI scale: %d", testutils.CIScaleFactor)
+
 	// use a 100ms time quantum for this test so we can run things on shorter timers
 	fact.ScaleExpirationQuantumForTests(20) // 50ms quantum
 	quantum := testutils.CIScaleFactorDuration * time.Second / 20

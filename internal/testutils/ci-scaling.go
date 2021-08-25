@@ -10,7 +10,7 @@ import (
 // tests
 
 // empirical measure on the slowest system tested that passes tests
-const baseline = 899000000
+const baseline = 1_000_000_000
 
 // CIScaleFactor is an approximate scaling factor by which to multiply time
 // deadlines in performance-sensitive tests to compensate for the running system
