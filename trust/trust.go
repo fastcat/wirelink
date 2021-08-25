@@ -33,7 +33,7 @@ const (
 
 // Values is a handy map to ease parsing strings to trust levels.
 // NOTE: this is mutable, golang doesn't allow const/immutable maps
-var Values map[string]Level = map[string]Level{
+var Values = map[string]Level{
 	"Untrusted":     Untrusted,
 	"Endpoint":      Endpoint,
 	"AllowedIPs":    AllowedIPs,
@@ -43,7 +43,7 @@ var Values map[string]Level = map[string]Level{
 
 // Names is a handy map to ease stringifying trust levels.
 // NOTE: this is mutable, golang doesn't allow const/immutable maps
-var Names map[Level]string = map[Level]string{
+var Names = map[Level]string{
 	Untrusted:     "Untrusted",
 	Endpoint:      "Endpoint",
 	AllowedIPs:    "AllowedIPs",

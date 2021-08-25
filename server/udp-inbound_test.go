@@ -539,10 +539,10 @@ func TestLinkServer_chunkReceived_slow(t *testing.T) {
 	}
 
 	sendAtMs := func(ms, index int) send {
-		return send{offset: time.Duration(ms) * time.Millisecond * testutils.CIScaleFactorDuration, packet: rf(index)}
+		return send{offset: time.Duration(ms) * testutils.CIScaleMs, packet: rf(index)}
 	}
 	receiveAtMs := func(ms int, indexes ...int) receive {
-		return receive{offset: time.Duration(ms) * time.Millisecond * testutils.CIScaleFactorDuration, chunk: rfs(indexes...)}
+		return receive{offset: time.Duration(ms) * testutils.CIScaleMs, chunk: rfs(indexes...)}
 	}
 
 	tests := []struct {
@@ -597,11 +597,11 @@ func TestLinkServer_chunkReceived_slow(t *testing.T) {
 				sendAtMs(55, 1),
 				sendAtMs(250, 2),
 				sendAtMs(255, 3),
-				{offset: 350 * time.Millisecond},
+				{offset: 350 * testutils.CIScaleMs},
 			},
 			[]receive{
 				receiveAtMs(100, 0, 1),
-				{offset: 200 * time.Millisecond * testutils.CIScaleFactorDuration},
+				{offset: 200 * testutils.CIScaleMs},
 				receiveAtMs(300, 2, 3),
 			},
 			true,
@@ -617,7 +617,7 @@ func TestLinkServer_chunkReceived_slow(t *testing.T) {
 				sendAtMs(40, 3),
 				sendAtMs(110, 4),
 				sendAtMs(120, 5),
-				{offset: 210 * time.Millisecond * testutils.CIScaleFactorDuration},
+				{offset: 210 * testutils.CIScaleMs},
 			},
 			[]receive{
 				receiveAtMs(30, 0, 1, 2),
@@ -695,7 +695,7 @@ func TestLinkServer_chunkReceived_slow(t *testing.T) {
 					"Received timing %d: must not be early", i)
 				assert.LessOrEqual(t,
 					gotChunks[i].offset.Milliseconds(),
-					(wantChunks[i].offset + 10*time.Millisecond*testutils.CIScaleFactorDuration).Milliseconds(),
+					(wantChunks[i].offset + 10*testutils.CIScaleMs).Milliseconds(),
 					"Received timing %d: must not be late", i)
 			}
 		})
