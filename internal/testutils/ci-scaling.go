@@ -38,17 +38,16 @@ func measurePerf(target time.Duration) int {
 }
 
 func init() {
-	// run a micro-benchmark to see how fast this system runs
-	thisMachine := measurePerf(time.Millisecond)
-	if thisMachine >= baseline {
-		CIScaleFactor = 1
-	} else {
-		CIScaleFactor = int(math.Ceil(float64(baseline) / float64(thisMachine)))
-	}
-	// macOS runners just seem to be SLOW, beyond what we can measure in crude
-	// micro-benchmarks
+	CIScaleFactor = 1
+	// macOS runners seem to be super slow, try to compensate with a
+	// micro-benchmark to compare vs. a reference system
 	if runtime.GOOS == "darwin" && os.Getenv("CI") != "" {
-		CIScaleFactor++
+		thisMachine := measurePerf(time.Millisecond)
+		if thisMachine >= baseline {
+			CIScaleFactor = 1
+		} else {
+			CIScaleFactor = int(math.Ceil(float64(baseline) / float64(thisMachine)))
+		}
 	}
 	CIScaleFactorDuration = time.Duration(CIScaleFactor)
 }
