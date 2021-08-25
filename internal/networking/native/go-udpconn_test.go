@@ -234,8 +234,8 @@ func TestGoUDPConn_ReadPackets(t *testing.T) {
 				// see notes elsewhere about timestamp comparison issues
 				gotOffset := got.Time.Sub(sendStarted)
 				wantOffset := want.Time.Sub(now)
-				assert.GreaterOrEqual(t, int64(gotOffset), int64(wantOffset), "packet %d earliest receive time", i)
-				assert.LessOrEqual(t, int64(gotOffset), int64(wantOffset+15*time.Millisecond), "packet %d latest receive time", i)
+				assert.GreaterOrEqual(t, gotOffset.Milliseconds(), wantOffset.Milliseconds(), "packet %d earliest receive time", i)
+				assert.LessOrEqual(t, gotOffset.Milliseconds(), (wantOffset + 15*time.Millisecond*testutils.CIScaleFactorDuration).Milliseconds(), "packet %d latest receive time", i)
 			}
 		})
 	}

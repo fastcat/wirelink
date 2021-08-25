@@ -28,3 +28,6 @@ version.go
 
 # try folder has temp test code
 try/
+
+# macos cruft
+.DS_Store
