@@ -12,7 +12,7 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-func Test_routeBasedTrust_TrustLevel(t *testing.T) {
+func Test_knownPeerTrust_TrustLevel(t *testing.T) {
 	k1 := testutils.MustKey(t)
 	k2 := testutils.MustKey(t)
 	k3 := testutils.MustKey(t)
@@ -29,16 +29,6 @@ func Test_routeBasedTrust_TrustLevel(t *testing.T) {
 		ret := make([]wgtypes.Peer, len(ks))
 		for i, k := range ks {
 			ret[i] = wgtypes.Peer{PublicKey: k}
-		}
-		return ret
-	}
-	routerList := func(ks ...wgtypes.Key) []wgtypes.Peer {
-		ret := make([]wgtypes.Peer, len(ks))
-		for i, k := range ks {
-			ret[i] = wgtypes.Peer{PublicKey: k, AllowedIPs: []net.IPNet{
-				// make sure the top byte isn't something that will fail IsGlobalUnicast
-				testutils.RandIPNet(t, net.IPv4len, []byte{100}, nil, 1+rand.Intn(31)),
-			}}
 		}
 		return ret
 	}
@@ -74,37 +64,29 @@ func Test_routeBasedTrust_TrustLevel(t *testing.T) {
 			"known leaf self info",
 			peerList(k1),
 			mkArgs(k1, k1),
-			// this is now delegated to KnownPeerTrust
-			nil,
+			Ptr(Endpoint),
 		},
 		{
 			"known leaf other info",
 			peerList(k1),
 			mkArgs(k2, k1),
-			// this is now delegated to KnownPeerTrust
-			nil,
-		},
-		{
-			"known router",
-			routerList(k1),
-			mkArgs(k2, k1),
-			Ptr(Membership),
+			Ptr(Endpoint),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// rbt := &routeBasedTrust{
+			// rbt := &knownPeerTrust{
 			// 	peersByIP:  tt.fields.peersByIP,
 			// 	peersByKey: tt.fields.peersByKey,
 			// }
-			rbt := CreateRouteBasedTrust(tt.peers)
+			rbt := CreateKnownPeerTrust(tt.peers)
 			got := rbt.TrustLevel(tt.args.f, tt.args.source)
 			assert.Equal(t, tt.want, got, "want %v got %v", tt.want, got)
 		})
 	}
 }
 
-func Test_routeBasedTrust_IsKnown(t *testing.T) {
+func Test_knownPeerTrust_IsKnown(t *testing.T) {
 	k1 := testutils.MustKey(t)
 	k2 := testutils.MustKey(t)
 
@@ -131,11 +113,11 @@ func Test_routeBasedTrust_IsKnown(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// rbt := &routeBasedTrust{
+			// rbt := &knownPeerTrust{
 			// 	peersByIP:  tt.fields.peersByIP,
 			// 	peersByKey: tt.fields.peersByKey,
 			// }
-			rbt := CreateRouteBasedTrust(tt.peers)
+			rbt := CreateKnownPeerTrust(tt.peers)
 			got := rbt.IsKnown(tt.args.s)
 			assert.Equal(t, tt.want, got)
 		})

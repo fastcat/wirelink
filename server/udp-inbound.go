@@ -261,11 +261,26 @@ func (s *LinkServer) processOneChunk(
 
 	pl := createFromPeers(dev.Peers...)
 
-	evaluator := trust.CreateComposite(trust.FirstOnly,
-		// TODO: we can cache the config trust to avoid some re-computation
+	// TODO: we can cache the config trust to avoid some re-computation
+	evaluators := []trust.Evaluator{
 		config.CreateTrustEvaluator(s.config.Peers),
-		trust.CreateRouteBasedTrust(dev.Peers),
-	)
+	}
+	// only use route-based trust if we don't have any static trust config
+	haveConfiguredTrust := false
+	for _, p := range s.config.Peers {
+		if p.Trust != nil {
+			haveConfiguredTrust = true
+			break
+		}
+	}
+	if !haveConfiguredTrust {
+		evaluators = append(evaluators, trust.CreateRouteBasedTrust(dev.Peers))
+	}
+	// always let known peers tell us endpoints
+	evaluators = append(evaluators, trust.CreateKnownPeerTrust(dev.Peers))
+
+	evaluator := trust.CreateComposite(trust.FirstOnly, evaluators...)
+
 	// add all the new not-expired and _trusted_ facts
 	for _, rf := range chunk {
 		// add to what the peer knows, even if we otherwise discard the information
