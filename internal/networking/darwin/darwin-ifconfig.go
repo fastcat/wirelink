@@ -50,10 +50,7 @@ func (e *darwinEnvironment) interfaceFromGo(iface *native.GoInterface) *darwinIn
 }
 
 func (e *darwinEnvironment) Close() error {
-	if err := e.GoEnvironment.Close(); err != nil {
-		return err
-	}
-	return nil
+	return e.GoEnvironment.Close()
 }
 
 type darwinInterface struct {
