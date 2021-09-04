@@ -77,10 +77,7 @@ func (e *linuxEnvironment) Close() error {
 		e.nlh.Delete()
 		e.nlh = nil
 	}
-	if err := e.GoEnvironment.Close(); err != nil {
-		return err
-	}
-	return nil
+	return e.GoEnvironment.Close()
 }
 
 type linuxInterface struct {
