@@ -2,8 +2,8 @@ package signing
 
 import (
 	"crypto/rand"
+	"fmt"
 
-	"github.com/pkg/errors"
 	"golang.org/x/crypto/chacha20poly1305"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -31,7 +31,7 @@ func (s *Signer) SignFor(
 	}
 	out := cipher.Seal(nil, nonce[:], nil, data)
 	if len(out) != len(tag) {
-		err = errors.Errorf("Unexpected output length %d from AEAD, expected %d", len(out), len(tag))
+		err = fmt.Errorf("unexpected output length %d from AEAD, expected %d", len(out), len(tag))
 		return
 	}
 	copy(tag[:], out[:])

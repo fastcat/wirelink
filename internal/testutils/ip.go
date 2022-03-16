@@ -3,7 +3,6 @@ package testutils
 import (
 	"math/rand"
 	"net"
-
 	"testing"
 )
 

@@ -52,6 +52,7 @@ func buildConfig(name string) *configBuilder {
 	ret.Iface = name
 	return ret
 }
+
 func (c *configBuilder) withPeer(key wgtypes.Key, peer *config.Peer) *configBuilder {
 	if c == nil {
 		c = &configBuilder{}

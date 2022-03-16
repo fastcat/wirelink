@@ -1,12 +1,15 @@
 package util
 
-import "github.com/pkg/errors"
+import (
+	"fmt"
+)
 
-// WrapOrNewf calls errors.Wrapf or errors.Errorf depending on whether err is nil,
-// always returning an error value, unlike errors.Wrapf
+// WrapOrNewf calls fmt.Errorf with varying format depending on whether err is
+// nil, always returning an error value
 func WrapOrNewf(err error, format string, args ...interface{}) error {
 	if err == nil {
-		return errors.Errorf(format, args...)
+		return fmt.Errorf(format, args...)
 	}
-	return errors.Wrapf(err, format, args...)
+	args = append(args, err)
+	return fmt.Errorf(format+": %w", args...)
 }

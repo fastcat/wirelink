@@ -30,7 +30,7 @@ func TestParseSignedGroup_Trivial(t *testing.T) {
 	testutils.MustRandBytes(t, mockTag[:])
 	mockBootID := uuid.Must(uuid.NewRandom())
 
-	//TODO: use mock data for TTL, hard because clock moves
+	// TODO: use mock data for TTL, hard because clock moves
 
 	_, p := mustMockAlivePacket(t, &mockSubjectKey, &mockBootID)
 
@@ -111,7 +111,7 @@ func TestParseSignedGroup_Inner(t *testing.T) {
 	testutils.MustRandBytes(t, mockNonce[:])
 	testutils.MustRandBytes(t, mockTag[:])
 
-	//TODO: use mock data for TTL, hard because clock moves
+	// TODO: use mock data for TTL, hard because clock moves
 
 	f1, p1 := mustMockAlivePacket(t, nil, nil)
 	f2, p2 := mustMockAlivePacket(t, nil, nil)

@@ -3,11 +3,10 @@ package cmd
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
-
-	"github.com/pkg/errors"
 
 	"github.com/fastcat/wirelink/config"
 	"github.com/fastcat/wirelink/internal"
@@ -39,13 +38,13 @@ func (w *WirelinkCmd) Init(env networking.Environment) error {
 	var err error
 	w.wgc, err = env.NewWgClient()
 	if err != nil {
-		return errors.Wrapf(err, "Unable to initialize wgctrl")
+		return fmt.Errorf("unable to initialize wgctrl: %w", err)
 	}
 
 	flags, vcfg := config.Init(w.args)
 	var configData *config.ServerData
 	if configData, err = config.Parse(flags, vcfg, w.args); err != nil {
-		return errors.Wrapf(err, "Unable to parse configuration")
+		return fmt.Errorf("unable to parse configuration: %w", err)
 	}
 	// configData comes back nil if we ran --help or --version
 	if configData == nil {
@@ -54,7 +53,7 @@ func (w *WirelinkCmd) Init(env networking.Environment) error {
 
 	if w.Config, err = configData.Parse(vcfg, w.wgc); err != nil {
 		flags.Usage()
-		return errors.Wrapf(err, "Unable to load configuration")
+		return fmt.Errorf("unable to load configuration: %w", err)
 	}
 	if w.Config == nil {
 		// config dump was requested
@@ -63,7 +62,7 @@ func (w *WirelinkCmd) Init(env networking.Environment) error {
 
 	w.Server, err = server.Create(env, w.wgc, w.Config)
 	if err != nil {
-		return errors.Wrapf(err, "Unable to create server for interface %s", w.Config.Iface)
+		return fmt.Errorf("unable to create server for interface %s: %w", w.Config.Iface, err)
 	}
 
 	return nil
@@ -74,7 +73,7 @@ func (w *WirelinkCmd) Run() error {
 	defer w.Server.Close()
 	err := w.Server.Start()
 	if err != nil {
-		return errors.Wrapf(err, "Unable to start server for interface %s", w.Config.Iface)
+		return fmt.Errorf("unable to start server for interface %s: %w", w.Config.Iface, err)
 	}
 
 	w.signals = make(chan os.Signal, 5)

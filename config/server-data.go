@@ -2,10 +2,9 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
-
-	"github.com/pkg/errors"
 
 	"github.com/spf13/viper"
 
@@ -46,7 +45,7 @@ func (s *ServerData) Parse(vcfg *viper.Viper, wgc internal.WgClient) (ret *Serve
 	}
 
 	ret = new(Server)
-	//TODO: validate Iface is not empty
+	// TODO: validate Iface is not empty
 	ret.Iface = s.Iface
 	ret.Port = s.Port
 	ret.Chatty = s.Chatty
@@ -58,12 +57,12 @@ func (s *ServerData) Parse(vcfg *viper.Viper, wgc internal.WgClient) (ret *Serve
 	// passing the glob to itself works for many common cases
 	for _, glob := range s.ReportIfaces {
 		if _, err = filepath.Match(glob, glob); err != nil {
-			return nil, errors.Wrapf(err, "Bad glob in ReportIfaces config: '%s'", glob)
+			return nil, fmt.Errorf("bad glob in ReportIfaces config: '%s': %w", glob, err)
 		}
 	}
 	for _, glob := range s.HideIfaces {
 		if _, err = filepath.Match(glob, glob); err != nil {
-			return nil, errors.Wrapf(err, "Bad glob in HideIfaces config: '%s'", glob)
+			return nil, fmt.Errorf("bad glob in HideIfaces config: '%s': %w", glob, err)
 		}
 	}
 	ret.ReportIfaces = s.ReportIfaces
@@ -73,7 +72,7 @@ func (s *ServerData) Parse(vcfg *viper.Viper, wgc internal.WgClient) (ret *Serve
 	for _, peerDatum := range s.Peers {
 		key, peerConf, err := peerDatum.Parse()
 		if err != nil {
-			return nil, errors.Wrapf(err, "Cannot parse peer config from %+v", peerDatum)
+			return nil, fmt.Errorf("cannot parse peer config from %+v: %w", peerDatum, err)
 		}
 		ret.Peers[key] = &peerConf
 		// skip this log if we're in config dump mode, so that the output is _just_ the JSON
@@ -110,7 +109,7 @@ func (s *ServerData) Parse(vcfg *viper.Viper, wgc internal.WgClient) (ret *Serve
 		// regurgitate the input
 		dump, err := json.MarshalIndent(all, "", "  ")
 		if err != nil {
-			return nil, errors.Wrapf(err, "Unable to serialize settings to JSON")
+			return nil, fmt.Errorf("unable to serialize settings to JSON: %w", err)
 		}
 		// marshal output never has the trailing newline
 		dump = append(dump, '\n')

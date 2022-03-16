@@ -26,6 +26,7 @@ func makeLongString(len int) string {
 	}
 	return b.String()
 }
+
 func TestMemberMetadata_MarshalBinary(t *testing.T) {
 	type fields struct {
 		attributes map[MemberAttribute]string

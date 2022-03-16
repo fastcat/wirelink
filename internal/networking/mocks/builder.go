@@ -15,8 +15,10 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-const tdInterfaces = "_Interfaces"
-const tdConnections = "_Connections"
+const (
+	tdInterfaces  = "_Interfaces"
+	tdConnections = "_Connections"
+)
 
 // WithInterface updates the mock environment to be aware of a new interface name
 func (_m *Environment) WithInterface(name string) *Interface {

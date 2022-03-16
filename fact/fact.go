@@ -8,8 +8,6 @@ import (
 	"math"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"github.com/fastcat/wirelink/util"
 )
 
@@ -87,25 +85,25 @@ func (f *Fact) MarshalBinaryNow(now time.Time) ([]byte, error) {
 	}
 	tmpLen = binary.PutUvarint(tmp[:], uint64(ttl))
 	if n, err := buf.Write(tmp[0:tmpLen]); err != nil || n != tmpLen {
-		return buf.Bytes(), util.WrapOrNewf(err, "Failed to write ttl bytes, wrote %d of %d", n, tmpLen)
+		return buf.Bytes(), util.WrapOrNewf(err, "failed to write ttl bytes, wrote %d of %d", n, tmpLen)
 	}
 
 	// these should never return errors, but ...
 
 	subjectData, err := f.Subject.MarshalBinary()
 	if err != nil {
-		return buf.Bytes(), errors.Wrap(err, "Failed to marshal Subject")
+		return buf.Bytes(), fmt.Errorf("failed to marshal Subject: %w", err)
 	}
 	if n, err := buf.Write(subjectData); err != nil || n != len(subjectData) {
-		return buf.Bytes(), util.WrapOrNewf(err, "Failed to write subject to buffer, wrote %d of %d", n, len(subjectData))
+		return buf.Bytes(), util.WrapOrNewf(err, "failed to write subject to buffer, wrote %d of %d", n, len(subjectData))
 	}
 
 	valueData, err := f.Value.MarshalBinary()
 	if err != nil {
-		return buf.Bytes(), errors.Wrap(err, "Failed to marshal Value")
+		return buf.Bytes(), fmt.Errorf("failed to marshal Value: %w", err)
 	}
 	if n, err := buf.Write(valueData); err != nil || n != len(valueData) {
-		return buf.Bytes(), util.WrapOrNewf(err, "Failed to write Value to buffer, wrote %d of %d", n, len(valueData))
+		return buf.Bytes(), util.WrapOrNewf(err, "failed to write Value to buffer, wrote %d of %d", n, len(valueData))
 	}
 
 	return buf.Bytes(), nil

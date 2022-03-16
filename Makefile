@@ -18,6 +18,7 @@ TOOLS:=\
 	$(NULL)
 # tools needed to develop the package
 TOOLS_DEV:=\
+	mvdan.cc/gofumpt@latest \
 	github.com/cweill/gotests/gotests@latest \
 	github.com/go-delve/delve/cmd/dlv@latest \
 	$(NULL)
@@ -59,7 +60,7 @@ $(GOGENERATED_SOURCES):
 	go generate ./...
 
 fmt: generate
-	gofmt -l -s -w .
+	gofumpt -l -w .
 	goimports -w -l .
 compile: generate
 	go build -v ./...
@@ -70,7 +71,7 @@ wirelink-cross-%: generate
 	GOARCH=$* go build -ldflags "-s -w" -o $@ -v .
 lint: lint-fmt lint-golangci lint-vet
 lint-fmt:
-	! gofmt -l -s . | grep .
+	! gofumpt -l . | grep .
 lint-golangci: generate
 	golangci-lint run
 lint-vet: generate

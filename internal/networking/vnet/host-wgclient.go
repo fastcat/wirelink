@@ -1,9 +1,9 @@
 package vnet
 
 import (
+	"errors"
+	"fmt"
 	"net"
-
-	"github.com/pkg/errors"
 
 	"github.com/fastcat/wirelink/internal"
 	"github.com/fastcat/wirelink/util"
@@ -52,12 +52,12 @@ func (hc *hostWgClient) Device(name string) (*wgtypes.Device, error) {
 	if i == nil {
 		hc.h.m.Unlock()
 		// TODO: model real error better
-		return nil, errors.New("No such device")
+		return nil, errors.New("no such device")
 	}
 	t, ok := i.(*Tunnel)
 	if !ok {
 		hc.h.m.Unlock()
-		return nil, errors.New("Not a wireguard device")
+		return nil, errors.New("not a wireguard device")
 	}
 
 	hc.h.m.Unlock()
@@ -99,13 +99,13 @@ func (t *Tunnel) AsWgDevice() *wgtypes.Device {
 
 func (hc *hostWgClient) ConfigureDevice(name string, cfg wgtypes.Config) error {
 	if cfg.FirewallMark != nil || cfg.ListenPort != nil || cfg.PrivateKey != nil {
-		return errors.New("Not allowed to reconfigure core tunnel settings")
+		return errors.New("not allowed to reconfigure core tunnel settings")
 	}
 
 	i := hc.h.Interface(name)
 	t, ok := i.(*Tunnel)
 	if !ok {
-		return errors.Errorf("Interface %s is not a tunnel", name)
+		return fmt.Errorf("Interface %s is not a tunnel", name)
 	}
 
 	if cfg.ReplacePeers {
@@ -116,7 +116,7 @@ func (hc *hostWgClient) ConfigureDevice(name string, cfg wgtypes.Config) error {
 
 	for _, p := range cfg.Peers {
 		if p.PersistentKeepaliveInterval != nil || p.PresharedKey != nil {
-			return errors.New("Advanced peer features not supported")
+			return errors.New("advanced peer features not supported")
 		}
 		peerID := p.PublicKey.String()
 		t.m.Lock()

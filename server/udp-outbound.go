@@ -1,11 +1,11 @@
 package server
 
 import (
+	"fmt"
 	"net"
 	"os"
 	"time"
 
-	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/fastcat/wirelink/apply"
@@ -25,7 +25,7 @@ func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) er
 		if err != nil {
 			// this probably means the interface is down
 			// the log message will be printed by the main app as it exits
-			return errors.Wrap(err, "Unable to load device state, giving up")
+			return fmt.Errorf("unable to load device state, giving up: %w", err)
 		}
 
 		s.broadcastFactUpdatesOnce(newFacts, dev)
@@ -298,9 +298,9 @@ func (s *LinkServer) sendFact(peer *wgtypes.Peer, f *fact.Fact, now time.Time) e
 			}
 		}
 		// else
-		return errors.Wrapf(err, "Failed to send to peer %s", s.peerName(peer.PublicKey))
+		return fmt.Errorf("failed to send to peer %s: %w", s.peerName(peer.PublicKey), err)
 	} else if sent != len(wpb) {
-		return errors.Errorf("Sent %d instead of %d", sent, len(wpb))
+		return fmt.Errorf("sent %d instead of %d", sent, len(wpb))
 	}
 	// else
 	return nil

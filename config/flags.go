@@ -6,8 +6,6 @@ import (
 	"path"
 	"strings"
 
-	"github.com/pkg/errors"
-
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
@@ -131,7 +129,7 @@ func Parse(flags *pflag.FlagSet, vcfg *viper.Viper, args []string) (ret *ServerD
 	if err != nil {
 		// config file not found is harmless
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return nil, errors.Wrap(err, "Unable to read config file")
+			return nil, fmt.Errorf("unable to read config file: %w", err)
 		}
 	}
 
@@ -139,7 +137,7 @@ func Parse(flags *pflag.FlagSet, vcfg *viper.Viper, args []string) (ret *ServerD
 	ret = new(ServerData)
 	if err = vcfg.UnmarshalExact(ret); err != nil {
 		flags.Usage()
-		return nil, errors.Wrapf(err, "Unable to parse config")
+		return nil, fmt.Errorf("unable to parse config: %w", err)
 	}
 
 	// viper/pflags doesn't have the concept of an optional setting that isn't set

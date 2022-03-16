@@ -1,12 +1,10 @@
 package apply
 
 import (
+	"errors"
 	"fmt"
 	"math/rand"
 	"net"
-
-	"github.com/pkg/errors"
-
 	"testing"
 
 	"github.com/stretchr/testify/assert"

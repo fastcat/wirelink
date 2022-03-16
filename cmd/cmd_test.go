@@ -1,11 +1,10 @@
 package cmd
 
 import (
+	"errors"
 	"os"
 	"strings"
 	"testing"
-
-	"github.com/pkg/errors"
 
 	"github.com/fastcat/wirelink/internal/networking"
 	"github.com/fastcat/wirelink/internal/networking/host"
@@ -62,7 +61,7 @@ func TestWirelinkCmd_Init(t *testing.T) {
 			},
 			func(t require.TestingT, err error, msgAndArgs ...interface{}) {
 				require.Error(t, err, msgAndArgs...)
-				assert.Contains(t, err.Error(), "parse config")
+				assert.ErrorContains(t, err, "parse config")
 			},
 			func(t *testing.T, w *WirelinkCmd) {
 				assert.Nil(t, w.Config)
@@ -78,7 +77,7 @@ func TestWirelinkCmd_Init(t *testing.T) {
 			},
 			func(t require.TestingT, err error, msgAndArgs ...interface{}) {
 				require.Error(t, err, msgAndArgs...)
-				assert.Contains(t, err.Error(), "load config")
+				assert.ErrorContains(t, err, "load config")
 				// check for the base64 error somewhere in the stack
 				for unwrapped := errors.Unwrap(err); ; {
 					if strings.Contains(unwrapped.Error(), "base64") {
@@ -111,8 +110,8 @@ func TestWirelinkCmd_Init(t *testing.T) {
 			nil,
 			func(t require.TestingT, err error, msgAndArgs ...interface{}) {
 				require.Error(t, err, msgAndArgs...)
-				assert.Contains(t, err.Error(), "create server")
-				assert.Contains(t, err.Error(), wgFake)
+				assert.ErrorContains(t, err, "create server")
+				assert.ErrorContains(t, err, wgFake)
 				// this is usually EPERM, but it could be EEXIST or such too
 				assert.Error(t, errors.Unwrap(err))
 			},

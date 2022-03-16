@@ -3,9 +3,8 @@ package util
 import (
 	"bytes"
 	"encoding"
+	"fmt"
 	"io"
-
-	"github.com/pkg/errors"
 )
 
 // Decodable is an interface that mimics BinaryUnmarshaller, but sources from
@@ -24,18 +23,18 @@ func DecodeFrom(value encoding.BinaryUnmarshaler, readLen int, reader io.Reader)
 	case *bytes.Buffer:
 		data = r.Next(readLen)
 		if len(data) != readLen {
-			return errors.Errorf("Unable to read %T: only %d of %d bytes available", value, readLen, len(data))
+			return fmt.Errorf("unable to read %T: only %d of %d bytes available", value, readLen, len(data))
 		}
 	default:
 		data = make([]byte, readLen)
 		n, err := io.ReadFull(r, data)
 		if err != nil {
-			return errors.Wrapf(err, "Unable to read %T (read %d of %d bytes)", value, n, readLen)
+			return fmt.Errorf("unable to read %T (read %d of %d bytes): %w", value, n, readLen, err)
 		}
 	}
 	err := value.UnmarshalBinary(data)
 	if err != nil {
-		return errors.Wrapf(err, "Unable to read %T: unmarshal failed", value)
+		return fmt.Errorf("unable to read %T: unmarshal failed: %w", value, err)
 	}
 	return nil
 }

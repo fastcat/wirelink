@@ -3,7 +3,6 @@ package apply
 import (
 	"math/rand"
 	"net"
-
 	"testing"
 
 	"github.com/stretchr/testify/assert"

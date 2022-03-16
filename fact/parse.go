@@ -2,12 +2,12 @@ package fact
 
 import (
 	"encoding/binary"
+	"fmt"
 	"math"
 	"net"
 	"time"
 
 	"github.com/fastcat/wirelink/util"
-	"github.com/pkg/errors"
 )
 
 // a decodeHinter is expected to initialize the Subject and Value fields of the
@@ -70,7 +70,7 @@ func (f *Fact) DecodeFrom(lengthHint int, now time.Time, reader util.ByteReader)
 
 	attrByte, err := reader.ReadByte()
 	if err != nil {
-		return errors.Wrap(err, "Unable to read attribute byte from packet")
+		return fmt.Errorf("unable to read attribute byte from packet: %w", err)
 	}
 	f.Attribute = Attribute(attrByte)
 
@@ -78,18 +78,18 @@ func (f *Fact) DecodeFrom(lengthHint int, now time.Time, reader util.ByteReader)
 	if !ok {
 		if f.Attribute == AttributeUnknown {
 			// AttributeUnknown used to be used for ping packets, this has been removed
-			return errors.Errorf("Legacy AttributeUnknown ping packet not supported")
+			return fmt.Errorf("legacy AttributeUnknown ping packet not supported")
 		}
-		return errors.Errorf("Unrecognized attribute 0x%02x", byte(f.Attribute))
+		return fmt.Errorf("unrecognized attribute 0x%02x", byte(f.Attribute))
 	}
 
 	ttl, err := binary.ReadUvarint(reader)
 	if err != nil {
-		return errors.Wrap(err, "Unable to read ttl from packet")
+		return fmt.Errorf("unable to read ttl from packet: %w", err)
 	}
 	// clamp TTL to valid range
 	if ttl > math.MaxUint16 {
-		return errors.Errorf("Received TTL outside range: %v", ttl)
+		return fmt.Errorf("received TTL outside range: %v", ttl)
 	}
 	f.Expires = now.Add(time.Duration(ttl) * timeScale)
 
@@ -97,11 +97,11 @@ func (f *Fact) DecodeFrom(lengthHint int, now time.Time, reader util.ByteReader)
 
 	err = f.Subject.DecodeFrom(0, reader)
 	if err != nil {
-		return errors.Wrapf(err, "Failed to unmarshal fact subject from packet for %v", f.Attribute)
+		return fmt.Errorf("failed to unmarshal fact subject from packet for %v: %w", f.Attribute, err)
 	}
 	err = f.Value.DecodeFrom(valueLength, reader)
 	if err != nil {
-		return errors.Wrapf(err, "Failed to unmarshal fact value from packet for %v", f.Attribute)
+		return fmt.Errorf("failed to unmarshal fact value from packet for %v: %w", f.Attribute, err)
 	}
 
 	return nil

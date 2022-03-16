@@ -32,7 +32,7 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device, now time.Time) (ret []*fa
 	}
 
 	// facts the local node knows about peers configured in the wireguard device
-	//TODO: find a better way to figure out if we should trust our local AIP list
+	// TODO: find a better way to figure out if we should trust our local AIP list
 	localTrust := s.config.Peers.Trust(dev.PublicKey, trust.Untrusted)
 	useLocalAIPs := s.config.IsRouterNow || localTrust >= trust.AllowedIPs
 	useLocalMembership := s.config.IsRouterNow || localTrust >= trust.Membership

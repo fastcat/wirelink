@@ -8,8 +8,6 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/pkg/errors"
-
 	"golang.org/x/crypto/chacha20poly1305"
 
 	"github.com/fastcat/wirelink/util"
@@ -56,10 +54,10 @@ func (sgv *SignedGroupValue) DecodeFrom(lengthHint int, reader io.Reader) error 
 	var err error
 
 	if n, err = io.ReadFull(reader, sgv.Nonce[:]); err != nil {
-		return util.WrapOrNewf(err, "Failed to read Nonce for SignedGroupValue, got %d of %d bytes", n, len(sgv.Nonce))
+		return util.WrapOrNewf(err, "failed to read Nonce for SignedGroupValue, got %d of %d bytes", n, len(sgv.Nonce))
 	}
 	if n, err = io.ReadFull(reader, sgv.Tag[:]); err != nil {
-		return util.WrapOrNewf(err, "Failed to read Tag for SignedGroupValue, got %d of %d bytes", n, len(sgv.Tag))
+		return util.WrapOrNewf(err, "failed to read Tag for SignedGroupValue, got %d of %d bytes", n, len(sgv.Tag))
 	}
 	// IMPORTANT: because we may be parsing from a packet buffer, we MUST NOT
 	// keep a reference to the data buffer after we return
@@ -69,7 +67,7 @@ func (sgv *SignedGroupValue) DecodeFrom(lengthHint int, reader io.Reader) error 
 	} else {
 		sgv.InnerBytes, err = ioutil.ReadAll(reader)
 		if err != nil {
-			return util.WrapOrNewf(err, "Failed to read Inner for SignedGroupValue, got %d bytes", len(sgv.InnerBytes))
+			return util.WrapOrNewf(err, "failed to read Inner for SignedGroupValue, got %d bytes", len(sgv.InnerBytes))
 		}
 	}
 
@@ -84,12 +82,12 @@ func (sgv *SignedGroupValue) ParseInner(now time.Time) (ret []*Fact, err error) 
 	for buf.Len() != 0 {
 		// TODO: bytes[0] or readbyte/unreadbyte?
 		if buf.Bytes()[0] == byte(AttributeSignedGroup) {
-			err = errors.Errorf("SignedGroups must not be nested at #%d @%d", len(ret), buf.Len()-len(sgv.InnerBytes))
+			err = fmt.Errorf("SignedGroups must not be nested at #%d @%d", len(ret), buf.Len()-len(sgv.InnerBytes))
 			return
 		}
 		next := &Fact{}
 		if err = next.DecodeFrom(0, now, buf); err != nil {
-			err = errors.Wrapf(err, "Unable to decode SignedGroupValue inner #%d @%d", len(ret), buf.Len()-len(sgv.InnerBytes))
+			err = fmt.Errorf("unable to decode SignedGroupValue inner #%d @%d: %w", len(ret), buf.Len()-len(sgv.InnerBytes), err)
 			return
 		}
 		ret = append(ret, next)

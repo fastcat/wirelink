@@ -26,7 +26,7 @@ type Server struct {
 // ShouldReportIface checks a given local network interface name against the config
 // for whether we should tell other peers about our configuration on it
 func (s *Server) ShouldReportIface(name string) bool {
-	//TODO: report any broken globs found here _once_ (startup checks can't detect all broken globs)
+	// TODO: report any broken globs found here _once_ (startup checks can't detect all broken globs)
 
 	// Never tell peers about the wireguard interface itself
 	if name == s.Iface {

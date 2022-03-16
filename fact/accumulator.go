@@ -1,9 +1,8 @@
 package fact
 
 import (
+	"fmt"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/fastcat/wirelink/signing"
 
@@ -32,7 +31,7 @@ func NewAccumulator(maxGroupLen int, now time.Time) *GroupAccumulator {
 func (ga *GroupAccumulator) AddFact(f *Fact) error {
 	b, err := f.MarshalBinaryNow(ga.now)
 	if err != nil {
-		return errors.Wrapf(err, "Unable to convert fact to packet bytes")
+		return fmt.Errorf("unable to convert fact to packet bytes: %w", err)
 	}
 	lgi := len(ga.groups) - 1
 	lg := ga.groups[lgi]
@@ -50,7 +49,7 @@ func (ga *GroupAccumulator) AddFact(f *Fact) error {
 func (ga *GroupAccumulator) AddFactIfRoom(f *Fact) (added bool, err error) {
 	b, err := f.MarshalBinaryNow(ga.now)
 	if err != nil {
-		return false, errors.Wrapf(err, "Unable to convert fact to packet bytes")
+		return false, fmt.Errorf("unable to convert fact to packet bytes: %w", err)
 	}
 	lgi := len(ga.groups) - 1
 	lg := ga.groups[lgi]
@@ -76,7 +75,7 @@ func (ga *GroupAccumulator) MakeSignedGroups(
 		// TODO: have signer cache shared key
 		nonce, tag, err := s.SignFor(g, recipient)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Unable to sign group data")
+			return nil, fmt.Errorf("unable to sign group data: %w", err)
 		}
 		value := SignedGroupValue{
 			Nonce:      nonce,

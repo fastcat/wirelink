@@ -1,9 +1,8 @@
 package fact
 
 import (
+	"fmt"
 	"io"
-
-	"github.com/pkg/errors"
 
 	"github.com/fastcat/wirelink/util"
 
@@ -23,7 +22,7 @@ func (s *PeerSubject) MarshalBinary() ([]byte, error) {
 // UnmarshalBinary implements BinaryUnmarshaler
 func (s *PeerSubject) UnmarshalBinary(data []byte) error {
 	if len(data) != wgtypes.KeyLen {
-		return errors.Errorf("data len wrong for peer subject")
+		return fmt.Errorf("data len wrong for peer subject")
 	}
 	copy(s.Key[:], data)
 	return nil

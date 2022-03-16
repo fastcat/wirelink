@@ -4,13 +4,13 @@
 package darwin
 
 import (
+	"fmt"
 	"net"
 	"os/exec"
 
 	"github.com/fastcat/wirelink/internal/networking"
 	"github.com/fastcat/wirelink/internal/networking/native"
 	"github.com/fastcat/wirelink/log"
-	"github.com/pkg/errors"
 )
 
 // CreateDarwin makes an environment for the host using ifconfig
@@ -69,7 +69,7 @@ func (i *darwinInterface) AddAddr(addr net.IPNet) error {
 	cmd := exec.Command("ifconfig", i.Name(), family, addr.String(), "alias")
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return errors.Wrapf(err, "Unable to add %v to %s: %s", addr, i.Name(), string(output))
+		return fmt.Errorf("unable to add %v to %s: %s: %w", addr, i.Name(), string(output), err)
 	}
 	log.Debug("ifconfig results: %s", string(output))
 	return nil

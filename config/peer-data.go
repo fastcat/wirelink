@@ -1,9 +1,8 @@
 package config
 
 import (
+	"fmt"
 	"net"
-
-	"github.com/pkg/errors"
 
 	"github.com/fastcat/wirelink/trust"
 
@@ -30,7 +29,7 @@ func (p *PeerData) Parse() (key wgtypes.Key, peer Peer, err error) {
 	if p.Trust != "" {
 		val, ok := trust.Values[p.Trust]
 		if !ok {
-			err = errors.Errorf("Invalid trust level '%s'", p.Trust)
+			err = fmt.Errorf("invalid trust level '%s'", p.Trust)
 			return
 		}
 		peer.Trust = &val
@@ -44,16 +43,16 @@ func (p *PeerData) Parse() (key wgtypes.Key, peer Peer, err error) {
 		var host, portString string
 		var port int
 		if host, portString, err = net.SplitHostPort(ep); err != nil {
-			err = errors.Wrapf(err, "Bad endpoint '%s' for '%s'='%s'", ep, p.PublicKey, p.Name)
+			err = fmt.Errorf("bad endpoint '%s' for '%s'='%s': %w", ep, p.PublicKey, p.Name, err)
 			return
 		}
 		if port, err = net.LookupPort("udp", portString); err != nil {
-			err = errors.Wrapf(err, "Bad endpoint port in '%s' for '%s'='%s'", ep, p.PublicKey, p.Name)
+			err = fmt.Errorf("bad endpoint port in '%s' for '%s'='%s': %w", ep, p.PublicKey, p.Name, err)
 			return
 		}
 
 		// try to resolve the host, ignoring DNS errors and just looking for parse errors
-		//NOTE: it's actually really hard to get anything other than a DNSError out of LookupIP
+		// NOTE: it's actually really hard to get anything other than a DNSError out of LookupIP
 		// anything that doesn't parse as an IP is more or less assumed to be a hostname,
 		// even if it is not actually valid as such (e.g. all numbers), and then a lookup attempted,
 		// and if the lookup fails, we get an DNS error
@@ -64,11 +63,11 @@ func (p *PeerData) Parse() (key wgtypes.Key, peer Peer, err error) {
 			err = nil
 		} else if err != nil {
 			// this branch is very hard, if not impossible, to reach in a test or in the real world
-			err = errors.Wrapf(err, "Bad endpoint host in '%s' for '%s'='%s'", ep, p.PublicKey, p.Name)
+			err = fmt.Errorf("bad endpoint host in '%s' for '%s'='%s': %w", ep, p.PublicKey, p.Name, err)
 			return
 		}
 
-		//TODO: can validate host portion is syntactically valid: do a lookup and
+		// TODO: can validate host portion is syntactically valid: do a lookup and
 		// ignore host not found errors
 
 		peer.Endpoints = append(peer.Endpoints, PeerEndpoint{
@@ -82,10 +81,10 @@ func (p *PeerData) Parse() (key wgtypes.Key, peer Peer, err error) {
 		var ipn *net.IPNet
 		_, ipn, err = net.ParseCIDR(aip)
 		if err != nil {
-			err = errors.Wrapf(err, "Bad AllowedIP '%s' for '%s'='%s'", aip, p.PublicKey, p.Name)
+			err = fmt.Errorf("bad AllowedIP '%s' for '%s'='%s': %w", aip, p.PublicKey, p.Name, err)
 			return
 		}
-		//NOTE: we don't need to run ipn.IP through ipn.Mask, as ParseCIDR does that for us
+		// NOTE: we don't need to run ipn.IP through ipn.Mask, as ParseCIDR does that for us
 		// we want to do that so config can contain minor harmless mistakes, or also use the
 		// masked-out bits as documentation for the peer's own/primary IP within that network
 		// ipn is returned by reference, should never be returned nil

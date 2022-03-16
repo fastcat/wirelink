@@ -2,10 +2,9 @@ package vnet
 
 import (
 	"context"
+	"errors"
 	"net"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/fastcat/wirelink/internal/networking"
 	"github.com/fastcat/wirelink/util"
@@ -51,7 +50,7 @@ func (sc *socketUDPConn) Close() error {
 	if sc.s == nil {
 		return &net.OpError{
 			Op:  "close",
-			Err: errors.New("Attempting to close closed socket"),
+			Err: errors.New("attempting to close closed socket"),
 		}
 	}
 	sc.s.m.Lock()

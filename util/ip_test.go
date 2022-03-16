@@ -42,6 +42,7 @@ func parseCIDR(t *testing.T, s string) *net.IPNet {
 	require.Nil(t, err, "net.ParseCIDR(%s) error %v", s, err)
 	return n
 }
+
 func TestIsIPv6LLMatch(t *testing.T) {
 	type args struct {
 		expected net.IP

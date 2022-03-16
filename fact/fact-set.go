@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/fastcat/wirelink/util"
-	"github.com/pkg/errors"
 )
 
 // Key is a comparable version of the subject, attribute, and value of a Fact
@@ -67,7 +66,7 @@ func (k *Key) ToFact() (*Fact, error) {
 
 	dh := decodeHints[k.Attribute]
 	if dh == nil {
-		return nil, errors.Errorf("Unrecognized attribute 0x%02x", byte(k.Attribute))
+		return nil, fmt.Errorf("unrecognized attribute 0x%02x", byte(k.Attribute))
 	}
 	dh(ret)
 	err := ret.Subject.DecodeFrom(len(k.subject), bytes.NewBuffer([]byte(k.subject)))

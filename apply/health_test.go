@@ -2,9 +2,8 @@ package apply
 
 import (
 	"math/rand"
-	"time"
-
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 

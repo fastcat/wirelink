@@ -14,8 +14,7 @@ import (
 
 // GoEnvironment is a partial implementation of Environment which provides the
 // methods and types that the go runtime can answer
-type GoEnvironment struct {
-}
+type GoEnvironment struct{}
 
 // GoEnvironment does not fully implement Environment
 // var _ networking.Environment = &GoEnvironment{}

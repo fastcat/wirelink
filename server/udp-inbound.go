@@ -3,10 +3,9 @@ package server
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/config"
@@ -33,7 +32,7 @@ func (s *LinkServer) readPackets(received chan<- *ReceivedFact) error {
 	for packet := range packets {
 		// reader will filter out timeouts for us, anything left we give up
 		if packet.Err != nil {
-			return errors.Wrap(packet.Err, "Failed to read from UDP socket, giving up")
+			return fmt.Errorf("failed to read from UDP socket, giving up: %w", packet.Err)
 		}
 
 		pp := &fact.Fact{}
@@ -68,30 +67,30 @@ func (s *LinkServer) processSignedGroup(
 ) error {
 	ps, ok := f.Subject.(*fact.PeerSubject)
 	if !ok {
-		return errors.Errorf("SignedGroup has non-PeerSubject: %T", f.Subject)
+		return fmt.Errorf("SignedGroup has non-PeerSubject: %T", f.Subject)
 	}
 	pv, ok := f.Value.(*fact.SignedGroupValue)
 	if !ok {
-		return errors.Errorf("SignedGroup has non-SignedGroupValue: %T", f.Value)
+		return fmt.Errorf("SignedGroup has non-SignedGroupValue: %T", f.Value)
 	}
 
 	if !autopeer.AutoAddress(ps.Key).Equal(source.IP) {
-		return errors.Errorf("SignedGroup source %v does not match key %v", source.IP, ps.Key)
+		return fmt.Errorf("SignedGroup source %v does not match key %v", source.IP, ps.Key)
 	}
 	// TODO: check the key is locally known/trusted
 	// for now we have a weak indirect version of that based on the trust model checking the source IP
 
 	valid, err := s.signer.VerifyFrom(pv.Nonce, pv.Tag, pv.InnerBytes, &ps.Key)
 	if err != nil {
-		return errors.Wrapf(err, "Failed to validate SignedGroup signature from %s", s.peerName(ps.Key))
+		return fmt.Errorf("failed to validate SignedGroup signature from %s: %w", s.peerName(ps.Key), err)
 	} else if !valid {
 		// should never get here, verification errors should always make an error
-		return errors.Errorf("Unknown error validating SignedGroup")
+		return fmt.Errorf("unknown error validating SignedGroup")
 	}
 
 	inner, err := pv.ParseInner(now)
 	if err != nil {
-		return errors.Wrapf(err, "Unable to parse SignedGroup inner")
+		return fmt.Errorf("unable to parse SignedGroup inner: %w", err)
 	}
 	// log.Debug("Received SGF of length %d/%d from %v", len(pv.InnerBytes), len(inner), source)
 	for _, innerFact := range inner {
@@ -234,7 +233,7 @@ func (s *LinkServer) processOneChunk(
 	if err != nil {
 		// this probably means the interface is down
 		// the log message will be printed by the main app as it exits
-		return nil, lastLocalFacts, errors.Wrap(err, "Unable to load device info to evaluate trust, giving up")
+		return nil, lastLocalFacts, fmt.Errorf("unable to load device info to evaluate trust, giving up: %w", err)
 	}
 	s.UpdateRouterState(dev, true)
 

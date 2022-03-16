@@ -1,9 +1,8 @@
 package apply
 
 import (
+	"fmt"
 	"net"
-
-	"github.com/pkg/errors"
 
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/internal"
@@ -29,8 +28,8 @@ func EnsurePeersAutoIP(ctrl internal.WgClient, dev *wgtypes.Device) (int, error)
 
 	err := ctrl.ConfigureDevice(dev.Name, cfg)
 	if err != nil {
-		return 0, errors.Wrapf(err,
-			"Unable to configure %s with %d new peer IPv6-LL AllowedIPs", dev.Name, len(cfg.Peers))
+		return 0, fmt.Errorf(
+			"unable to configure %s with %d new peer IPv6-LL AllowedIPs: %w", dev.Name, len(cfg.Peers), err)
 	}
 
 	return len(cfg.Peers), nil

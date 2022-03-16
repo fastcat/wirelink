@@ -7,9 +7,8 @@
 package linux
 
 import (
+	"fmt"
 	"net"
-
-	"github.com/pkg/errors"
 
 	"github.com/vishvananda/netlink"
 
@@ -21,7 +20,7 @@ import (
 func CreateLinux() (networking.Environment, error) {
 	nlh, err := netlink.NewHandle()
 	if err != nil {
-		return nil, errors.Wrap(err, "Unable to make a new netlink handle")
+		return nil, fmt.Errorf("unable to make a new netlink handle: %w", err)
 	}
 
 	ret := &linuxEnvironment{
@@ -67,7 +66,7 @@ func (e *linuxEnvironment) InterfaceByName(name string) (networking.Interface, e
 func (e *linuxEnvironment) interfaceFromGo(iface *native.GoInterface) (*linuxInterface, error) {
 	link, err := e.nlh.LinkByName(iface.Name())
 	if err != nil {
-		return nil, errors.Wrapf(err, "Unable to get netlink info for interface %s", iface.Name())
+		return nil, fmt.Errorf("unable to get netlink info for interface %s: %w", iface.Name(), err)
 	}
 	return &linuxInterface{*iface, link, e}, nil
 }
@@ -93,7 +92,7 @@ func (i *linuxInterface) AddAddr(addr net.IPNet) error {
 		IPNet: &addr,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "Unable to add %v to %s", addr, i.Name())
+		return fmt.Errorf("unable to add %v to %s: %w", addr, i.Name(), err)
 	}
 	return nil
 }

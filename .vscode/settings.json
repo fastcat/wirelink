@@ -84,7 +84,7 @@
 			"source.organizeImports": true
 		}
 	},
-	"go.formatTool": "goreturns",
+	"go.formatTool": "gofumpt",
 	"go.gotoSymbol.includeImports": true,
 	"files.insertFinalNewline": true,
 	"files.trimFinalNewlines": true,

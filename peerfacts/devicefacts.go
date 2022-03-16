@@ -1,10 +1,9 @@
 package peerfacts
 
 import (
+	"fmt"
 	"net"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/fastcat/wirelink/config"
 	"github.com/fastcat/wirelink/fact"
@@ -27,7 +26,7 @@ func DeviceFacts(
 	err error,
 ) {
 	if ttl.Seconds() < 0 || ttl.Seconds() > 255 {
-		return nil, errors.Errorf("ttl out of range")
+		return nil, fmt.Errorf("ttl out of range")
 	}
 
 	expiration := now.Add(ttl)
@@ -65,7 +64,7 @@ func DeviceFacts(
 					}
 					// this should never happen
 					if normalized.IP == nil {
-						return errors.Errorf("What? Local interface ip/mask are mismatched sizes? %v", ipn)
+						return fmt.Errorf("what? Local interface ip/mask are mismatched sizes? %v", ipn)
 					}
 					if ip4 := ipn.IP.To4(); ip4 != nil {
 						addAttr(fact.AttributeAllowedCidrV4, &fact.IPNetValue{IPNet: normalized})

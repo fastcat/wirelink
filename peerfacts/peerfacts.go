@@ -1,9 +1,8 @@
 package peerfacts
 
 import (
+	"fmt"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"github.com/fastcat/wirelink/apply"
 	"github.com/fastcat/wirelink/fact"
@@ -19,10 +18,10 @@ func LocalFacts(
 	trustLocalMembership bool,
 	now time.Time,
 ) (ret []*fact.Fact, err error) {
-	//NOTE: we can represent more than 255 seconds at the protocol level now,
+	// NOTE: we can represent more than 255 seconds at the protocol level now,
 	// but longer than that is probably a bad idea for the time being
 	if ttl.Seconds() < 0 || ttl.Seconds() > 255 {
-		return nil, errors.Errorf("ttl out of range")
+		return nil, fmt.Errorf("ttl out of range")
 	}
 
 	expiration := now.Add(ttl)

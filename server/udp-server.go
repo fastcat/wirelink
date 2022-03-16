@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/fastcat/wirelink/apply"
@@ -142,7 +141,7 @@ func (s *LinkServer) Start() (err error) {
 	var device *wgtypes.Device
 	device, err = s.deviceState()
 	if err != nil {
-		return errors.Wrap(err, "Unable to load device state to initialize server")
+		return fmt.Errorf("unable to load device state to initialize server: %w", err)
 	}
 
 	// have to make sure we have the local IPv6-LL address configured before we can use it

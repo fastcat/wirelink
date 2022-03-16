@@ -45,10 +45,12 @@ func (m *mockEvaluator) knows(key wgtypes.Key) *mockEvaluator {
 	m.On("IsKnown", &fact.PeerSubject{Key: key}).Return(true)
 	return m
 }
+
 func (m *mockEvaluator) knowsNot(key wgtypes.Key) *mockEvaluator {
 	m.On("IsKnown", &fact.PeerSubject{Key: key}).Return(false)
 	return m
 }
+
 func ipMatcher(ip net.IP) func(source net.UDPAddr) bool {
 	return func(source net.UDPAddr) bool {
 		return ip.Equal(source.IP)

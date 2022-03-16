@@ -6,7 +6,6 @@ import (
 )
 
 func Test_measurePerf(t *testing.T) {
-
 	for c := 1; c <= 1000; c *= 10 {
 		x := measurePerf(time.Millisecond * time.Duration(c))
 		f := float64(c) * float64(baseline) / float64(x)

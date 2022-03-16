@@ -1,10 +1,10 @@
 package server
 
 import (
+	"fmt"
 	"net"
 	"time"
 
-	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/fastcat/wirelink/apply"
@@ -41,7 +41,7 @@ FACTLOOP:
 			if err != nil {
 				// this probably means the interface is down
 				// the log message will be printed by the main app as it exits
-				return errors.Wrap(err, "Unable to load device state, giving up")
+				return fmt.Errorf("unable to load device state, giving up: %w", err)
 			}
 
 			s.configurePeersOnce(facts, dev, startTime, now)
@@ -429,7 +429,7 @@ func (s *LinkServer) configurePeer(
 
 	pcfg.UpdateOnly = !allowAdd
 
-	//TODO: this is a hack to make test assertions stable, find a better way
+	// TODO: this is a hack to make test assertions stable, find a better way
 	if log.IsDebug() {
 		util.SortIPNetSlice(pcfg.AllowedIPs)
 	}

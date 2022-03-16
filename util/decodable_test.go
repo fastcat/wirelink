@@ -2,11 +2,10 @@ package util
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"math/rand"
 	"testing"
-
-	"github.com/pkg/errors"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

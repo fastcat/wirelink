@@ -48,7 +48,7 @@ func TestSignedGroupValue_DecodeFrom(t *testing.T) {
 			args{0, bytes.NewBuffer(make([]byte, chacha20poly1305.NonceSizeX-1))},
 			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
 				return assert.Error(t, err, msgAndArgs...) &&
-					assert.Contains(t, err.Error(), "Nonce")
+					assert.ErrorContains(t, err, "Nonce")
 			},
 			nil,
 		},
@@ -57,7 +57,7 @@ func TestSignedGroupValue_DecodeFrom(t *testing.T) {
 			args{0, bytes.NewBuffer(make([]byte, chacha20poly1305.NonceSizeX+chacha20poly1305.Overhead-1))},
 			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
 				return assert.Error(t, err, msgAndArgs...) &&
-					assert.Contains(t, err.Error(), "Tag")
+					assert.ErrorContains(t, err, "Tag")
 			},
 			nil,
 		},
@@ -115,7 +115,7 @@ func TestSignedGroupValue_ParseInner(t *testing.T) {
 			nil,
 			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
 				return assert.Error(t, err, msgAndArgs...) &&
-					assert.Contains(t, err.Error(), "nested")
+					assert.ErrorContains(t, err, "nested")
 			},
 		},
 		{
@@ -125,7 +125,7 @@ func TestSignedGroupValue_ParseInner(t *testing.T) {
 			nil,
 			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
 				return assert.Error(t, err, msgAndArgs...) &&
-					assert.Contains(t, err.Error(), "AttributeUnknown")
+					assert.ErrorContains(t, err, "AttributeUnknown")
 			},
 		},
 		{
@@ -135,7 +135,7 @@ func TestSignedGroupValue_ParseInner(t *testing.T) {
 			nil,
 			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
 				return assert.Error(t, err, msgAndArgs...) &&
-					assert.Contains(t, err.Error(), "Unrecognized")
+					assert.ErrorContains(t, err, "unrecognized")
 			},
 		},
 	}

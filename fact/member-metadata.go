@@ -2,13 +2,12 @@ package fact
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"sort"
 	"strings"
 	"unicode/utf8"
-
-	"github.com/pkg/errors"
 
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/util"
@@ -40,16 +39,16 @@ type stringValidator func(string) error
 var memberMetadataValidators = map[MemberAttribute]stringValidator{
 	MemberName: func(value string) error {
 		if !utf8.ValidString(value) {
-			return errors.Errorf("Invalid string for MemberName: %q", value)
+			return fmt.Errorf("invalid string for MemberName: %q", value)
 		}
 		return nil
 	},
 	MemberIsBasic: func(value string) error {
 		if len(value) != 1 {
-			return errors.Errorf("Invalid boolean for MemberIsBasic, len=%d", len(value))
+			return fmt.Errorf("invalid boolean for MemberIsBasic, len=%d", len(value))
 		}
 		if value[0] != 0 && value[0] != 1 {
-			return errors.Errorf("Invalid boolean for MemberIsBasic, value=%d", int(value[0]))
+			return fmt.Errorf("invalid boolean for MemberIsBasic, value=%d", int(value[0]))
 		}
 		return nil
 	},
@@ -73,7 +72,7 @@ func (mm *MemberMetadata) MarshalBinary() ([]byte, error) {
 		validator := memberMetadataValidators[a]
 		if validator != nil {
 			if err := validator(v); err != nil {
-				return nil, errors.Wrap(err, "Invalid member attribute value")
+				return nil, fmt.Errorf("invalid member attribute value: %w", err)
 			}
 		} else {
 			// this is at debug because we re-send stuff we got from elsewhere
@@ -87,7 +86,7 @@ func (mm *MemberMetadata) MarshalBinary() ([]byte, error) {
 
 	l = binary.PutUvarint(tmp, uint64(len(buf)-binary.MaxVarintLen16))
 	if l > binary.MaxVarintLen16 {
-		return nil, errors.Errorf("Member attributes length overflow: %d -> %d > 65535", len(mm.attributes), l)
+		return nil, fmt.Errorf("member attributes length overflow: %d -> %d > 65535", len(mm.attributes), l)
 	}
 
 	// place the length bytes so that they abut the start of the data
@@ -120,11 +119,11 @@ func (mm *MemberMetadata) DecodeFrom(lengthHint int, reader io.Reader) error {
 	var br io.ByteReader
 	var ok bool
 	if br, ok = reader.(io.ByteReader); !ok {
-		return errors.New("Cannot decode without a ByteReader")
+		return errors.New("cannot decode without a ByteReader")
 	}
 	payloadLen, err := binary.ReadUvarint(br)
 	if err != nil {
-		return errors.Wrap(err, "Unable to read metadata length")
+		return fmt.Errorf("unable to read metadata length: %w", err)
 	}
 	// TODO: trace the calls to ReadByte from the above, so that we can validate
 	// we don't exceed lengthHint. Not important as we expect lengthHint to be
@@ -133,7 +132,7 @@ func (mm *MemberMetadata) DecodeFrom(lengthHint int, reader io.Reader) error {
 	payload := make([]byte, payloadLen)
 	_, err = io.ReadFull(reader, payload)
 	if err != nil {
-		return errors.Wrap(err, "Unable to read member attributes payload")
+		return fmt.Errorf("unable to read member attributes payload: %w", err)
 	}
 
 	mm.attributes = make(map[MemberAttribute]string)
@@ -142,11 +141,11 @@ func (mm *MemberMetadata) DecodeFrom(lengthHint int, reader io.Reader) error {
 		p++
 		al, n := binary.Uvarint(payload[p:])
 		if n <= 0 {
-			return errors.Errorf("varint encoding error in attribute at payload offset %d", p-n)
+			return fmt.Errorf("varint encoding error in attribute at payload offset %d", p-n)
 		}
 		p += n
 		if p+int(al) > len(payload) {
-			return errors.Errorf("attribute length error at payload offset %d: +%d>%d", p, al, len(payload))
+			return fmt.Errorf("attribute length error at payload offset %d: +%d>%d", p, al, len(payload))
 		}
 		v := string(payload[p : p+int(al)])
 		p += int(al)
@@ -154,7 +153,7 @@ func (mm *MemberMetadata) DecodeFrom(lengthHint int, reader io.Reader) error {
 		validator := memberMetadataValidators[a]
 		if validator != nil {
 			if err := validator(v); err != nil {
-				return errors.Wrap(err, "Invalid member attribute value")
+				return fmt.Errorf("invalid member attribute value: %w", err)
 			}
 		} else {
 			// not an error, we'll just ignore this value

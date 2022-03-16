@@ -36,8 +36,10 @@ func Error(format string, a ...interface{}) {
 	os.Stderr.WriteString(fmt.Sprintf(format, a...))
 }
 
-var debugEnabled bool
-var debugReference time.Time
+var (
+	debugEnabled   bool
+	debugReference time.Time
+)
 
 // similar to RFC3339
 // const debugStampFormat = "2006-01-02T15:04:05.999"

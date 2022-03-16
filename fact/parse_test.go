@@ -39,8 +39,8 @@ func Test_TTLClamping(t *testing.T) {
 	f = &Fact{}
 	err := f.DecodeFrom(len(p), now, bytes.NewBuffer(p))
 	if assert.Error(t, err, "Decoding fact with out of range TTL should fail") {
-		assert.Contains(t, err.Error(), "range")
-		assert.Contains(t, err.Error(), strconv.Itoa(math.MaxUint16+1))
+		assert.ErrorContains(t, err, "range")
+		assert.ErrorContains(t, err, strconv.Itoa(math.MaxUint16+1))
 	}
 }
 
@@ -240,8 +240,8 @@ func TestFact_DecodeFrom(t *testing.T) {
 			args{0, []byte{byte(AttributeUnknown)}},
 			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
 				return assert.Error(t, err, msgAndArgs...) &&
-					assert.Contains(t, err.Error(), "AttributeUnknown") &&
-					assert.Contains(t, err.Error(), "Legacy")
+					assert.ErrorContains(t, err, "AttributeUnknown") &&
+					assert.ErrorContains(t, err, "legacy")
 			},
 			nil,
 		},
@@ -250,8 +250,8 @@ func TestFact_DecodeFrom(t *testing.T) {
 			args{0, []byte{0xff}},
 			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
 				return assert.Error(t, err, msgAndArgs...) &&
-					assert.Contains(t, err.Error(), "Unrecognized attribute") &&
-					assert.Contains(t, err.Error(), "0xff")
+					assert.ErrorContains(t, err, "unrecognized attribute") &&
+					assert.ErrorContains(t, err, "0xff")
 			},
 			nil,
 		},
@@ -260,7 +260,7 @@ func TestFact_DecodeFrom(t *testing.T) {
 			args{0, []byte{byte(AttributeAlive)}},
 			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
 				return assert.Error(t, err, msgAndArgs...) &&
-					assert.Contains(t, err.Error(), "ttl")
+					assert.ErrorContains(t, err, "ttl")
 			},
 			nil,
 		},
@@ -272,7 +272,7 @@ func TestFact_DecodeFrom(t *testing.T) {
 			}()},
 			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
 				return assert.Error(t, err, msgAndArgs...) &&
-					assert.Contains(t, err.Error(), "subject")
+					assert.ErrorContains(t, err, "subject")
 			},
 			nil,
 		},
@@ -284,7 +284,7 @@ func TestFact_DecodeFrom(t *testing.T) {
 			}()},
 			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
 				return assert.Error(t, err, msgAndArgs...) &&
-					assert.Contains(t, err.Error(), "value")
+					assert.ErrorContains(t, err, "value")
 			},
 			nil,
 		},

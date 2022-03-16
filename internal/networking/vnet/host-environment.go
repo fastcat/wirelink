@@ -1,9 +1,8 @@
 package vnet
 
 import (
+	"errors"
 	"net"
-
-	"github.com/pkg/errors"
 
 	"github.com/fastcat/wirelink/internal/networking"
 )
@@ -25,7 +24,7 @@ func (h *Host) Wrap() networking.Environment {
 func (he *hostEnvironment) Close() error {
 	h := he.h
 	if h == nil {
-		return errors.New("Already closed")
+		return errors.New("already closed")
 	}
 	h.Close()
 	return nil

@@ -1,9 +1,8 @@
 package apply
 
 import (
+	"fmt"
 	"net"
-
-	"github.com/pkg/errors"
 
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/internal/networking"
@@ -19,11 +18,11 @@ import (
 func EnsureLocalAutoIP(env networking.Environment, dev *wgtypes.Device) (bool, error) {
 	iface, err := env.InterfaceByName(dev.Name)
 	if err != nil {
-		return false, errors.Wrapf(err, "Unable to get interface info for %s", dev.Name)
+		return false, fmt.Errorf("unable to get interface info for %s: %w", dev.Name, err)
 	}
 	addrs, err := iface.Addrs()
 	if err != nil {
-		return false, errors.Wrapf(err, "Unable to get addresses for %s", dev.Name)
+		return false, fmt.Errorf("unable to get addresses for %s: %w", dev.Name, err)
 	}
 
 	autoaddr := autopeer.AutoAddress(dev.PublicKey)
@@ -38,7 +37,7 @@ func EnsureLocalAutoIP(env networking.Environment, dev *wgtypes.Device) (bool, e
 		Mask: net.CIDRMask(4*net.IPv6len, 8*net.IPv6len),
 	})
 	if err != nil {
-		return false, errors.Wrapf(err, "Unable to add %v to %s", autoaddr, dev.Name)
+		return false, fmt.Errorf("unable to add %v to %s: %w", autoaddr, dev.Name, err)
 	}
 
 	log.Debug("Added local IPv6-LL %v to %s", autoaddr, dev.Name)
