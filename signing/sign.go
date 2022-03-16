@@ -5,7 +5,6 @@ import (
 
 	"github.com/pkg/errors"
 	"golang.org/x/crypto/chacha20poly1305"
-	"golang.org/x/crypto/poly1305"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -16,7 +15,7 @@ func (s *Signer) SignFor(
 	peer *wgtypes.Key,
 ) (
 	nonce [chacha20poly1305.NonceSizeX]byte,
-	tag [poly1305.TagSize]byte,
+	tag [chacha20poly1305.Overhead]byte,
 	err error,
 ) {
 	sk, err := s.sharedKey(peer)

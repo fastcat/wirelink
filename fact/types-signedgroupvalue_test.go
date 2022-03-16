@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"golang.org/x/crypto/chacha20poly1305"
-	"golang.org/x/crypto/poly1305"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -55,7 +54,7 @@ func TestSignedGroupValue_DecodeFrom(t *testing.T) {
 		},
 		{
 			"insufficient bytes for tag",
-			args{0, bytes.NewBuffer(make([]byte, chacha20poly1305.NonceSizeX+poly1305.TagSize-1))},
+			args{0, bytes.NewBuffer(make([]byte, chacha20poly1305.NonceSizeX+chacha20poly1305.Overhead-1))},
 			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
 				return assert.Error(t, err, msgAndArgs...) &&
 					assert.Contains(t, err.Error(), "Tag")
@@ -64,25 +63,25 @@ func TestSignedGroupValue_DecodeFrom(t *testing.T) {
 		},
 		{
 			"buffer success",
-			args{0, bytes.NewBuffer(byteVec(chacha20poly1305.NonceSizeX+poly1305.TagSize+10, 0))},
+			args{0, bytes.NewBuffer(byteVec(chacha20poly1305.NonceSizeX+chacha20poly1305.Overhead+10, 0))},
 			assert.NoError,
 			func() *SignedGroupValue {
 				ret := &SignedGroupValue{}
 				copy(ret.Nonce[:], byteVec(chacha20poly1305.NonceSizeX, 0))
-				copy(ret.Tag[:], byteVec(poly1305.TagSize, chacha20poly1305.NonceSizeX))
-				ret.InnerBytes = byteVec(10, chacha20poly1305.NonceSizeX+poly1305.TagSize)
+				copy(ret.Tag[:], byteVec(chacha20poly1305.Overhead, chacha20poly1305.NonceSizeX))
+				ret.InnerBytes = byteVec(10, chacha20poly1305.NonceSizeX+chacha20poly1305.Overhead)
 				return ret
 			}(),
 		},
 		{
 			"reader success",
-			args{0, &mockReader{bytes.NewBuffer(byteVec(chacha20poly1305.NonceSizeX+poly1305.TagSize+10, 0))}},
+			args{0, &mockReader{bytes.NewBuffer(byteVec(chacha20poly1305.NonceSizeX+chacha20poly1305.Overhead+10, 0))}},
 			assert.NoError,
 			func() *SignedGroupValue {
 				ret := &SignedGroupValue{}
 				copy(ret.Nonce[:], byteVec(chacha20poly1305.NonceSizeX, 0))
-				copy(ret.Tag[:], byteVec(poly1305.TagSize, chacha20poly1305.NonceSizeX))
-				ret.InnerBytes = byteVec(10, chacha20poly1305.NonceSizeX+poly1305.TagSize)
+				copy(ret.Tag[:], byteVec(chacha20poly1305.Overhead, chacha20poly1305.NonceSizeX))
+				ret.InnerBytes = byteVec(10, chacha20poly1305.NonceSizeX+chacha20poly1305.Overhead)
 				return ret
 			}(),
 		},

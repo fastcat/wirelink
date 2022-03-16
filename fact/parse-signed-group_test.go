@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 
 	"golang.org/x/crypto/chacha20poly1305"
-	"golang.org/x/crypto/poly1305"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,7 +25,7 @@ func TestParseSignedGroup_Trivial(t *testing.T) {
 	mockSubjectKey := testutils.MustKey(t)
 	mockSignerKey := testutils.MustKey(t)
 	var mockNonce [chacha20poly1305.NonceSizeX]byte
-	var mockTag [poly1305.TagSize]byte
+	var mockTag [chacha20poly1305.Overhead]byte
 	testutils.MustRandBytes(t, mockNonce[:])
 	testutils.MustRandBytes(t, mockTag[:])
 	mockBootID := uuid.Must(uuid.NewRandom())
@@ -73,13 +72,13 @@ func TestParseSignedGroup_Trivial(t *testing.T) {
 
 func TestParseSignedGroup_Large(t *testing.T) {
 	now := time.Now()
-	longBytes := make([]byte, chacha20poly1305.NonceSizeX+poly1305.TagSize+1500)
+	longBytes := make([]byte, chacha20poly1305.NonceSizeX+chacha20poly1305.Overhead+1500)
 	// rand never returns partial results
 	_, err := rand.Read(longBytes)
 	require.Nil(t, err)
 	sgv := &SignedGroupValue{}
 	const l1 = chacha20poly1305.NonceSizeX
-	const l2 = l1 + poly1305.TagSize
+	const l2 = l1 + chacha20poly1305.Overhead
 	copy(sgv.Nonce[:], longBytes[0:l1])
 	copy(sgv.Tag[:], longBytes[l1:l2])
 	sgv.InnerBytes = longBytes[l2:]
@@ -108,7 +107,7 @@ func TestParseSignedGroup_Inner(t *testing.T) {
 	// make up some data to verify it's copied around properly
 	mockSignerKey := testutils.MustKey(t)
 	var mockNonce [chacha20poly1305.NonceSizeX]byte
-	var mockTag [poly1305.TagSize]byte
+	var mockTag [chacha20poly1305.Overhead]byte
 	testutils.MustRandBytes(t, mockNonce[:])
 	testutils.MustRandBytes(t, mockTag[:])
 

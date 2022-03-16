@@ -4,7 +4,6 @@ import (
 	"crypto/cipher"
 
 	"golang.org/x/crypto/chacha20poly1305"
-	"golang.org/x/crypto/poly1305"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -12,7 +11,7 @@ import (
 // VerifyFrom checks the signature on received data from a given peer
 func (s *Signer) VerifyFrom(
 	nonce [chacha20poly1305.NonceSizeX]byte,
-	tag [poly1305.TagSize]byte,
+	tag [chacha20poly1305.Overhead]byte,
 	data []byte,
 	peer *wgtypes.Key,
 ) (

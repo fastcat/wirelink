@@ -11,7 +11,6 @@ import (
 	"github.com/pkg/errors"
 
 	"golang.org/x/crypto/chacha20poly1305"
-	"golang.org/x/crypto/poly1305"
 
 	"github.com/fastcat/wirelink/util"
 
@@ -22,13 +21,13 @@ import (
 // Note that this structure does _not_ include parsing those inner bytes!
 type SignedGroupValue struct {
 	Nonce      [chacha20poly1305.NonceSizeX]byte
-	Tag        [poly1305.TagSize]byte
+	Tag        [chacha20poly1305.Overhead]byte
 	InnerBytes []byte
 }
 
 var _ Value = &SignedGroupValue{}
 
-const sgvOverhead = chacha20poly1305.NonceSizeX + poly1305.TagSize
+const sgvOverhead = chacha20poly1305.NonceSizeX + chacha20poly1305.Overhead
 
 // UDPMaxSafePayload is the maximum payload size of a UDP packet we can safely send.
 // we only need to worry about IPv6 for this
