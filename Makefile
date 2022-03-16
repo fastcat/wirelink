@@ -13,12 +13,12 @@ DOCSFILES:=LICENSE README.md TODO.md
 
 # tools needed to build the package
 TOOLS:=\
+	mvdan.cc/gofumpt@latest \
 	golang.org/x/tools/cmd/goimports@latest \
 	github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
 	$(NULL)
 # tools needed to develop the package
 TOOLS_DEV:=\
-	mvdan.cc/gofumpt@latest \
 	github.com/cweill/gotests/gotests@latest \
 	github.com/go-delve/delve/cmd/dlv@latest \
 	$(NULL)
