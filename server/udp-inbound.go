@@ -229,6 +229,7 @@ func (s *LinkServer) processOneChunk(
 			newFactsChunk = append(newFactsChunk, f)
 		}
 	}
+	s.updateInterfaceCache()
 	dev, err := s.deviceState()
 	if err != nil {
 		// this probably means the interface is down

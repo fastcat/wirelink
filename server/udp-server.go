@@ -50,9 +50,18 @@ type LinkServer struct {
 
 	// TODO: these should not be exported like this
 	// this is temporary to simplify acceptance tests
+
 	FactTTL     time.Duration
 	ChunkPeriod time.Duration
 	AlivePeriod time.Duration
+
+	// cache of local interface addresses, used to determine if a peer endpoint is
+	// usable, to avoid trying to contact a peer through the tunnel itself.
+
+	// IPNets assigned to the tunnel
+	tunnelIPNets []net.IPNet
+	// IPNets for local network interfaces other than the tunnel
+	hostIPNets []net.IPNet
 }
 
 // MaxChunk is the max number of packets to receive before processing them
