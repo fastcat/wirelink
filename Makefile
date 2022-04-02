@@ -140,55 +140,6 @@ checkinstall-cross-%: checkinstall-prep-%
 		$(MAKE) -C ../../ sysinstall-cross-$* \
 		</dev/null
 
-# rules for building wireguard-go, for crostini
-WG_GO_DIR_a:=$(shell go env GOPATH)/src/golang.zx2c4.com/wireguard
-WG_GO_DIR_b:=$(HOME)/src/wireguard
-ifneq ($(wildcard $(WG_GO_DIR_a)/Makefile),)
-WG_GO_DIR:=$(WG_GO_DIR_a)
-else ifneq ($(wildcard $(WG_GO_DIR_b)/Makefile),)
-WG_GO_DIR:=$(WG_GO_DIR_b)
-else
-WG_GO_DIR=$(error Cannot find wireguard-go sources)
-endif
-WG_GO_DOCSFILES:=README.md LICENSE
-WG_GO_PKGVERREL_git=$(shell git -C "$(WG_GO_DIR)" describe --long --dirty=+)
-WG_GO_PKGVERREL=$(if $(WG_GO_PKGVERREL_git),$(patsubst v%,%,$(WG_GO_PKGVERREL_git)),$(error git describe failed))
-WG_GO_PKGVER=$(firstword $(subst -, ,$(WG_GO_PKGVERREL)))
-WG_GO_PKGREL=$(WG_GO_PKGVERREL:$(WG_GO_PKGVER)-%=%)
-wg-go-prep:
-	git -C "$(WG_GO_DIR)" pull
-	git -C "$(WG_GO_DIR)" clean -fdx
-.PHONY: wg-go-prep
-wg-go-cross-%: wg-go-prep
-# TODO: would like to ensure we only do generate-version once, but the wg
-# Makefile doesn't support that
-# TODO: Want to pass -ldflags="-s -w", but can't, because
-# https://github.com/golang/go/issues/26849
-# -s benefits more than -w, so start there
-	GOARCH=$* GOFLAGS="-ldflags=-s" $(MAKE) -C "$(WG_GO_DIR)" clean generate-version-and-build
-wg-go-checkinstall-prep-%: wg-go-cross-%
-	mkdir -p ./packaging/wg-go-checkinstall/doc-pak
-	install -m 644 $(patsubst %,$(WG_GO_DIR)/%,$(WG_GO_DOCSFILES)) ./packaging/wg-go-checkinstall/doc-pak/
-wg-go-checkinstall-cross-%: wg-go-checkinstall-prep-%
-	cd ./packaging/wg-go-checkinstall && fakeroot checkinstall \
-		--type=debian \
-		--install=no \
-		--fstrans=yes \
-		--pkgarch=$* \
-		--pkgname=wireguard-go \
-		--pkgversion=$(WG_GO_PKGVER) \
-		--pkgrelease=$(WG_GO_PKGREL) \
-		--pkglicense=MIT \
-		--pkggroup=net \
-		--pkgsource=https://git.zx2c4.com/wireguard-go \
-		--maintainer="'Matthew Gabeler-Lee <cheetah@fastcat.org>'" \
-		--recommends="'wireguard-tools'" \
-		--provides="'wireguard-modules (= $(WG_GO_PKGVERREL))'" \
-		--reset-uids=yes \
-		--backup=no \
-		$(MAKE) -C "$(WG_GO_DIR)" install \
-		</dev/null
-
 everything: fmt lint compile wirelink test
 
 clean: checkinstall-clean
