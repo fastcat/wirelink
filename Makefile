@@ -68,7 +68,7 @@ wirelink: generate
 	go build -v .
 wirelink-cross-%: generate
 # build these stripped
-	GOARCH=$* go build -ldflags "-s -w" -o $@ -v .
+	CGO_ENABLED=0 GOARCH=$* go build -ldflags "-s -w" -o $@ -v .
 lint: lint-fmt lint-golangci lint-vet
 lint-fmt:
 	! gofumpt -l . | grep .
