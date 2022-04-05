@@ -492,7 +492,7 @@ func TestPeerConfigState_NextEndpoint(t *testing.T) {
 			// if tt.fields.nil {
 			// 	pcs = nil
 			// }
-			got := pcs.NextEndpoint(tt.args.peerFacts, now)
+			got := pcs.NextEndpoint("test", tt.args.peerFacts, now, nil)
 			assert.Equal(t, tt.want, got)
 			if tt.want != nil {
 				wantMap := make(map[string]time.Time, len(tt.fields.endpointLastUsed))

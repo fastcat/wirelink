@@ -16,7 +16,7 @@ import (
 type decodeHinter = func(*Fact) (valueLength int)
 
 // decodeHints provides a lookup table for how to decode each valid attribute value
-var decodeHints map[Attribute]decodeHinter = map[Attribute]decodeHinter{
+var decodeHints = map[Attribute]decodeHinter{
 	AttributeAlive: func(f *Fact) int {
 		// Modern ping packet with boot id embedded in value
 		f.Subject = &PeerSubject{}

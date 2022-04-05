@@ -396,7 +396,7 @@ func (s *LinkServer) configurePeer(
 		}
 
 		if state.TimeForNextEndpoint() {
-			nextEndpoint := state.NextEndpoint(facts, now)
+			nextEndpoint := state.NextEndpoint(peerName, facts, now, s.isUsablePeerEndpointLocked)
 			if nextEndpoint == nil {
 				log.Debug("Time for new EP for %s, but none known", peerName)
 			} else if util.UDPEqualIPPort(nextEndpoint, peer.Endpoint) {

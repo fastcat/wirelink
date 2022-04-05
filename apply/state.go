@@ -238,7 +238,12 @@ func (pcs *PeerConfigState) TimeForNextEndpoint() bool {
 // if any, based on the available facts (assumed to all be about the peer!)
 // Note that this does _not_ embed the logic for whether a new endpoint _should_
 // be attempted (i.e. it doesn't call `TimeForNextEndpoint` internally).
-func (pcs *PeerConfigState) NextEndpoint(peerFacts []*fact.Fact, now time.Time) *net.UDPAddr {
+func (pcs *PeerConfigState) NextEndpoint(
+	peerName string,
+	peerFacts []*fact.Fact,
+	now time.Time,
+	filter func(*fact.Fact) bool,
+) *net.UDPAddr {
 	var best *fact.Fact
 	// assume nothing is last used in the future
 	bestLastUsed := now
@@ -246,6 +251,10 @@ func (pcs *PeerConfigState) NextEndpoint(peerFacts []*fact.Fact, now time.Time) 
 	for _, pf := range peerFacts {
 		switch pf.Attribute {
 		case fact.AttributeEndpointV4, fact.AttributeEndpointV6:
+			if filter != nil && !filter(pf) {
+				log.Debug("skipping peer %s endpoint %s", peerName, pf.Value)
+				continue
+			}
 			// this logic relies on the zero value of a Time being very far in the past
 			lu := pcs.endpointLastUsed[string(util.MustBytes(pf.Value.MarshalBinary()))]
 			if lu.Before(bestLastUsed) {
