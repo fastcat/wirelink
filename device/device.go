@@ -97,3 +97,15 @@ func (d *Device) Refresh() (*wgtypes.Device, error) {
 	_ = d.read()
 	return d.state, d.lastErr
 }
+
+// Dirty marks the device state dirty forcing the next read to refresh the data.
+func (d *Device) Dirty() {
+	// for tests
+	if d == nil {
+		return
+	}
+
+	d.mu.Lock()
+	d.dirty = true
+	d.mu.Unlock()
+}

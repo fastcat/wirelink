@@ -159,6 +159,10 @@ func (s *LinkServer) chunkReceived(
 				s.newBootID()
 			}
 
+			// mark the device state dirty every tick so downstream processors see the
+			// new value
+			s.dev.Dirty()
+
 			newFacts <- buffer
 			// always make a new buffer after we send it
 			buffer = nil
@@ -230,7 +234,7 @@ func (s *LinkServer) processOneChunk(
 		}
 	}
 	s.updateInterfaceCache()
-	dev, err := s.dev.Refresh()
+	dev, err := s.dev.State()
 	if err != nil {
 		// this probably means the interface is down
 		// the log message will be printed by the main app as it exits

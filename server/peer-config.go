@@ -37,7 +37,7 @@ FACTLOOP:
 			now := time.Now()
 			log.Debug("Got a new fact set of length %d", len(facts))
 
-			dev, err := s.dev.Refresh()
+			dev, err := s.dev.State()
 			if err != nil {
 				// this probably means the interface is down
 				// the log message will be printed by the main app as it exits
