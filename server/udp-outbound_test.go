@@ -13,6 +13,7 @@ import (
 	"github.com/fastcat/wirelink/apply"
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/config"
+	"github.com/fastcat/wirelink/device"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/internal/mocks"
 	netmocks "github.com/fastcat/wirelink/internal/networking/mocks"
@@ -275,7 +276,7 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 					return ret
 				},
 				newPKS(),
-				signing.New(&localPrivateKey),
+				signing.New(localPrivateKey),
 			},
 			args{
 				localPublicKey,
@@ -309,7 +310,7 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 					return ret
 				},
 				newPKS(),
-				signing.New(&localPrivateKey),
+				signing.New(localPrivateKey),
 			},
 			args{
 				localPublicKey,
@@ -355,7 +356,7 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 					return ret
 				},
 				newPKS(),
-				signing.New(&localPrivateKey),
+				signing.New(localPrivateKey),
 			},
 			args{
 				localPublicKey,
@@ -394,7 +395,7 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 					return ret
 				},
 				newPKS().mockPeerKnowsLocalAlive(&remotePublicKey, &localPublicKey, expires, &bootID),
-				signing.New(&localPrivateKey),
+				signing.New(localPrivateKey),
 			},
 			args{
 				localPublicKey,
@@ -444,7 +445,7 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 				).mockPeerKnows(
 					&remotePublicKey, facts.EndpointFactFull(localEP, &localPublicKey, expired),
 				),
-				signing.New(&localPrivateKey),
+				signing.New(localPrivateKey),
 			},
 			args{
 				localPublicKey,
@@ -471,12 +472,15 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 			conn.Test(t)
 			ctrl := tt.fields.ctrl(t)
 			ctrl.Test(t)
+			ctrl.On("Device", wgIface).Once().Return(&wgtypes.Device{}, nil)
+			dev, err := device.New(ctrl, tt.fields.config.Iface)
+			require.NoError(t, err)
 			s := &LinkServer{
 				bootID:        tt.fields.bootID,
 				config:        tt.fields.config,
 				conn:          conn,
 				addr:          tt.fields.addr,
-				ctrl:          ctrl,
+				dev:           dev,
 				peerKnowledge: tt.fields.peerKnowledge,
 				signer:        tt.fields.signer,
 

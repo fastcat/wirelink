@@ -15,6 +15,7 @@ import (
 	"github.com/fastcat/wirelink/apply"
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/config"
+	"github.com/fastcat/wirelink/device"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/internal"
 	"github.com/fastcat/wirelink/internal/networking"
@@ -33,7 +34,7 @@ type LinkServer struct {
 	net         networking.Environment
 	conn        networking.UDPConn
 	addr        net.UDPAddr
-	ctrl        internal.WgClient
+	dev         *device.Device
 
 	eg     *errgroup.Group
 	ctx    context.Context
@@ -86,19 +87,20 @@ func Create(
 	ctrl internal.WgClient,
 	config *config.Server,
 ) (*LinkServer, error) {
-	device, err := ctrl.Device(config.Iface)
+	dev, err := device.Take(ctrl, config.Iface)
 	if err != nil {
 		return nil, err
 	}
+	devState, _ := dev.State()
 	if config.Port <= 0 {
-		config.Port = device.ListenPort + 1
+		config.Port = devState.ListenPort + 1
 	}
 
-	ip := autopeer.AutoAddress(device.PublicKey)
+	ip := autopeer.AutoAddress(devState.PublicKey)
 	addr := net.UDPAddr{
 		IP:   ip,
 		Port: config.Port,
-		Zone: device.Name,
+		Zone: config.Iface,
 	}
 
 	eg, egCtx := errgroup.WithContext(context.Background())
@@ -110,7 +112,7 @@ func Create(
 		net:         env,
 		conn:        nil, // this will be filled in by `Start()`
 		addr:        addr,
-		ctrl:        ctrl,
+		dev:         dev,
 		stateAccess: new(sync.Mutex),
 
 		eg:     eg,
@@ -119,7 +121,7 @@ func Create(
 
 		peerKnowledge:  newPKS(),
 		peerConfig:     newPeerConfigSet(),
-		signer:         signing.New(&device.PrivateKey),
+		signer:         signing.New(devState.PrivateKey),
 		printRequested: make(chan struct{}, 1),
 
 		FactTTL:     DefaultFactTTL,
@@ -148,7 +150,7 @@ func (s *LinkServer) MutateConfig(f func(c *config.Server)) {
 // to receive and process packets
 func (s *LinkServer) Start() (err error) {
 	var device *wgtypes.Device
-	device, err = s.deviceState()
+	device, err = s.dev.State()
 	if err != nil {
 		return fmt.Errorf("unable to load device state to initialize server: %w", err)
 	}
@@ -160,7 +162,7 @@ func (s *LinkServer) Start() (err error) {
 		log.Info("Configured IPv6-LL address on local interface")
 	}
 
-	if peerips, err := apply.EnsurePeersAutoIP(s.ctrl, device); err != nil {
+	if peerips, err := s.dev.EnsurePeersAutoIP(); err != nil {
 		return err
 	} else if peerips > 0 {
 		log.Info("Added IPv6-LL for %d peers", peerips)
@@ -266,9 +268,11 @@ func (s *LinkServer) Close() {
 	s.Stop()
 	s.stateAccess.Lock()
 	defer s.stateAccess.Unlock()
-	if s.ctrl != nil {
-		s.ctrl.Close()
-		s.ctrl = nil
+	if s.dev != nil {
+		if err := s.dev.Close(); err != nil {
+			log.Error("Failed to close device interface: %v", err)
+		}
+		s.dev = nil
 	}
 
 	if s.net != nil {

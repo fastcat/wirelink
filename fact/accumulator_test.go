@@ -40,7 +40,7 @@ func TestAccumulatorSigning(t *testing.T) {
 	priv, signer := testutils.MustKeyPair(t)
 	_, pub := testutils.MustKeyPair(t)
 
-	s := signing.New(&priv)
+	s := signing.New(priv)
 
 	facts, err := a.MakeSignedGroups(s, &pub)
 	require.Nil(t, err)

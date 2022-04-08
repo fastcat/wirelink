@@ -230,7 +230,7 @@ func (s *LinkServer) processOneChunk(
 		}
 	}
 	s.updateInterfaceCache()
-	dev, err := s.deviceState()
+	dev, err := s.dev.Refresh()
 	if err != nil {
 		// this probably means the interface is down
 		// the log message will be printed by the main app as it exits

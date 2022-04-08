@@ -11,6 +11,7 @@ import (
 
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/config"
+	"github.com/fastcat/wirelink/device"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/internal/mocks"
 	"github.com/fastcat/wirelink/internal/networking"
@@ -35,7 +36,7 @@ func TestLinkServer_readPackets(t *testing.T) {
 	remotePrivateKey, remotePublicKey := testutils.MustKeyPair(t)
 	randomKey := testutils.MustKey(t)
 
-	remoteSigner := signing.New(&remotePrivateKey)
+	remoteSigner := signing.New(remotePrivateKey)
 	properSource := &net.UDPAddr{
 		IP:   autopeer.AutoAddress(remotePublicKey),
 		Port: rand.Intn(65535),
@@ -131,7 +132,7 @@ func TestLinkServer_readPackets(t *testing.T) {
 				conn:   conn,
 				eg:     &errgroup.Group{},
 				ctx:    context.Background(),
-				signer: signing.New(&localPrivateKey),
+				signer: signing.New(localPrivateKey),
 			}
 			// deep channel to simplify extracting outputs
 			received := make(chan *ReceivedFact, len(tt.wantReceived)+len(tt.packets))
@@ -157,8 +158,8 @@ func TestLinkServer_processSignedGroup(t *testing.T) {
 	// this is doing crypto, so we need _real_ keys, not just random bytes
 	localPrivKey, localPubKey := testutils.MustKeyPair(t)
 	remotePrivKey, remotePubKey := testutils.MustKeyPair(t)
-	localSigner := signing.New(&localPrivKey)
-	remoteSigner := signing.New(&remotePrivKey)
+	localSigner := signing.New(localPrivKey)
+	remoteSigner := signing.New(remotePrivKey)
 	properSource := &net.UDPAddr{
 		IP:   autopeer.AutoAddress(remotePubKey),
 		Port: rand.Intn(65535),
@@ -1019,11 +1020,13 @@ func TestLinkServer_processOneChunk(t *testing.T) {
 			if tt.fields.peerKnowledge == nil {
 				tt.fields.peerKnowledge = newPKS()
 			}
+			dev, err := device.New(ctrl, tt.fields.config.Iface)
+			require.NoError(t, err)
 			s := &LinkServer{
 				stateAccess:   &sync.Mutex{},
 				config:        tt.fields.config,
 				net:           tt.fields.net,
-				ctrl:          ctrl,
+				dev:           dev,
 				peerKnowledge: tt.fields.peerKnowledge,
 				FactTTL:       DefaultFactTTL,
 				ChunkPeriod:   DefaultChunkPeriod,

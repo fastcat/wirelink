@@ -67,7 +67,7 @@ func TestCreate(t *testing.T) {
 					Port: p + 1,
 					Zone: wgIface,
 				},
-				signer: signing.New(&privateKey),
+				signer: signing.New(privateKey),
 			},
 			require.NoError,
 		},

@@ -21,7 +21,7 @@ import (
 func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) error {
 	// TODO: naming here is confusing with the `newFacts` channel
 	for newFacts := range factsRefreshed {
-		dev, err := s.deviceState()
+		dev, err := s.dev.Refresh()
 		if err != nil {
 			// this probably means the interface is down
 			// the log message will be printed by the main app as it exits

@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"fmt"
 	"math/rand"
 	"net"
@@ -9,16 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
-	"golang.org/x/sync/errgroup"
-
 	"github.com/fastcat/wirelink/apply"
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/config"
+	"github.com/fastcat/wirelink/device"
 	"github.com/fastcat/wirelink/fact"
-	"github.com/fastcat/wirelink/internal"
 	"github.com/fastcat/wirelink/internal/mocks"
-	"github.com/fastcat/wirelink/internal/networking"
 	"github.com/fastcat/wirelink/internal/testutils"
 	factutils "github.com/fastcat/wirelink/internal/testutils/facts"
 	"github.com/fastcat/wirelink/signing"
@@ -30,62 +25,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestLinkServer_configurePeers(t *testing.T) {
-	type fields struct {
-		bootID        uuid.UUID
-		stateAccess   *sync.Mutex
-		config        *config.Server
-		net           networking.Environment
-		conn          networking.UDPConn
-		addr          net.UDPAddr
-		ctrl          internal.WgClient
-		eg            *errgroup.Group
-		ctx           context.Context
-		cancel        context.CancelFunc
-		peerKnowledge *peerKnowledgeSet
-		peerConfig    *peerConfigSet
-		signer        *signing.Signer
-	}
-	type args struct {
-		factsRefreshed <-chan []*fact.Fact
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &LinkServer{
-				bootID:        tt.fields.bootID,
-				stateAccess:   tt.fields.stateAccess,
-				config:        tt.fields.config,
-				net:           tt.fields.net,
-				conn:          tt.fields.conn,
-				addr:          tt.fields.addr,
-				ctrl:          tt.fields.ctrl,
-				eg:            tt.fields.eg,
-				ctx:           tt.fields.ctx,
-				cancel:        tt.fields.cancel,
-				peerKnowledge: tt.fields.peerKnowledge,
-				peerConfig:    tt.fields.peerConfig,
-				signer:        tt.fields.signer,
-			}
-			err := s.configurePeers(tt.args.factsRefreshed)
-			if tt.wantErr {
-				require.NotNil(t, err)
-			} else {
-				require.Nil(t, err)
-			}
-
-			// TODO: check mocks
-		})
-	}
-}
 
 func TestLinkServer_configurePeersOnce(t *testing.T) {
 	now := time.Now()
@@ -265,7 +204,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 				}).Build(),
 				func(t *testing.T) *mocks.WgClient {
 					ret := &mocks.WgClient{}
-					// no calls expected
+					// no configuration calls expected
 					return ret
 				},
 				newPKS(),
@@ -479,9 +418,14 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var ctrl *mocks.WgClient
+			var dev *device.Device
 			if tt.fields.ctrl != nil {
 				ctrl = tt.fields.ctrl(t)
 				ctrl.Test(t)
+				ctrl.On("Device", wgIface).Once().Return(tt.args.dev, nil)
+				var err error
+				dev, err = device.New(ctrl, tt.fields.config.Iface)
+				require.NoError(t, err)
 			}
 			if tt.fields.peerKnowledge != nil && tt.fields.peerKnowledge.access == nil {
 				tt.fields.peerKnowledge.access = &sync.RWMutex{}
@@ -492,7 +436,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 			s := &LinkServer{
 				stateAccess:   &sync.Mutex{},
 				config:        tt.fields.config,
-				ctrl:          ctrl,
+				dev:           dev,
 				peerKnowledge: tt.fields.peerKnowledge,
 				peerConfig: &peerConfigSet{
 					psm:        &sync.Mutex{},
@@ -688,10 +632,13 @@ func TestLinkServer_deletePeers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctrl := tt.fields.ctrl(t)
 			ctrl.Test(t)
+			ctrl.On("Device", wgIface).Once().Return(tt.args.dev, nil)
+			dev, err := device.New(ctrl, wgIface)
+			require.NoError(t, err)
 			s := &LinkServer{
 				stateAccess: &sync.Mutex{},
 				config:      tt.fields.config,
-				ctrl:        ctrl,
+				dev:         dev,
 				peerConfig: &peerConfigSet{
 					peerStates: tt.fields.peerStates,
 					psm:        &sync.Mutex{},
@@ -699,7 +646,7 @@ func TestLinkServer_deletePeers(t *testing.T) {
 				// just a placeholder for code that wants to check the local public key
 				signer: &signing.Signer{},
 			}
-			err := s.deletePeers(tt.args.dev, tt.args.removePeer, now)
+			err = s.deletePeers(tt.args.dev, tt.args.removePeer, now)
 			if tt.wantErr {
 				require.NotNil(t, err)
 			} else {
@@ -708,68 +655,6 @@ func TestLinkServer_deletePeers(t *testing.T) {
 			// shouldn't change `peerConfig`, other than it having a different mutex
 			assert.Equal(t, tt.fields.peerStates, s.peerConfig.peerStates)
 			ctrl.AssertExpectations(t)
-		})
-	}
-}
-
-func TestLinkServer_configurePeer(t *testing.T) {
-	type fields struct {
-		bootID        uuid.UUID
-		stateAccess   *sync.Mutex
-		config        *config.Server
-		net           networking.Environment
-		conn          networking.UDPConn
-		addr          net.UDPAddr
-		ctrl          internal.WgClient
-		eg            *errgroup.Group
-		ctx           context.Context
-		cancel        context.CancelFunc
-		peerKnowledge *peerKnowledgeSet
-		peerConfig    *peerConfigSet
-		signer        *signing.Signer
-	}
-	type args struct {
-		inputState       *apply.PeerConfigState
-		peer             *wgtypes.Peer
-		facts            []*fact.Fact
-		allowDeconfigure bool
-		allowAdd         bool
-	}
-	tests := []struct {
-		name      string
-		fields    fields
-		args      args
-		wantState *apply.PeerConfigState
-		wantErr   bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &LinkServer{
-				bootID:        tt.fields.bootID,
-				stateAccess:   tt.fields.stateAccess,
-				config:        tt.fields.config,
-				net:           tt.fields.net,
-				conn:          tt.fields.conn,
-				addr:          tt.fields.addr,
-				ctrl:          tt.fields.ctrl,
-				eg:            tt.fields.eg,
-				ctx:           tt.fields.ctx,
-				cancel:        tt.fields.cancel,
-				peerKnowledge: tt.fields.peerKnowledge,
-				peerConfig:    tt.fields.peerConfig,
-				signer:        tt.fields.signer,
-			}
-			gotState, err := s.configurePeer(tt.args.inputState, tt.args.peer, tt.args.facts, tt.args.allowDeconfigure, tt.args.allowAdd)
-			if tt.wantErr {
-				require.NotNil(t, err, "LinkServer.configurePeer() error")
-			} else {
-				require.Nil(t, err, "LinkServer.configurePeer() error")
-			}
-			assert.Equal(t, tt.wantState, gotState)
-
-			// TODO: check mocks
 		})
 	}
 }

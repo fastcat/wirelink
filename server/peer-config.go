@@ -37,7 +37,7 @@ FACTLOOP:
 			now := time.Now()
 			log.Debug("Got a new fact set of length %d", len(facts))
 
-			dev, err := s.deviceState()
+			dev, err := s.dev.Refresh()
 			if err != nil {
 				// this probably means the interface is down
 				// the log message will be printed by the main app as it exits
@@ -326,7 +326,7 @@ func (s *LinkServer) deletePeers(
 	if len(cfg.Peers) != 0 {
 		s.stateAccess.Lock()
 		defer s.stateAccess.Unlock()
-		err = s.ctrl.ConfigureDevice(s.config.Iface, cfg)
+		err = s.dev.ConfigureDevice(cfg)
 		if err != nil {
 			log.Error("Unable to delete peers: %v", err)
 		}
@@ -435,7 +435,7 @@ func (s *LinkServer) configurePeer(
 	}
 
 	log.Debug("Applying peer configuration: %v", *pcfg)
-	err = s.ctrl.ConfigureDevice(s.config.Iface, wgtypes.Config{
+	err = s.dev.ConfigureDevice(wgtypes.Config{
 		Peers: []wgtypes.PeerConfig{*pcfg},
 	})
 	if err != nil {
