@@ -61,8 +61,8 @@ func Test_peerKnowledgeSet_upsertReceived(t *testing.T) {
 		bootIDs map[wgtypes.Key]uuid.UUID
 	}
 	type args struct {
-		rf *ReceivedFact
-		pl peerLookup
+		rf   *ReceivedFact
+		keys []wgtypes.Key
 	}
 	tests := []struct {
 		name       string
@@ -82,7 +82,7 @@ func Test_peerKnowledgeSet_upsertReceived(t *testing.T) {
 					fact:   facts.EndpointFactFull(ep1, &k1, expires),
 					source: k1source,
 				},
-				createFromKeys(k1),
+				[]wgtypes.Key{k1},
 			},
 			true,
 			fields{
@@ -105,7 +105,7 @@ func Test_peerKnowledgeSet_upsertReceived(t *testing.T) {
 					fact:   facts.EndpointFactFull(ep1, &k1, oldExpires),
 					source: k1source,
 				},
-				createFromKeys(k1),
+				[]wgtypes.Key{k1},
 			},
 			false,
 			fields{
@@ -130,7 +130,7 @@ func Test_peerKnowledgeSet_upsertReceived(t *testing.T) {
 					fact:   facts.AliveFactFull(&k1, expires, uuid2),
 					source: k1source,
 				},
-				createFromKeys(k1),
+				[]wgtypes.Key{k1},
 			},
 			true,
 			fields{
@@ -150,7 +150,9 @@ func Test_peerKnowledgeSet_upsertReceived(t *testing.T) {
 				bootIDs: tt.fields.bootIDs,
 				access:  &sync.RWMutex{},
 			}
-			assert.Equal(t, tt.want, pks.upsertReceived(tt.args.rf, tt.args.pl))
+			pl := newPeerLookup()
+			pl.addKeys(tt.args.keys...)
+			assert.Equal(t, tt.want, pks.upsertReceived(tt.args.rf, pl))
 			assert.Equal(t, tt.wantFields.data, pks.data)
 			assert.Equal(t, tt.wantFields.bootIDs, pks.bootIDs)
 		})

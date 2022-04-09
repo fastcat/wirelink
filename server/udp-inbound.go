@@ -263,7 +263,7 @@ func (s *LinkServer) processOneChunk(
 		newLocalFacts = lastLocalFacts
 	}
 
-	pl := createFromPeers(dev.Peers...)
+	s.pl.addPeers(dev.Peers...)
 
 	// TODO: we can cache the config trust to avoid some re-computation
 	evaluators := []trust.Evaluator{
@@ -288,7 +288,7 @@ func (s *LinkServer) processOneChunk(
 	// add all the new not-expired and _trusted_ facts
 	for _, rf := range chunk {
 		// add to what the peer knows, even if we otherwise discard the information
-		s.peerKnowledge.upsertReceived(rf, pl)
+		s.peerKnowledge.upsertReceived(rf, s.pl)
 
 		if now.After(rf.fact.Expires) {
 			continue

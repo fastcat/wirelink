@@ -40,6 +40,8 @@ type LinkServer struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
+	pl *peerLookup
+
 	// peerKnowledgeSet tracks what is known by each peer to avoid sending them
 	// redundant information
 	peerKnowledge *peerKnowledgeSet
@@ -118,6 +120,8 @@ func Create(
 		eg:     eg,
 		ctx:    ctx,
 		cancel: cancel,
+
+		pl: newPeerLookup(),
 
 		peerKnowledge:  newPKS(),
 		peerConfig:     newPeerConfigSet(),

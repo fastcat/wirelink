@@ -44,8 +44,8 @@ func newPKS() *peerKnowledgeSet {
 // true if we recorded new information, or false if the source was invalid or
 // the info was otherwise rejected (e.g. an older expiration than what we already
 // knew the peer knows).
-func (pks *peerKnowledgeSet) upsertReceived(rf *ReceivedFact, pl peerLookup) bool {
-	peer, ok := pl.get(rf.source.IP)
+func (pks *peerKnowledgeSet) upsertReceived(rf *ReceivedFact, pl *peerLookup) bool {
+	peer, ok := pl.GetPeer(rf.source.IP)
 	if !ok {
 		return false
 	}

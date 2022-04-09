@@ -1027,6 +1027,7 @@ func TestLinkServer_processOneChunk(t *testing.T) {
 				config:        tt.fields.config,
 				net:           tt.fields.net,
 				dev:           dev,
+				pl:            newPeerLookup(),
 				peerKnowledge: tt.fields.peerKnowledge,
 				FactTTL:       DefaultFactTTL,
 				ChunkPeriod:   DefaultChunkPeriod,
