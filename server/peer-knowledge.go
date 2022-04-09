@@ -25,17 +25,18 @@ func keyOf(f *fact.Fact, peer wgtypes.Key) peerKnowledgeKey {
 }
 
 type peerKnowledgeSet struct {
+	access sync.RWMutex
 	// data maps a PKK (fact key + source peer) to its expiration time for that peer
 	data    map[peerKnowledgeKey]time.Time
 	bootIDs map[wgtypes.Key]uuid.UUID
-	access  *sync.RWMutex
+	pl      *peerLookup
 }
 
-func newPKS() *peerKnowledgeSet {
+func newPKS(pl *peerLookup) *peerKnowledgeSet {
 	return &peerKnowledgeSet{
 		data:    make(map[peerKnowledgeKey]time.Time),
 		bootIDs: make(map[wgtypes.Key]uuid.UUID),
-		access:  new(sync.RWMutex),
+		pl:      pl,
 	}
 }
 
@@ -44,8 +45,8 @@ func newPKS() *peerKnowledgeSet {
 // true if we recorded new information, or false if the source was invalid or
 // the info was otherwise rejected (e.g. an older expiration than what we already
 // knew the peer knows).
-func (pks *peerKnowledgeSet) upsertReceived(rf *ReceivedFact, pl *peerLookup) bool {
-	peer, ok := pl.GetPeer(rf.source.IP)
+func (pks *peerKnowledgeSet) upsertReceived(rf *ReceivedFact) bool {
+	peer, ok := pks.pl.GetPeer(rf.source.IP)
 	if !ok {
 		return false
 	}

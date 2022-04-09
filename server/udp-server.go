@@ -108,6 +108,8 @@ func Create(
 	eg, egCtx := errgroup.WithContext(context.Background())
 	ctx, cancel := context.WithCancel(egCtx)
 
+	pl := newPeerLookup()
+
 	ret := &LinkServer{
 		bootID:      uuid.Must(uuid.NewRandom()),
 		config:      config,
@@ -121,9 +123,9 @@ func Create(
 		ctx:    ctx,
 		cancel: cancel,
 
-		pl: newPeerLookup(),
+		pl: pl,
 
-		peerKnowledge:  newPKS(),
+		peerKnowledge:  newPKS(pl),
 		peerConfig:     newPeerConfigSet(),
 		signer:         signing.New(devState.PrivateKey),
 		printRequested: make(chan struct{}, 1),

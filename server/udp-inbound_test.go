@@ -1017,9 +1017,6 @@ func TestLinkServer_processOneChunk(t *testing.T) {
 			ctrl.Test(t)
 			tt.fields.net.Test(t)
 			tt.fields.net.WithKnownInterfaces()
-			if tt.fields.peerKnowledge == nil {
-				tt.fields.peerKnowledge = newPKS()
-			}
 			dev, err := device.New(ctrl, tt.fields.config.Iface)
 			require.NoError(t, err)
 			s := &LinkServer{
@@ -1031,6 +1028,11 @@ func TestLinkServer_processOneChunk(t *testing.T) {
 				peerKnowledge: tt.fields.peerKnowledge,
 				FactTTL:       DefaultFactTTL,
 				ChunkPeriod:   DefaultChunkPeriod,
+			}
+			if s.peerKnowledge == nil {
+				s.peerKnowledge = newPKS(s.pl)
+			} else if s.peerKnowledge.pl == nil {
+				s.peerKnowledge.pl = s.pl
 			}
 			gotUniqueFacts, gotNewLocalFacts, err := s.processOneChunk(tt.args.currentFacts, tt.args.lastLocalFacts, tt.args.chunk, now)
 			tt.assertion(t, err)

@@ -145,14 +145,14 @@ func Test_peerKnowledgeSet_upsertReceived(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			pl := newPeerLookup()
+			pl.addKeys(tt.args.keys...)
 			pks := &peerKnowledgeSet{
 				data:    tt.fields.data,
 				bootIDs: tt.fields.bootIDs,
-				access:  &sync.RWMutex{},
+				pl:      pl,
 			}
-			pl := newPeerLookup()
-			pl.addKeys(tt.args.keys...)
-			assert.Equal(t, tt.want, pks.upsertReceived(tt.args.rf, pl))
+			assert.Equal(t, tt.want, pks.upsertReceived(tt.args.rf))
 			assert.Equal(t, tt.wantFields.data, pks.data)
 			assert.Equal(t, tt.wantFields.bootIDs, pks.bootIDs)
 		})
@@ -182,7 +182,6 @@ func Test_peerKnowledgeSet_upsertSent(t *testing.T) {
 			pks := &peerKnowledgeSet{
 				data:    tt.fields.data,
 				bootIDs: tt.fields.bootIDs,
-				access:  &sync.RWMutex{},
 			}
 			assert.Equal(t, tt.want, pks.upsertSent(tt.args.peer, tt.args.f))
 			assert.Equal(t, tt.wantFields.data, pks.data)
@@ -247,8 +246,7 @@ func Test_peerKnowledgeSet_expire(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pks := &peerKnowledgeSet{
-				data:   tt.fields.data,
-				access: &sync.RWMutex{},
+				data: tt.fields.data,
 			}
 			assert.Equal(t, tt.wantCount, pks.expire())
 			assert.Equal(t, tt.wantFields.data, pks.data)
@@ -316,8 +314,7 @@ func Test_peerKnowledgeSet_peerKnows(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pks := &peerKnowledgeSet{
-				data:   tt.fields.data,
-				access: &sync.RWMutex{},
+				data: tt.fields.data,
 			}
 			assert.Equal(t, tt.want, pks.peerKnows(tt.args.peer, tt.args.f, tt.args.hysteresis))
 		})
@@ -347,7 +344,6 @@ func Test_peerKnowledgeSet_peerNeeds(t *testing.T) {
 			pks := &peerKnowledgeSet{
 				data:    tt.fields.data,
 				bootIDs: tt.fields.bootIDs,
-				access:  &sync.RWMutex{},
 			}
 			assert.Equal(t, tt.want, pks.peerNeeds(tt.args.peer, tt.args.f, tt.args.maxTTL))
 		})
@@ -378,7 +374,6 @@ func Test_peerKnowledgeSet_peerAlive(t *testing.T) {
 			pks := &peerKnowledgeSet{
 				data:    tt.fields.data,
 				bootIDs: tt.fields.bootIDs,
-				access:  tt.fields.access,
 			}
 			gotAlive, aliveUntil, gotBootID := pks.peerAlive(tt.args.peer)
 			assert.Equal(t, tt.wantAlive, gotAlive)
@@ -410,7 +405,6 @@ func Test_peerKnowledgeSet_forcePing(t *testing.T) {
 			pks := &peerKnowledgeSet{
 				data:    tt.fields.data,
 				bootIDs: tt.fields.bootIDs,
-				access:  &sync.RWMutex{},
 			}
 			pks.forcePing(tt.args.self, tt.args.peer)
 			assert.Equal(t, tt.wantFields.data, pks.data)
@@ -453,7 +447,6 @@ func Test_peerKnowledgeSet_peerBootID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			pks := &peerKnowledgeSet{
 				bootIDs: tt.fields.bootIDs,
-				access:  &sync.RWMutex{},
 			}
 			assert.Equal(t, tt.want, pks.peerBootID(tt.args.peer))
 		})

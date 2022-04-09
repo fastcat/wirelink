@@ -275,7 +275,7 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 					ret := &mocks.WgClient{}
 					return ret
 				},
-				newPKS(),
+				newPKS(nil),
 				signing.New(localPrivateKey),
 			},
 			args{
@@ -309,7 +309,7 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 					ret := &mocks.WgClient{}
 					return ret
 				},
-				newPKS(),
+				newPKS(nil),
 				signing.New(localPrivateKey),
 			},
 			args{
@@ -355,7 +355,7 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 					ret := &mocks.WgClient{}
 					return ret
 				},
-				newPKS(),
+				newPKS(nil),
 				signing.New(localPrivateKey),
 			},
 			args{
@@ -394,7 +394,7 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 					ret := &mocks.WgClient{}
 					return ret
 				},
-				newPKS().mockPeerKnowsLocalAlive(&remotePublicKey, &localPublicKey, expires, &bootID),
+				newPKS(nil).mockPeerKnowsLocalAlive(&remotePublicKey, &localPublicKey, expires, &bootID),
 				signing.New(localPrivateKey),
 			},
 			args{
@@ -440,7 +440,7 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 					ret := &mocks.WgClient{}
 					return ret
 				},
-				newPKS().mockPeerKnowsLocalAlive(
+				newPKS(nil).mockPeerKnowsLocalAlive(
 					&remotePublicKey, &localPublicKey, expired, &bootID,
 				).mockPeerKnows(
 					&remotePublicKey, facts.EndpointFactFull(localEP, &localPublicKey, expired),

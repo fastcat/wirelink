@@ -98,7 +98,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 					}).Return(nil)
 					return ret
 				},
-				newPKS(),
+				newPKS(nil),
 				map[wgtypes.Key]*apply.PeerConfigState{},
 			},
 			args{
@@ -136,7 +136,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 					}).Return(nil)
 					return ret
 				},
-				newPKS(),
+				newPKS(nil),
 				map[wgtypes.Key]*apply.PeerConfigState{},
 			},
 			args{
@@ -171,7 +171,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 					}).Return(nil)
 					return ret
 				},
-				newPKS(),
+				newPKS(nil),
 				map[wgtypes.Key]*apply.PeerConfigState{
 					remoteController1Key: makePCS(t, true, true, true),
 				},
@@ -207,7 +207,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 					// no configuration calls expected
 					return ret
 				},
-				newPKS(),
+				newPKS(nil),
 				map[wgtypes.Key]*apply.PeerConfigState{
 					remoteController1Key: makePCS(t, true, true, true),
 					remoteController2Key: makePCS(t, false, false, false),
@@ -252,7 +252,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 					}).Return(nil)
 					return ret
 				},
-				newPKS().mockPeerAlive(remoteLeaf1Key, expiresFuture, nil),
+				newPKS(nil).mockPeerAlive(remoteLeaf1Key, expiresFuture, nil),
 				map[wgtypes.Key]*apply.PeerConfigState{
 					// nothing here because this routine _updates_ PCS, not uses it
 				},
@@ -301,7 +301,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 					}).Return(nil)
 					return ret
 				},
-				newPKS().mockPeerAlive(remoteLeaf1Key, expiresFuture, nil),
+				newPKS(nil).mockPeerAlive(remoteLeaf1Key, expiresFuture, nil),
 				map[wgtypes.Key]*apply.PeerConfigState{
 					// nothing here because this routine _updates_ PCS, not uses it
 				},
@@ -340,7 +340,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 					// should not reconfigure in this case
 					return ret
 				},
-				newPKS(),
+				newPKS(nil),
 				map[wgtypes.Key]*apply.PeerConfigState{},
 			},
 			args{
@@ -387,7 +387,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 					}).Return(nil)
 					return ret
 				},
-				newPKS(),
+				newPKS(nil),
 				map[wgtypes.Key]*apply.PeerConfigState{},
 			},
 			args{
@@ -426,9 +426,6 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 				var err error
 				dev, err = device.New(ctrl, tt.fields.config.Iface)
 				require.NoError(t, err)
-			}
-			if tt.fields.peerKnowledge != nil && tt.fields.peerKnowledge.access == nil {
-				tt.fields.peerKnowledge.access = &sync.RWMutex{}
 			}
 			if tt.fields.config == nil {
 				tt.fields.config = buildConfig(wgIface).Build()
