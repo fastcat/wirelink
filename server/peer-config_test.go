@@ -14,6 +14,8 @@ import (
 	"github.com/fastcat/wirelink/device"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/internal/mocks"
+	"github.com/fastcat/wirelink/internal/networking"
+	netmocks "github.com/fastcat/wirelink/internal/networking/mocks"
 	"github.com/fastcat/wirelink/internal/testutils"
 	factutils "github.com/fastcat/wirelink/internal/testutils/facts"
 	"github.com/fastcat/wirelink/signing"
@@ -430,6 +432,11 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 			if tt.fields.config == nil {
 				tt.fields.config = buildConfig(wgIface).Build()
 			}
+			env := &netmocks.Environment{}
+			env.Test(t)
+			env.On("Interfaces").Once().Return([]networking.Interface{}, nil)
+			ic, err := newInterfaceCache(env, tt.fields.config.Iface)
+			require.NoError(t, err)
 			s := &LinkServer{
 				stateAccess:   &sync.Mutex{},
 				config:        tt.fields.config,
@@ -439,7 +446,8 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 					psm:        &sync.Mutex{},
 					peerStates: tt.fields.peerStates,
 				},
-				signer: &signing.Signer{PublicKey: localKey},
+				signer:         &signing.Signer{PublicKey: localKey},
+				interfaceCache: ic,
 			}
 			s.configurePeersOnce(tt.args.newFacts, tt.args.dev, tt.args.startTime, tt.args.now)
 

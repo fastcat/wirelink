@@ -463,10 +463,15 @@ func TestLinkServer_chunkReceived(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			origBootID := uuid.Must(uuid.NewRandom())
+			env := &netmocks.Environment{}
+			env.On("Interfaces").Once().Return([]networking.Interface{}, nil)
+			ic, err := newInterfaceCache(env, "")
+			require.NoError(t, err)
 			s := &LinkServer{
-				ChunkPeriod: tt.args.chunkPeriod,
-				bootID:      origBootID,
-				stateAccess: &sync.Mutex{},
+				ChunkPeriod:    tt.args.chunkPeriod,
+				bootID:         origBootID,
+				stateAccess:    &sync.Mutex{},
+				interfaceCache: ic,
 			}
 			// make deep channels to avoid buffering problems
 			packets := make(chan *ReceivedFact, len(tt.packets))
@@ -636,8 +641,13 @@ func TestLinkServer_chunkReceived_slow(t *testing.T) {
 			}
 			t.Logf("using CI scale: %d", testutils.CIScaleFactor)
 
+			env := &netmocks.Environment{}
+			env.On("Interfaces").Once().Return([]networking.Interface{}, nil)
+			ic, err := newInterfaceCache(env, "")
+			require.NoError(t, err)
 			s := &LinkServer{
-				ChunkPeriod: tt.args.chunkPeriod * testutils.CIScaleFactorDuration,
+				ChunkPeriod:    tt.args.chunkPeriod * testutils.CIScaleFactorDuration,
+				interfaceCache: ic,
 			}
 			// for this test, use the same limited buffer for the incoming packets as
 			// the real server
@@ -1019,15 +1029,18 @@ func TestLinkServer_processOneChunk(t *testing.T) {
 			tt.fields.net.WithKnownInterfaces()
 			dev, err := device.New(ctrl, tt.fields.config.Iface)
 			require.NoError(t, err)
+			ic, err := newInterfaceCache(tt.fields.net, tt.fields.config.Iface)
+			require.NoError(t, err)
 			s := &LinkServer{
-				stateAccess:   &sync.Mutex{},
-				config:        tt.fields.config,
-				net:           tt.fields.net,
-				dev:           dev,
-				pl:            newPeerLookup(),
-				peerKnowledge: tt.fields.peerKnowledge,
-				FactTTL:       DefaultFactTTL,
-				ChunkPeriod:   DefaultChunkPeriod,
+				stateAccess:    &sync.Mutex{},
+				config:         tt.fields.config,
+				net:            tt.fields.net,
+				dev:            dev,
+				pl:             newPeerLookup(),
+				peerKnowledge:  tt.fields.peerKnowledge,
+				FactTTL:        DefaultFactTTL,
+				ChunkPeriod:    DefaultChunkPeriod,
+				interfaceCache: ic,
 			}
 			if s.peerKnowledge == nil {
 				s.peerKnowledge = newPKS(s.pl)

@@ -58,13 +58,7 @@ type LinkServer struct {
 	ChunkPeriod time.Duration
 	AlivePeriod time.Duration
 
-	// cache of local interface addresses, used to determine if a peer endpoint is
-	// usable, to avoid trying to contact a peer through the tunnel itself.
-
-	// IPNets assigned to the tunnel
-	tunnelIPNets []net.IPNet
-	// IPNets for local network interfaces other than the tunnel
-	hostIPNets []net.IPNet
+	interfaceCache *interfaceCache
 }
 
 // MaxChunk is the max number of packets to receive before processing them
@@ -105,6 +99,11 @@ func Create(
 		Zone: config.Iface,
 	}
 
+	ic, err := newInterfaceCache(env, config.Iface)
+	if err != nil {
+		return nil, err
+	}
+
 	eg, egCtx := errgroup.WithContext(context.Background())
 	ctx, cancel := context.WithCancel(egCtx)
 
@@ -133,6 +132,8 @@ func Create(
 		FactTTL:     DefaultFactTTL,
 		ChunkPeriod: DefaultChunkPeriod,
 		AlivePeriod: DefaultAlivePeriod,
+
+		interfaceCache: ic,
 	}
 
 	return ret, nil
