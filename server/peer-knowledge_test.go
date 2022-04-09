@@ -36,7 +36,7 @@ func (pks *peerKnowledgeSet) mockPeerAlive(peer wgtypes.Key, expires time.Time, 
 
 // mockPeerKnows updates the peerKnowledgeSet to know that the given peer knows the given fact
 func (pks *peerKnowledgeSet) mockPeerKnows(peer *wgtypes.Key, f *fact.Fact) *peerKnowledgeSet {
-	pks.upsertSent(&wgtypes.Peer{PublicKey: *peer}, f)
+	pks.sent(&wgtypes.Peer{PublicKey: *peer}, f)
 	return pks
 }
 
@@ -45,7 +45,7 @@ func (pks *peerKnowledgeSet) mockPeerKnowsLocalAlive(remote, local *wgtypes.Key,
 	return pks.mockPeerKnows(remote, facts.AliveFactFull(local, expires, *bootID))
 }
 
-func Test_peerKnowledgeSet_upsertReceived(t *testing.T) {
+func Test_peerKnowledgeSet_received(t *testing.T) {
 	now := time.Now()
 	oldExpires := now.Add(DefaultFactTTL / 2)
 	expires := now.Add(DefaultFactTTL)
@@ -152,14 +152,14 @@ func Test_peerKnowledgeSet_upsertReceived(t *testing.T) {
 				bootIDs: tt.fields.bootIDs,
 				pl:      pl,
 			}
-			assert.Equal(t, tt.want, pks.upsertReceived(tt.args.rf))
+			assert.Equal(t, tt.want, pks.received(tt.args.rf))
 			assert.Equal(t, tt.wantFields.data, pks.data)
 			assert.Equal(t, tt.wantFields.bootIDs, pks.bootIDs)
 		})
 	}
 }
 
-func Test_peerKnowledgeSet_upsertSent(t *testing.T) {
+func Test_peerKnowledgeSet_sent(t *testing.T) {
 	type fields struct {
 		data    map[peerKnowledgeKey]time.Time
 		bootIDs map[wgtypes.Key]uuid.UUID
@@ -183,7 +183,7 @@ func Test_peerKnowledgeSet_upsertSent(t *testing.T) {
 				data:    tt.fields.data,
 				bootIDs: tt.fields.bootIDs,
 			}
-			assert.Equal(t, tt.want, pks.upsertSent(tt.args.peer, tt.args.f))
+			assert.Equal(t, tt.want, pks.sent(tt.args.peer, tt.args.f))
 			assert.Equal(t, tt.wantFields.data, pks.data)
 			assert.Equal(t, tt.wantFields.bootIDs, pks.bootIDs)
 		})

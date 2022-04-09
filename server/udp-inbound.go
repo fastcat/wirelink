@@ -288,7 +288,7 @@ func (s *LinkServer) processOneChunk(
 	// add all the new not-expired and _trusted_ facts
 	for _, rf := range chunk {
 		// add to what the peer knows, even if we otherwise discard the information
-		s.peerKnowledge.upsertReceived(rf)
+		s.peerKnowledge.received(rf)
 
 		if now.After(rf.fact.Expires) {
 			continue

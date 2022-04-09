@@ -157,7 +157,7 @@ func (s *LinkServer) prepareFactsForPeer(p *wgtypes.Peer, facts []*fact.Fact, ga
 			log.Debug("Peer %s needs %v", s.peerName(p.PublicKey), f)
 			// assume we will successfully send and peer will accept the info
 			// if these assumptions are wrong, re-sending more often is unlikely to help
-			s.peerKnowledge.upsertSent(p, f)
+			s.peerKnowledge.sent(p, f)
 		}
 	}
 }
@@ -186,7 +186,7 @@ func (s *LinkServer) addPingFor(p *wgtypes.Peer, ping *fact.Fact, ga *fact.Group
 	} else if addedPing {
 		// assume we will successfully send and peer will accept the info
 		// if these assumptions are wrong, re-sending more often is unlikely to help
-		s.peerKnowledge.upsertSent(p, ping)
+		s.peerKnowledge.sent(p, ping)
 	}
 }
 
