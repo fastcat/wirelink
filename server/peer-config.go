@@ -324,8 +324,6 @@ func (s *LinkServer) deletePeers(
 	}
 
 	if len(cfg.Peers) != 0 {
-		s.stateAccess.Lock()
-		defer s.stateAccess.Unlock()
 		err = s.dev.ConfigureDevice(cfg)
 		if err != nil {
 			log.Error("Unable to delete peers: %v", err)
