@@ -24,9 +24,9 @@ func NewLRUMap[K comparable, V any](size, ratio int) *LRUMap[K, V] {
 	return &LRUMap[K, V]{m: make(map[K]*lruItem[V], size), ratio: ratio}
 }
 
+// trim removes excess items from the map based on LRU data. It must be called
+// with mu Lock()ed.
 func (m *LRUMap[K, V]) trim() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
 	t := atomic.LoadInt32(&m.n) - int32(len(m.m)*m.ratio)
 	if t < 0 {
 		return
@@ -66,14 +66,15 @@ func (m *LRUMap[K, V]) Set(k K, v V) {
 	}
 }
 
-// func Memoize[K comparable, V any](size, ratio int, f func(K) V) func(K) V {
-// 	m := NewLRUMap[K, V](size, ratio)
-// 	return func(k K) V {
-// 		if v, ok := m.Get(k); ok {
-// 			return v
-// 		}
-// 		v := f(k)
-// 		m.Set(k, v)
-// 		return v
-// 	}
-// }
+// Memoize uses an LRUMap to memoize the given function.
+func Memoize[K comparable, V any](size, ratio int, f func(K) V) func(K) V {
+	m := NewLRUMap[K, V](size, ratio)
+	return func(k K) V {
+		if v, ok := m.Get(k); ok {
+			return v
+		}
+		v := f(k)
+		m.Set(k, v)
+		return v
+	}
+}
