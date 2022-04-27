@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -30,7 +29,6 @@ import (
 // sending/receiving on a socket
 type LinkServer struct {
 	bootIDValue atomic.Value
-	stateAccess *sync.Mutex
 	config      *config.Server
 	net         networking.Environment
 	conn        networking.UDPConn
@@ -111,12 +109,11 @@ func Create(
 	pl := newPeerLookup()
 
 	ret := &LinkServer{
-		config:      config,
-		net:         env,
-		conn:        nil, // this will be filled in by `Start()`
-		addr:        addr,
-		dev:         dev,
-		stateAccess: new(sync.Mutex),
+		config: config,
+		net:    env,
+		conn:   nil, // this will be filled in by `Start()`
+		addr:   addr,
+		dev:    dev,
 
 		eg:     eg,
 		ctx:    ctx,
@@ -146,13 +143,6 @@ func (s *LinkServer) newBootID() {
 
 func (s *LinkServer) bootID() uuid.UUID {
 	return s.bootIDValue.Load().(uuid.UUID)
-}
-
-// MutateConfig allows adjusting the server config with an appropriate lock held
-func (s *LinkServer) MutateConfig(f func(c *config.Server)) {
-	s.stateAccess.Lock()
-	defer s.stateAccess.Unlock()
-	f(s.config)
 }
 
 // Start makes the server open its listen socket and start all the goroutines
@@ -275,8 +265,6 @@ func (s *LinkServer) Stop() {
 // Close stops the server and closes all resources
 func (s *LinkServer) Close() {
 	s.Stop()
-	s.stateAccess.Lock()
-	defer s.stateAccess.Unlock()
 	if s.dev != nil {
 		if err := s.dev.Close(); err != nil {
 			log.Error("Failed to close device interface: %v", err)

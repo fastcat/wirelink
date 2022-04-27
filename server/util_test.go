@@ -139,9 +139,8 @@ func TestLinkServer_formatFacts(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &LinkServer{
-				config:      tt.fields.config,
-				peerConfig:  tt.fields.peerConfig,
-				stateAccess: &sync.Mutex{},
+				config:     tt.fields.config,
+				peerConfig: tt.fields.peerConfig,
 				// just a placeholder for code that wants to check the local public key
 				signer: &signing.Signer{},
 			}

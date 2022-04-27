@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
-	"sync"
 	"testing"
 	"time"
 
@@ -469,7 +468,6 @@ func TestLinkServer_chunkReceived(t *testing.T) {
 			require.NoError(t, err)
 			s := &LinkServer{
 				ChunkPeriod:    tt.args.chunkPeriod,
-				stateAccess:    &sync.Mutex{},
 				interfaceCache: ic,
 			}
 			s.bootIDValue.Store(origBootID)

@@ -288,9 +288,8 @@ func Test_Cmd_VNet1(t *testing.T) {
 	host1.Interface("wg0").(*vnet.Tunnel).DelPeer(c2pub.String())
 	// have to remove it from the config too else it'll keep getting broadcast,
 	// and will get added back
-	host1cmd.Server.MutateConfig(func(c *config.Server) {
-		delete(host1cmd.Config.Peers, c2pub)
-	})
+	// TODO: this will trigger the race detector sometimes
+	delete(host1cmd.Config.Peers, c2pub)
 	// coverage: add a bogus third client to client1
 	// both of these should be removed
 	_, badPub := testutils.MustKeyPair(t)

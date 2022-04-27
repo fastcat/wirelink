@@ -93,7 +93,6 @@ func TestCreate(t *testing.T) {
 				// assert.Equal(t, tt.want.net, got.net)
 				assert.Equal(t, tt.want.conn, got.conn)
 				assert.Equal(t, tt.want.addr, got.addr)
-				assert.NotNil(t, got.stateAccess)
 				assert.NotNil(t, got.eg)
 				assert.NotNil(t, got.ctx)
 				assert.NotNil(t, got.cancel)

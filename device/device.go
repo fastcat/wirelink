@@ -50,6 +50,8 @@ func Take(
 // Close closes the underlying control interface, if the Device owns it. It is
 // not safe to call Close if other goroutines using the device are active.
 func (d *Device) Close() error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
 	if d.ownCtrl {
 		if err := d.ctrl.Close(); err != nil {
 			return err
