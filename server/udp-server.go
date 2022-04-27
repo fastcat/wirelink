@@ -18,6 +18,7 @@ import (
 	"github.com/fastcat/wirelink/device"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/internal"
+	"github.com/fastcat/wirelink/internal/channels"
 	"github.com/fastcat/wirelink/internal/networking"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/signing"
@@ -178,8 +179,13 @@ func (s *LinkServer) Start() (err error) {
 
 	// ok, network resources are initialized, start all the goroutines!
 
+	packets := make(chan *networking.UDPPacket, 1)
+	s.eg.Go(func() error {
+		return s.conn.ReadPackets(s.ctx, fact.UDPMaxSafePayload*2, packets)
+	})
+
 	received := make(chan *ReceivedFact, MaxChunk)
-	s.eg.Go(func() error { return s.readPackets(received) })
+	s.eg.Go(channels.FiltererMany(packets, s.parsePacket, received))
 
 	newFacts := make(chan []*ReceivedFact, 1)
 	s.eg.Go(func() error { return s.chunkReceived(received, newFacts, MaxChunk) })
@@ -188,15 +194,13 @@ func (s *LinkServer) Start() (err error) {
 	factsRefreshedForBroadcast := make(chan []*fact.Fact, 1)
 	factsRefreshedForConfig := make(chan []*fact.Fact, 1)
 
-	s.eg.Go(func() error { return s.processChunks(newFacts, factsRefreshed) })
+	s.eg.Go(channels.Filterer(newFacts, s.newChunkState().processChunk, factsRefreshed))
 
-	s.eg.Go(func() error {
-		// TODO: the multiplex / racing makes reliable acceptance tests hard,
-		// as it can cause it to take a second fact ttl for things to expire
-		return multiplexFactChunks(factsRefreshed, factsRefreshedForBroadcast, factsRefreshedForConfig)
-	})
+	// TODO: the multiplex / racing makes reliable acceptance tests hard,
+	// as it can cause it to take a second fact ttl for things to expire
+	s.eg.Go(channels.Broadcaster(factsRefreshed, factsRefreshedForBroadcast, factsRefreshedForConfig))
 
-	s.eg.Go(func() error { return s.broadcastFactUpdates(factsRefreshedForBroadcast) })
+	s.eg.Go(channels.Processor(factsRefreshedForBroadcast, s.broadcastFactUpdatesOnce))
 
 	s.eg.Go(func() error { return s.configurePeers(factsRefreshedForConfig) })
 
@@ -221,22 +225,6 @@ func (s *LinkServer) RequestPrint(wait bool) {
 	if wait {
 		<-done
 	}
-}
-
-// multiplexFactChunks copies values from input to each output. It will only
-// work smoothly if the outputs are buffered so that it doesn't block much
-func multiplexFactChunks(input <-chan []*fact.Fact, outputs ...chan<- []*fact.Fact) error {
-	for _, output := range outputs {
-		defer close(output)
-	}
-
-	for chunk := range input {
-		for _, output := range outputs {
-			output <- chunk
-		}
-	}
-
-	return nil
 }
 
 // RequestStop asks the server to stop, but does not wait for this process to complete

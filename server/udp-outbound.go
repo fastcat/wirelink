@@ -18,24 +18,15 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) error {
-	// TODO: naming here is confusing with the `newFacts` channel
-	for newFacts := range factsRefreshed {
-		dev, err := s.dev.State()
-		if err != nil {
-			// this probably means the interface is down
-			// the log message will be printed by the main app as it exits
-			return fmt.Errorf("unable to load device state, giving up: %w", err)
-		}
-
-		s.broadcastFactUpdatesOnce(newFacts, dev)
+func (s *LinkServer) broadcastFactUpdatesOnce(newFacts []*fact.Fact) error {
+	now := time.Now()
+	dev, err := s.dev.State()
+	if err != nil {
+		// this probably means the interface is down
+		// the log message will be printed by the main app as it exits
+		return fmt.Errorf("unable to load device state, giving up: %w", err)
 	}
 
-	return nil
-}
-
-func (s *LinkServer) broadcastFactUpdatesOnce(newFacts []*fact.Fact, dev *wgtypes.Device) {
-	now := time.Now()
 	filteredFacts := s.factsToSend(newFacts, dev)
 	_, errs := s.broadcastFacts(dev.PublicKey, dev.Peers, filteredFacts, now, s.ChunkPeriod-time.Second)
 	if errs != nil {
@@ -45,7 +36,9 @@ func (s *LinkServer) broadcastFactUpdatesOnce(newFacts []*fact.Fact, dev *wgtype
 		} else {
 			log.Error("Failed to send some facts: %v", errs)
 		}
+		// don't return these, we don't want to abort on this
 	}
+	return nil
 }
 
 func (s *LinkServer) factsToSend(facts []*fact.Fact, dev *wgtypes.Device) []*fact.Fact {

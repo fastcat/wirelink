@@ -366,15 +366,8 @@ func TestLinkServer_processSignedGroup(t *testing.T) {
 				signer:     tt.fields.signer,
 				peerConfig: newPeerConfigSet(),
 			}
-			// we make a channel with a huge buffer so that we can do this linearly
-			// and not have goroutines and waits
-			packetsChan := make(chan *ReceivedFact, 100)
-			tt.assertion(t, s.processSignedGroup(tt.args.f, tt.args.source, now, packetsChan))
-			close(packetsChan)
-			packets := make([]*ReceivedFact, 0, 100)
-			for p := range packetsChan {
-				packets = append(packets, p)
-			}
+			packets, err := s.processSignedGroup(tt.args.f, tt.args.source, now)
+			tt.assertion(t, err)
 			assert.Equal(t, tt.wantPackets, packets)
 		})
 	}
