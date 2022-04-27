@@ -1032,7 +1032,6 @@ func TestLinkServer_processOneChunk(t *testing.T) {
 			ic, err := newInterfaceCache(tt.fields.net, tt.fields.config.Iface)
 			require.NoError(t, err)
 			s := &LinkServer{
-				stateAccess:    &sync.Mutex{},
 				config:         tt.fields.config,
 				net:            tt.fields.net,
 				dev:            dev,

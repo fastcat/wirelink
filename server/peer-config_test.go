@@ -438,7 +438,6 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 			ic, err := newInterfaceCache(env, tt.fields.config.Iface)
 			require.NoError(t, err)
 			s := &LinkServer{
-				stateAccess:   &sync.Mutex{},
 				config:        tt.fields.config,
 				dev:           dev,
 				peerKnowledge: tt.fields.peerKnowledge,
@@ -641,9 +640,8 @@ func TestLinkServer_deletePeers(t *testing.T) {
 			dev, err := device.New(ctrl, wgIface)
 			require.NoError(t, err)
 			s := &LinkServer{
-				stateAccess: &sync.Mutex{},
-				config:      tt.fields.config,
-				dev:         dev,
+				config: tt.fields.config,
+				dev:    dev,
 				peerConfig: &peerConfigSet{
 					peerStates: tt.fields.peerStates,
 					psm:        &sync.Mutex{},
