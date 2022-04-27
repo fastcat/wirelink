@@ -354,11 +354,6 @@ func (s *LinkServer) configurePeer(
 	peerName := s.peerName(peer.PublicKey)
 	state = inputState.EnsureNotNil()
 
-	// TODO: make the lock window here smaller
-	// only want to take the lock for the regions where we change config
-	s.stateAccess.Lock()
-	defer s.stateAccess.Unlock()
-
 	var pcfg *wgtypes.PeerConfig
 	logged := false
 
