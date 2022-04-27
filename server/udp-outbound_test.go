@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"net"
 	"reflect"
-	"sync"
 	"testing"
 	"time"
 
@@ -482,8 +481,7 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 				peerKnowledge: tt.fields.peerKnowledge,
 				signer:        tt.fields.signer,
 
-				stateAccess: &sync.Mutex{},
-				peerConfig:  newPeerConfigSet(),
+				peerConfig: newPeerConfigSet(),
 
 				FactTTL:     DefaultFactTTL,
 				ChunkPeriod: DefaultChunkPeriod,
