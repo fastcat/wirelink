@@ -154,9 +154,8 @@ func TestLinkServer_shouldSendTo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &LinkServer{
-				config:      tt.fields.config,
-				stateAccess: &sync.Mutex{},
-				peerConfig:  newPeerConfigSet(),
+				config:     tt.fields.config,
+				peerConfig: newPeerConfigSet(),
 				// just a placeholder for code that wants to check the local public key
 				signer: &signing.Signer{},
 			}
