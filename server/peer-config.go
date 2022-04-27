@@ -74,6 +74,8 @@ func (s *LinkServer) collectPeerFlags(
 		validPeers[k] = true
 	}
 
+	bootID := s.bootID()
+
 	// loop over the local peers once to update their current state flags
 	// before we modify anything. this is important for some race conditions
 	// where a trust source is going offline.
@@ -107,7 +109,7 @@ func (s *LinkServer) collectPeerFlags(
 			s.peerConfigName(dev.PublicKey),
 			true,
 			now.Add(s.FactTTL),
-			&s.bootID,
+			&bootID,
 			now,
 			factsByPeer[dev.PublicKey],
 			// quiet: no reason to log "changes" to the local peer

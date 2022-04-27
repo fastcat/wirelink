@@ -210,7 +210,7 @@ func (s *LinkServer) broadcastFacts(
 	ping := &fact.Fact{
 		Subject:   &fact.PeerSubject{Key: self},
 		Attribute: fact.AttributeAlive,
-		Value:     &fact.UUIDValue{UUID: s.bootID},
+		Value:     &fact.UUIDValue{UUID: s.bootID()},
 		Expires:   now.Add(s.FactTTL),
 	}
 	s.stateAccess.Unlock()

@@ -448,6 +448,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 				signer:         &signing.Signer{PublicKey: localKey},
 				interfaceCache: ic,
 			}
+			s.newBootID()
 			s.configurePeersOnce(tt.args.newFacts, tt.args.dev, tt.args.startTime, tt.args.now)
 
 			if ctrl != nil {

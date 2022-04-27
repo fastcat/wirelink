@@ -476,7 +476,6 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 			dev, err := device.New(ctrl, tt.fields.config.Iface)
 			require.NoError(t, err)
 			s := &LinkServer{
-				bootID:        tt.fields.bootID,
 				config:        tt.fields.config,
 				conn:          conn,
 				addr:          tt.fields.addr,
@@ -490,6 +489,7 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 				FactTTL:     DefaultFactTTL,
 				ChunkPeriod: DefaultChunkPeriod,
 			}
+			s.bootIDValue.Store(tt.fields.bootID)
 			gotPacketsSent, gotSendErrors := s.broadcastFacts(tt.args.self, tt.args.peers, tt.args.facts, tt.args.now, tt.args.timeout)
 			assert.Equal(t, tt.wantPacketsSent, gotPacketsSent)
 			assert.Equal(t, tt.wantSendErrors, gotSendErrors)

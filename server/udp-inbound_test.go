@@ -469,10 +469,10 @@ func TestLinkServer_chunkReceived(t *testing.T) {
 			require.NoError(t, err)
 			s := &LinkServer{
 				ChunkPeriod:    tt.args.chunkPeriod,
-				bootID:         origBootID,
 				stateAccess:    &sync.Mutex{},
 				interfaceCache: ic,
 			}
+			s.bootIDValue.Store(origBootID)
 			// make deep channels to avoid buffering problems
 			packets := make(chan *ReceivedFact, len(tt.packets))
 			// need +1 because there is an extra empty chunk sent at start
@@ -497,9 +497,9 @@ func TestLinkServer_chunkReceived(t *testing.T) {
 			}
 			assert.Equal(t, tt.wantChunks, gotChunks)
 			if tt.wantBootIDChange {
-				assert.NotEqual(t, origBootID, s.bootID)
+				assert.NotEqual(t, origBootID, s.bootID())
 			} else {
-				assert.Equal(t, origBootID, s.bootID)
+				assert.Equal(t, origBootID, s.bootID())
 			}
 		})
 	}

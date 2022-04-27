@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -28,7 +29,7 @@ import (
 // LinkServer represents the server component of wirelink
 // sending/receiving on a socket
 type LinkServer struct {
-	bootID      uuid.UUID
+	bootIDValue atomic.Value
 	stateAccess *sync.Mutex
 	config      *config.Server
 	net         networking.Environment
@@ -110,7 +111,6 @@ func Create(
 	pl := newPeerLookup()
 
 	ret := &LinkServer{
-		bootID:      uuid.Must(uuid.NewRandom()),
 		config:      config,
 		net:         env,
 		conn:        nil, // this will be filled in by `Start()`
@@ -135,15 +135,17 @@ func Create(
 
 		interfaceCache: ic,
 	}
+	ret.newBootID()
 
 	return ret, nil
 }
 
 func (s *LinkServer) newBootID() {
-	// have to lock to avoid a data race when reading this in `broadcastFacts`
-	s.stateAccess.Lock()
-	s.bootID = uuid.Must(uuid.NewRandom())
-	s.stateAccess.Unlock()
+	s.bootIDValue.Store(uuid.Must(uuid.NewRandom()))
+}
+
+func (s *LinkServer) bootID() uuid.UUID {
+	return s.bootIDValue.Load().(uuid.UUID)
 }
 
 // MutateConfig allows adjusting the server config with an appropriate lock held
