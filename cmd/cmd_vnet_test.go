@@ -168,7 +168,7 @@ func Test_Cmd_VNet1(t *testing.T) {
 			if printWithSignals {
 				c.sendPrintRequestSignal()
 			} else {
-				c.Server.RequestPrint()
+				c.Server.RequestPrint(true)
 			}
 			printWithSignals = !printWithSignals
 		}

@@ -46,8 +46,11 @@ FACTLOOP:
 
 			s.configurePeersOnce(facts, dev, startTime, now)
 
-		case <-s.printRequested:
+		case printDone := <-s.printRequested:
 			log.Info("%s", s.formatFacts(time.Now(), facts))
+			if printDone != nil {
+				close(printDone)
+			}
 		}
 	}
 

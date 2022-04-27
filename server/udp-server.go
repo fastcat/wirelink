@@ -47,8 +47,9 @@ type LinkServer struct {
 	peerConfig    *peerConfigSet
 	signer        *signing.Signer
 
-	// channel for asking it to print out its current info
-	printRequested chan struct{}
+	// channel for asking it to print out its current info. if a chan is passed,
+	// it will be closed when the print is complete
+	printRequested chan chan<- struct{}
 
 	// TODO: these should not be exported like this
 	// this is temporary to simplify acceptance tests
@@ -124,7 +125,7 @@ func Create(
 		peerKnowledge:  newPKS(pl),
 		peerConfig:     newPeerConfigSet(),
 		signer:         signing.New(devState.PrivateKey),
-		printRequested: make(chan struct{}, 1),
+		printRequested: make(chan chan<- struct{}, 1),
 
 		FactTTL:     DefaultFactTTL,
 		ChunkPeriod: DefaultChunkPeriod,
@@ -211,8 +212,15 @@ func (s *LinkServer) AddHandler(handler func(ctx context.Context) error) {
 }
 
 // RequestPrint asks the packet receiver to print out the full set of known facts (local and remote)
-func (s *LinkServer) RequestPrint() {
-	s.printRequested <- struct{}{}
+func (s *LinkServer) RequestPrint(wait bool) {
+	var done chan struct{}
+	if wait {
+		done = make(chan struct{})
+	}
+	s.printRequested <- done
+	if wait {
+		<-done
+	}
 }
 
 // multiplexFactChunks copies values from input to each output. It will only

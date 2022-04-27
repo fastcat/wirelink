@@ -15,7 +15,7 @@ func (w *WirelinkCmd) addPlatformSignalHandlers() {
 
 func (w *WirelinkCmd) handlePlatformSignal(sig os.Signal) bool {
 	if sig == syscall.SIGUSR1 {
-		w.Server.RequestPrint()
+		w.Server.RequestPrint(false)
 		return true
 	}
 	return false
