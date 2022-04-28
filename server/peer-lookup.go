@@ -34,21 +34,21 @@ func (pl *peerLookup) GetPeer(ip net.IP) (peer wgtypes.Key, ok bool) {
 	return
 }
 
-func (pl *peerLookup) GetIP(peer wgtypes.Key) net.IP {
-	pl.mu.RLock()
-	if ip, ok := pl.ip[peer]; ok {
-		pl.mu.RUnlock()
-		return ip
-	}
-	pl.mu.RUnlock()
-	pl.mu.Lock()
-	ip := autopeer.AutoAddress(peer)
-	var k ipBytes
-	copy(k[:], ip.To16())
-	pl.ip[peer] = ip
-	pl.p[k] = peer
-	return ip
-}
+// func (pl *peerLookup) GetIP(peer wgtypes.Key) net.IP {
+// 	pl.mu.RLock()
+// 	if ip, ok := pl.ip[peer]; ok {
+// 		pl.mu.RUnlock()
+// 		return ip
+// 	}
+// 	pl.mu.RUnlock()
+// 	pl.mu.Lock()
+// 	ip := autopeer.AutoAddress(peer)
+// 	var k ipBytes
+// 	copy(k[:], ip.To16())
+// 	pl.ip[peer] = ip
+// 	pl.p[k] = peer
+// 	return ip
+// }
 
 func (pl *peerLookup) addPeers(peers ...wgtypes.Peer) {
 	pl.mu.Lock()
