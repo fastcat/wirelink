@@ -67,24 +67,27 @@ func (m *LRUMap[K, V]) Get(k K) (v V, ok bool) {
 	if i == nil {
 		return
 	}
-	atomic.StoreInt32(&i.n, atomic.AddInt32(&m.n, 1))
+	nn := atomic.AddInt32(&m.n, 1)
+	atomic.StoreInt32(&i.n, nn)
+	// TODO: for the LRU map to behave well, that requires we trim on gets too,
+	// but that means we have to do more careful lock management here
 	return i.v, true
 }
 
 func (m *LRUMap[K, V]) Set(k K, v V) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	nn := atomic.AddInt32(&m.n, 1)
 	var i *lruItem[V]
 	if i = m.m[k]; i != nil {
 		i.v = v
-		atomic.StoreInt32(&i.n, nn)
+		atomic.StoreInt32(&i.n, atomic.AddInt32(&m.n, 1))
+		m.trim()
 	} else {
-		i = &lruItem[V]{v, nn}
+		// important to trim before adding, not after, so that size stays bounded,
+		// and important this comes before we increment `n`
+		m.trim()
+		i = &lruItem[V]{v, atomic.AddInt32(&m.n, 1)}
 		m.m[k] = i
-		if int(nn) > len(m.m)*m.ratio {
-			m.trim()
-		}
 	}
 }
 
