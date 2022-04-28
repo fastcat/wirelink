@@ -93,12 +93,12 @@ func (d *Device) State() (*wgtypes.Device, error) {
 
 // Refresh is like State(), but always re-reads the device state, even if it
 // isn't dirty.
-func (d *Device) Refresh() (*wgtypes.Device, error) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	_ = d.read()
-	return d.state, d.lastErr
-}
+// func (d *Device) Refresh() (*wgtypes.Device, error) {
+// 	d.mu.Lock()
+// 	defer d.mu.Unlock()
+// 	_ = d.read()
+// 	return d.state, d.lastErr
+// }
 
 // Dirty marks the device state dirty forcing the next read to refresh the data.
 func (d *Device) Dirty() {
