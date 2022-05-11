@@ -2,7 +2,6 @@ package server
 
 import (
 	"net"
-	"sync"
 	"testing"
 	"time"
 
@@ -354,7 +353,6 @@ func Test_peerKnowledgeSet_peerAlive(t *testing.T) {
 	type fields struct {
 		data    map[peerKnowledgeKey]time.Time
 		bootIDs map[wgtypes.Key]uuid.UUID
-		access  *sync.RWMutex
 	}
 	type args struct {
 		peer wgtypes.Key
