@@ -13,9 +13,9 @@ type Signer struct {
 }
 
 // New creates a new Signer using the given private key
-func New(privateKey *wgtypes.Key) *Signer {
+func New(privateKey wgtypes.Key) *Signer {
 	return &Signer{
-		privateKey: *privateKey,
+		privateKey: privateKey,
 		PublicKey:  privateKey.PublicKey(),
 	}
 }

@@ -25,27 +25,29 @@ func keyOf(f *fact.Fact, peer wgtypes.Key) peerKnowledgeKey {
 }
 
 type peerKnowledgeSet struct {
+	access sync.RWMutex
 	// data maps a PKK (fact key + source peer) to its expiration time for that peer
 	data    map[peerKnowledgeKey]time.Time
 	bootIDs map[wgtypes.Key]uuid.UUID
-	access  *sync.RWMutex
+	pl      *peerLookup
 }
 
-func newPKS() *peerKnowledgeSet {
+func newPKS(pl *peerLookup) *peerKnowledgeSet {
 	return &peerKnowledgeSet{
 		data:    make(map[peerKnowledgeKey]time.Time),
 		bootIDs: make(map[wgtypes.Key]uuid.UUID),
-		access:  new(sync.RWMutex),
+		pl:      pl,
 	}
 }
 
-// upsertReceived records a newly received fact, noting that the peer that sent it
-// to us knows it (if the source is valid for a peer in the lookup), returning
-// true if we recorded new information, or false if the source was invalid or
-// the info was otherwise rejected (e.g. an older expiration than what we already
-// knew the peer knows).
-func (pks *peerKnowledgeSet) upsertReceived(rf *ReceivedFact, pl peerLookup) bool {
-	peer, ok := pl.get(rf.source.IP)
+// received records a newly received fact, and thus that the peer who sent it
+// knows it (if the source is valid for a peer in the knowledge set).
+
+// Returns true if we recorded new information, or false if the source was
+// invalid or the info was otherwise rejected (e.g. an older expiration than
+// what we already knew the peer knows).
+func (pks *peerKnowledgeSet) received(rf *ReceivedFact) bool {
+	peer, ok := pks.pl.GetPeer(rf.source.IP)
 	if !ok {
 		return false
 	}
@@ -84,7 +86,12 @@ func (pks *peerKnowledgeSet) upsertReceived(rf *ReceivedFact, pl peerLookup) boo
 	return false
 }
 
-func (pks *peerKnowledgeSet) upsertSent(peer *wgtypes.Peer, f *fact.Fact) bool {
+// sent records that we sent a fact to a peer, and thus we assume that peer now
+// knows it until it expires.
+//
+// Returns true if we updated internal data, false if we already thought the
+// peer knew it with an equal or later expiration.
+func (pks *peerKnowledgeSet) sent(peer *wgtypes.Peer, f *fact.Fact) bool {
 	k := peerKnowledgeKey{
 		Key:  fact.KeyOf(f),
 		peer: peer.PublicKey,

@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,8 +15,10 @@ import (
 	"github.com/fastcat/wirelink/apply"
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/config"
+	"github.com/fastcat/wirelink/device"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/internal"
+	"github.com/fastcat/wirelink/internal/channels"
 	"github.com/fastcat/wirelink/internal/networking"
 	"github.com/fastcat/wirelink/log"
 	"github.com/fastcat/wirelink/signing"
@@ -27,17 +29,18 @@ import (
 // LinkServer represents the server component of wirelink
 // sending/receiving on a socket
 type LinkServer struct {
-	bootID      uuid.UUID
-	stateAccess *sync.Mutex
+	bootIDValue atomic.Value
 	config      *config.Server
 	net         networking.Environment
 	conn        networking.UDPConn
 	addr        net.UDPAddr
-	ctrl        internal.WgClient
+	dev         *device.Device
 
 	eg     *errgroup.Group
 	ctx    context.Context
 	cancel context.CancelFunc
+
+	pl *peerLookup
 
 	// peerKnowledgeSet tracks what is known by each peer to avoid sending them
 	// redundant information
@@ -45,8 +48,9 @@ type LinkServer struct {
 	peerConfig    *peerConfigSet
 	signer        *signing.Signer
 
-	// channel for asking it to print out its current info
-	printRequested chan struct{}
+	// channel for asking it to print out its current info. if a chan is passed,
+	// it will be closed when the print is complete
+	printRequested chan chan<- struct{}
 
 	// TODO: these should not be exported like this
 	// this is temporary to simplify acceptance tests
@@ -55,13 +59,7 @@ type LinkServer struct {
 	ChunkPeriod time.Duration
 	AlivePeriod time.Duration
 
-	// cache of local interface addresses, used to determine if a peer endpoint is
-	// usable, to avoid trying to contact a peer through the tunnel itself.
-
-	// IPNets assigned to the tunnel
-	tunnelIPNets []net.IPNet
-	// IPNets for local network interfaces other than the tunnel
-	hostIPNets []net.IPNet
+	interfaceCache *interfaceCache
 }
 
 // MaxChunk is the max number of packets to receive before processing them
@@ -86,69 +84,74 @@ func Create(
 	ctrl internal.WgClient,
 	config *config.Server,
 ) (*LinkServer, error) {
-	device, err := ctrl.Device(config.Iface)
+	dev, err := device.Take(ctrl, config.Iface)
 	if err != nil {
 		return nil, err
 	}
+	devState, _ := dev.State()
 	if config.Port <= 0 {
-		config.Port = device.ListenPort + 1
+		config.Port = devState.ListenPort + 1
 	}
 
-	ip := autopeer.AutoAddress(device.PublicKey)
+	ip := autopeer.AutoAddress(devState.PublicKey)
 	addr := net.UDPAddr{
 		IP:   ip,
 		Port: config.Port,
-		Zone: device.Name,
+		Zone: config.Iface,
+	}
+
+	ic, err := newInterfaceCache(env, config.Iface)
+	if err != nil {
+		return nil, err
 	}
 
 	eg, egCtx := errgroup.WithContext(context.Background())
 	ctx, cancel := context.WithCancel(egCtx)
 
+	pl := newPeerLookup()
+
 	ret := &LinkServer{
-		bootID:      uuid.Must(uuid.NewRandom()),
-		config:      config,
-		net:         env,
-		conn:        nil, // this will be filled in by `Start()`
-		addr:        addr,
-		ctrl:        ctrl,
-		stateAccess: new(sync.Mutex),
+		config: config,
+		net:    env,
+		conn:   nil, // this will be filled in by `Start()`
+		addr:   addr,
+		dev:    dev,
 
 		eg:     eg,
 		ctx:    ctx,
 		cancel: cancel,
 
-		peerKnowledge:  newPKS(),
+		pl: pl,
+
+		peerKnowledge:  newPKS(pl),
 		peerConfig:     newPeerConfigSet(),
-		signer:         signing.New(&device.PrivateKey),
-		printRequested: make(chan struct{}, 1),
+		signer:         signing.New(devState.PrivateKey),
+		printRequested: make(chan chan<- struct{}, 1),
 
 		FactTTL:     DefaultFactTTL,
 		ChunkPeriod: DefaultChunkPeriod,
 		AlivePeriod: DefaultAlivePeriod,
+
+		interfaceCache: ic,
 	}
+	ret.newBootID()
 
 	return ret, nil
 }
 
 func (s *LinkServer) newBootID() {
-	// have to lock to avoid a data race when reading this in `broadcastFacts`
-	s.stateAccess.Lock()
-	s.bootID = uuid.Must(uuid.NewRandom())
-	s.stateAccess.Unlock()
+	s.bootIDValue.Store(uuid.Must(uuid.NewRandom()))
 }
 
-// MutateConfig allows adjusting the server config with an appropriate lock held
-func (s *LinkServer) MutateConfig(f func(c *config.Server)) {
-	s.stateAccess.Lock()
-	defer s.stateAccess.Unlock()
-	f(s.config)
+func (s *LinkServer) bootID() uuid.UUID {
+	return s.bootIDValue.Load().(uuid.UUID)
 }
 
 // Start makes the server open its listen socket and start all the goroutines
 // to receive and process packets
 func (s *LinkServer) Start() (err error) {
 	var device *wgtypes.Device
-	device, err = s.deviceState()
+	device, err = s.dev.State()
 	if err != nil {
 		return fmt.Errorf("unable to load device state to initialize server: %w", err)
 	}
@@ -160,7 +163,7 @@ func (s *LinkServer) Start() (err error) {
 		log.Info("Configured IPv6-LL address on local interface")
 	}
 
-	if peerips, err := apply.EnsurePeersAutoIP(s.ctrl, device); err != nil {
+	if peerips, err := s.dev.EnsurePeersAutoIP(); err != nil {
 		return err
 	} else if peerips > 0 {
 		log.Info("Added IPv6-LL for %d peers", peerips)
@@ -176,8 +179,13 @@ func (s *LinkServer) Start() (err error) {
 
 	// ok, network resources are initialized, start all the goroutines!
 
+	packets := make(chan *networking.UDPPacket, 1)
+	s.eg.Go(func() error {
+		return s.conn.ReadPackets(s.ctx, fact.UDPMaxSafePayload*2, packets)
+	})
+
 	received := make(chan *ReceivedFact, MaxChunk)
-	s.eg.Go(func() error { return s.readPackets(received) })
+	s.eg.Go(channels.FiltererMany(packets, s.parsePacket, received))
 
 	newFacts := make(chan []*ReceivedFact, 1)
 	s.eg.Go(func() error { return s.chunkReceived(received, newFacts, MaxChunk) })
@@ -186,15 +194,13 @@ func (s *LinkServer) Start() (err error) {
 	factsRefreshedForBroadcast := make(chan []*fact.Fact, 1)
 	factsRefreshedForConfig := make(chan []*fact.Fact, 1)
 
-	s.eg.Go(func() error { return s.processChunks(newFacts, factsRefreshed) })
+	s.eg.Go(channels.Filterer(newFacts, s.newChunkState().processChunk, factsRefreshed))
 
-	s.eg.Go(func() error {
-		// TODO: the multiplex / racing makes reliable acceptance tests hard,
-		// as it can cause it to take a second fact ttl for things to expire
-		return multiplexFactChunks(factsRefreshed, factsRefreshedForBroadcast, factsRefreshedForConfig)
-	})
+	// TODO: the multiplex / racing makes reliable acceptance tests hard,
+	// as it can cause it to take a second fact ttl for things to expire
+	s.eg.Go(channels.Broadcaster(factsRefreshed, factsRefreshedForBroadcast, factsRefreshedForConfig))
 
-	s.eg.Go(func() error { return s.broadcastFactUpdates(factsRefreshedForBroadcast) })
+	s.eg.Go(channels.Processor(factsRefreshedForBroadcast, s.broadcastFactUpdatesOnce))
 
 	s.eg.Go(func() error { return s.configurePeers(factsRefreshedForConfig) })
 
@@ -210,24 +216,15 @@ func (s *LinkServer) AddHandler(handler func(ctx context.Context) error) {
 }
 
 // RequestPrint asks the packet receiver to print out the full set of known facts (local and remote)
-func (s *LinkServer) RequestPrint() {
-	s.printRequested <- struct{}{}
-}
-
-// multiplexFactChunks copies values from input to each output. It will only
-// work smoothly if the outputs are buffered so that it doesn't block much
-func multiplexFactChunks(input <-chan []*fact.Fact, outputs ...chan<- []*fact.Fact) error {
-	for _, output := range outputs {
-		defer close(output)
+func (s *LinkServer) RequestPrint(wait bool) {
+	var done chan struct{}
+	if wait {
+		done = make(chan struct{})
 	}
-
-	for chunk := range input {
-		for _, output := range outputs {
-			output <- chunk
-		}
+	s.printRequested <- done
+	if wait {
+		<-done
 	}
-
-	return nil
 }
 
 // RequestStop asks the server to stop, but does not wait for this process to complete
@@ -264,11 +261,11 @@ func (s *LinkServer) Stop() {
 // Close stops the server and closes all resources
 func (s *LinkServer) Close() {
 	s.Stop()
-	s.stateAccess.Lock()
-	defer s.stateAccess.Unlock()
-	if s.ctrl != nil {
-		s.ctrl.Close()
-		s.ctrl = nil
+	if s.dev != nil {
+		if err := s.dev.Close(); err != nil {
+			log.Error("Failed to close device interface: %v", err)
+		}
+		s.dev = nil
 	}
 
 	if s.net != nil {

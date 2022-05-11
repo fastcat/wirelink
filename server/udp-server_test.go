@@ -67,7 +67,7 @@ func TestCreate(t *testing.T) {
 					Port: p + 1,
 					Zone: wgIface,
 				},
-				signer: signing.New(&privateKey),
+				signer: signing.New(privateKey),
 			},
 			require.NoError,
 		},
@@ -78,7 +78,10 @@ func TestCreate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ctrl := tt.args.ctrl(t)
 			ctrl.Test(t)
-			got, err := Create(nil, ctrl, tt.args.config)
+			env := &netmocks.Environment{}
+			env.Test(t)
+			env.On("Interfaces").Once().Return([]networking.Interface{}, nil)
+			got, err := Create(env, ctrl, tt.args.config)
 			tt.assertion(t, err)
 			if tt.want == nil {
 				assert.Nil(t, got)
@@ -86,10 +89,10 @@ func TestCreate(t *testing.T) {
 				require.NotNil(t, got)
 				// can't check the whole linkserver object
 				assert.Equal(t, tt.want.config, got.config)
-				assert.Equal(t, tt.want.net, got.net)
+				assert.Equal(t, env, got.net)
+				// assert.Equal(t, tt.want.net, got.net)
 				assert.Equal(t, tt.want.conn, got.conn)
 				assert.Equal(t, tt.want.addr, got.addr)
-				assert.NotNil(t, got.stateAccess)
 				assert.NotNil(t, got.eg)
 				assert.NotNil(t, got.ctx)
 				assert.NotNil(t, got.cancel)
@@ -129,12 +132,14 @@ func TestLifecycle_Empty(t *testing.T) {
 		Iface: wgIface,
 	}
 
-	s, err := Create(nil, ctrl, cfg)
+	env := &netmocks.Environment{}
+	env.Test(t)
+	env.On("Interfaces").Once().Return([]networking.Interface{}, nil)
+	env.On("Close").Once().Return(nil)
+
+	s, err := Create(env, ctrl, cfg)
 	require.NoError(t, err)
 	require.NotNil(t, s)
-
-	env := &netmocks.Environment{}
-	env.On("Close").Once().Return(nil)
 
 	mockEth := env.WithInterface(ethIface)
 	mockEth.WithAddrs(ethIP4)

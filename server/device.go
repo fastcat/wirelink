@@ -14,14 +14,6 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-// deviceState does a mutex-protected access to read the current state of the
-// wireguard device
-func (s *LinkServer) deviceState() (dev *wgtypes.Device, err error) {
-	s.stateAccess.Lock()
-	defer s.stateAccess.Unlock()
-	return s.ctrl.Device(s.config.Iface)
-}
-
 func (s *LinkServer) collectFacts(dev *wgtypes.Device, now time.Time) (ret []*fact.Fact, err error) {
 	log.Debug("Collecting facts...")
 
@@ -175,57 +167,12 @@ func (s *LinkServer) handlePeerConfigEndpoints(
 	return
 }
 
-func (s *LinkServer) updateInterfaceCache() {
-	// TODO: DeviceFacts loads this info too
-	s.stateAccess.Lock()
-	defer s.stateAccess.Unlock()
-
-	ifaces, err := s.net.Interfaces()
-	if err != nil {
-		log.Error("unable to load network interfaces: %v", err)
-		// don't abort the caller, continue with whatever info we have from last time
-		return
-	}
-	s.tunnelIPNets = s.tunnelIPNets[:0]
-	s.hostIPNets = s.hostIPNets[:0]
-	for _, iface := range ifaces {
-		if addrs, err := iface.Addrs(); err != nil {
-			log.Error("unable to fetch addresses from %s: %v", iface.Name(), err)
-		} else if iface.Name() == s.config.Iface {
-			s.tunnelIPNets = append(s.tunnelIPNets, addrs...)
-		} else {
-			s.hostIPNets = append(s.hostIPNets, addrs...)
-		}
-	}
-}
-
 func (s *LinkServer) isUsablePeerEndpointLocked(f *fact.Fact) bool {
 	ipv, ok := f.Value.(*fact.IPPortValue)
 	if !ok {
 		return false
 	}
 
-	// this must be called with stateAccess Locked!
-	// s.stateAccess.Lock()
-	// defer s.stateAccess.Unlock()
-
-	// a bad endpoint is one that matches a tunnel network but not a host network,
-	// i.e. it would definitely go through the tunnel.
-	isGood := true
-	for _, ipn := range s.tunnelIPNets {
-		if ipn.Contains(ipv.IP) {
-			isGood = false
-			break
-		}
-	}
-	if isGood {
-		return true
-	}
-	for _, ipn := range s.hostIPNets {
-		if ipn.Contains(ipv.IP) {
-			isGood = true
-			break
-		}
-	}
-	return isGood
+	// endpoints that we expect to route through the tunnel should not be used
+	return !s.interfaceCache.WillTunnel(ipv.IP)
 }

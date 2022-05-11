@@ -16,8 +16,8 @@ func TestSignAndVerify(t *testing.T) {
 	key1, pubkey1 := testutils.MustKeyPair(t)
 	key2, pubkey2 := testutils.MustKeyPair(t)
 
-	signer1 := New(&key1)
-	signer2 := New(&key2)
+	signer1 := New(key1)
+	signer2 := New(key2)
 
 	sk1, err := signer1.sharedKey(&pubkey2)
 	require.NoError(t, err)
@@ -59,10 +59,10 @@ func TestSignErrors(t *testing.T) {
 	var badKey wgtypes.Key
 	var badPub wgtypes.Key
 	goodKey, _ := testutils.MustKeyPair(t)
-	signer := New(&badKey)
+	signer := New(badKey)
 	_, err := signer.sharedKey(&badPub)
 	assert.Error(t, err)
-	signer = New(&goodKey)
+	signer = New(goodKey)
 	_, err = signer.sharedKey(&badPub)
 	assert.Error(t, err)
 }

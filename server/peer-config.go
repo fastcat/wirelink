@@ -37,7 +37,7 @@ FACTLOOP:
 			now := time.Now()
 			log.Debug("Got a new fact set of length %d", len(facts))
 
-			dev, err := s.deviceState()
+			dev, err := s.dev.State()
 			if err != nil {
 				// this probably means the interface is down
 				// the log message will be printed by the main app as it exits
@@ -46,8 +46,11 @@ FACTLOOP:
 
 			s.configurePeersOnce(facts, dev, startTime, now)
 
-		case <-s.printRequested:
+		case printDone := <-s.printRequested:
 			log.Info("%s", s.formatFacts(time.Now(), facts))
+			if printDone != nil {
+				close(printDone)
+			}
 		}
 	}
 
@@ -73,6 +76,8 @@ func (s *LinkServer) collectPeerFlags(
 	for k := range s.config.Peers {
 		validPeers[k] = true
 	}
+
+	bootID := s.bootID()
 
 	// loop over the local peers once to update their current state flags
 	// before we modify anything. this is important for some race conditions
@@ -107,7 +112,7 @@ func (s *LinkServer) collectPeerFlags(
 			s.peerConfigName(dev.PublicKey),
 			true,
 			now.Add(s.FactTTL),
-			&s.bootID,
+			&bootID,
 			now,
 			factsByPeer[dev.PublicKey],
 			// quiet: no reason to log "changes" to the local peer
@@ -324,9 +329,7 @@ func (s *LinkServer) deletePeers(
 	}
 
 	if len(cfg.Peers) != 0 {
-		s.stateAccess.Lock()
-		defer s.stateAccess.Unlock()
-		err = s.ctrl.ConfigureDevice(s.config.Iface, cfg)
+		err = s.dev.ConfigureDevice(cfg)
 		if err != nil {
 			log.Error("Unable to delete peers: %v", err)
 		}
@@ -355,11 +358,6 @@ func (s *LinkServer) configurePeer(
 	now := time.Now()
 	peerName := s.peerName(peer.PublicKey)
 	state = inputState.EnsureNotNil()
-
-	// TODO: make the lock window here smaller
-	// only want to take the lock for the regions where we change config
-	s.stateAccess.Lock()
-	defer s.stateAccess.Unlock()
 
 	var pcfg *wgtypes.PeerConfig
 	logged := false
@@ -435,7 +433,7 @@ func (s *LinkServer) configurePeer(
 	}
 
 	log.Debug("Applying peer configuration: %v", *pcfg)
-	err = s.ctrl.ConfigureDevice(s.config.Iface, wgtypes.Config{
+	err = s.dev.ConfigureDevice(wgtypes.Config{
 		Peers: []wgtypes.PeerConfig{*pcfg},
 	})
 	if err != nil {

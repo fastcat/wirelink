@@ -6,13 +6,13 @@ import (
 	"math/rand"
 	"net"
 	"reflect"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/fastcat/wirelink/apply"
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/config"
+	"github.com/fastcat/wirelink/device"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/internal/mocks"
 	netmocks "github.com/fastcat/wirelink/internal/networking/mocks"
@@ -153,9 +153,8 @@ func TestLinkServer_shouldSendTo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &LinkServer{
-				config:      tt.fields.config,
-				stateAccess: &sync.Mutex{},
-				peerConfig:  newPeerConfigSet(),
+				config:     tt.fields.config,
+				peerConfig: newPeerConfigSet(),
 				// just a placeholder for code that wants to check the local public key
 				signer: &signing.Signer{},
 			}
@@ -274,8 +273,8 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 					ret := &mocks.WgClient{}
 					return ret
 				},
-				newPKS(),
-				signing.New(&localPrivateKey),
+				newPKS(nil),
+				signing.New(localPrivateKey),
 			},
 			args{
 				localPublicKey,
@@ -308,8 +307,8 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 					ret := &mocks.WgClient{}
 					return ret
 				},
-				newPKS(),
-				signing.New(&localPrivateKey),
+				newPKS(nil),
+				signing.New(localPrivateKey),
 			},
 			args{
 				localPublicKey,
@@ -354,8 +353,8 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 					ret := &mocks.WgClient{}
 					return ret
 				},
-				newPKS(),
-				signing.New(&localPrivateKey),
+				newPKS(nil),
+				signing.New(localPrivateKey),
 			},
 			args{
 				localPublicKey,
@@ -393,8 +392,8 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 					ret := &mocks.WgClient{}
 					return ret
 				},
-				newPKS().mockPeerKnowsLocalAlive(&remotePublicKey, &localPublicKey, expires, &bootID),
-				signing.New(&localPrivateKey),
+				newPKS(nil).mockPeerKnowsLocalAlive(&remotePublicKey, &localPublicKey, expires, &bootID),
+				signing.New(localPrivateKey),
 			},
 			args{
 				localPublicKey,
@@ -439,12 +438,12 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 					ret := &mocks.WgClient{}
 					return ret
 				},
-				newPKS().mockPeerKnowsLocalAlive(
+				newPKS(nil).mockPeerKnowsLocalAlive(
 					&remotePublicKey, &localPublicKey, expired, &bootID,
 				).mockPeerKnows(
 					&remotePublicKey, facts.EndpointFactFull(localEP, &localPublicKey, expired),
 				),
-				signing.New(&localPrivateKey),
+				signing.New(localPrivateKey),
 			},
 			args{
 				localPublicKey,
@@ -471,21 +470,23 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 			conn.Test(t)
 			ctrl := tt.fields.ctrl(t)
 			ctrl.Test(t)
+			ctrl.On("Device", wgIface).Once().Return(&wgtypes.Device{}, nil)
+			dev, err := device.New(ctrl, tt.fields.config.Iface)
+			require.NoError(t, err)
 			s := &LinkServer{
-				bootID:        tt.fields.bootID,
 				config:        tt.fields.config,
 				conn:          conn,
 				addr:          tt.fields.addr,
-				ctrl:          ctrl,
+				dev:           dev,
 				peerKnowledge: tt.fields.peerKnowledge,
 				signer:        tt.fields.signer,
 
-				stateAccess: &sync.Mutex{},
-				peerConfig:  newPeerConfigSet(),
+				peerConfig: newPeerConfigSet(),
 
 				FactTTL:     DefaultFactTTL,
 				ChunkPeriod: DefaultChunkPeriod,
 			}
+			s.bootIDValue.Store(tt.fields.bootID)
 			gotPacketsSent, gotSendErrors := s.broadcastFacts(tt.args.self, tt.args.peers, tt.args.facts, tt.args.now, tt.args.timeout)
 			assert.Equal(t, tt.wantPacketsSent, gotPacketsSent)
 			assert.Equal(t, tt.wantSendErrors, gotSendErrors)

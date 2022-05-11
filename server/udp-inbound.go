@@ -2,7 +2,6 @@ package server
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"net"
 	"time"
@@ -15,88 +14,74 @@ import (
 	"github.com/fastcat/wirelink/trust"
 )
 
-// readPackets will process UDP packets from the socket, parse them into facts,
-// and send them on the received channel, which it will close when the UDP
-// socket is closed.
-func (s *LinkServer) readPackets(received chan<- *ReceivedFact) error {
-	defer close(received)
-
-	// run the packet reader in the background
-	packets := make(chan *networking.UDPPacket, 1)
-	rCtx, rCancel := context.WithCancel(s.ctx)
-	defer rCancel()
-	s.AddHandler(func(ctx context.Context) error {
-		return s.conn.ReadPackets(rCtx, fact.UDPMaxSafePayload*2, packets)
-	})
-
-	for packet := range packets {
-		// reader will filter out timeouts for us, anything left we give up
-		if packet.Err != nil {
-			return fmt.Errorf("failed to read from UDP socket, giving up: %w", packet.Err)
-		}
-
-		pp := &fact.Fact{}
-		err := pp.DecodeFrom(len(packet.Data), packet.Time, bytes.NewBuffer(packet.Data))
-		if err != nil {
-			log.Error("Unable to decode fact: %v %v", err, packet.Data)
-			continue
-		}
-		if pp.Attribute == fact.AttributeSignedGroup {
-			err = s.processSignedGroup(pp, packet.Addr, packet.Time, received)
-			if err != nil {
-				log.Error("Unable to process SignedGroup from %v: %v", packet.Addr, err)
-			}
-		} else {
-			// if we had a peerLookup, we could map the source IP to a name here,
-			// but creating that is unnecessarily expensive for this rare error
-			log.Error("Ignoring unsigned fact from %v", packet.Addr)
-		}
+// parsePacket handles a UDP packet, parsing it into any valid ReceivedFacts
+func (s *LinkServer) parsePacket(packet *networking.UDPPacket) ([]*ReceivedFact, error) {
+	// reader will filter out timeouts for us, anything left we give up
+	if packet.Err != nil {
+		return nil, fmt.Errorf("failed to read from UDP socket, giving up: %w", packet.Err)
 	}
 
-	return nil
+	pp := &fact.Fact{}
+	err := pp.DecodeFrom(len(packet.Data), packet.Time, bytes.NewBuffer(packet.Data))
+	if err != nil {
+		log.Error("Unable to decode fact: %v %v", err, packet.Data)
+		return nil, nil
+	}
+
+	if pp.Attribute == fact.AttributeSignedGroup {
+		rf, err := s.processSignedGroup(pp, packet.Addr, packet.Time)
+		if err != nil {
+			log.Error("Unable to process SignedGroup from %v: %v", packet.Addr, err)
+		}
+		return rf, nil
+	}
+
+	// if we had a peerLookup, we could map the source IP to a name here,
+	// but creating that is unnecessarily expensive for this rare error
+	log.Error("Ignoring unsigned fact from %v", packet.Addr)
+	return nil, nil
 }
 
-// processSignedGroup takes a single fact with a SignedGroupValue,
-// verifies it, if valid parses it into individual facts,
-// and emits them to the `packets` channel
+// processSignedGroup takes a single fact with a SignedGroupValue, verifies it,
+// if valid parses it into individual facts
 func (s *LinkServer) processSignedGroup(
 	f *fact.Fact,
 	source *net.UDPAddr,
 	now time.Time,
-	packets chan<- *ReceivedFact,
-) error {
+) ([]*ReceivedFact, error) {
 	ps, ok := f.Subject.(*fact.PeerSubject)
 	if !ok {
-		return fmt.Errorf("SignedGroup has non-PeerSubject: %T", f.Subject)
+		return nil, fmt.Errorf("SignedGroup has non-PeerSubject: %T", f.Subject)
 	}
 	pv, ok := f.Value.(*fact.SignedGroupValue)
 	if !ok {
-		return fmt.Errorf("SignedGroup has non-SignedGroupValue: %T", f.Value)
+		return nil, fmt.Errorf("SignedGroup has non-SignedGroupValue: %T", f.Value)
 	}
 
 	if !autopeer.AutoAddress(ps.Key).Equal(source.IP) {
-		return fmt.Errorf("SignedGroup source %v does not match key %v", source.IP, ps.Key)
+		return nil, fmt.Errorf("SignedGroup source %v does not match key %v", source.IP, ps.Key)
 	}
 	// TODO: check the key is locally known/trusted
 	// for now we have a weak indirect version of that based on the trust model checking the source IP
 
 	valid, err := s.signer.VerifyFrom(pv.Nonce, pv.Tag, pv.InnerBytes, &ps.Key)
 	if err != nil {
-		return fmt.Errorf("failed to validate SignedGroup signature from %s: %w", s.peerName(ps.Key), err)
+		return nil, fmt.Errorf("failed to validate SignedGroup signature from %s: %w", s.peerName(ps.Key), err)
 	} else if !valid {
 		// should never get here, verification errors should always make an error
-		return fmt.Errorf("unknown error validating SignedGroup")
+		return nil, fmt.Errorf("unknown error validating SignedGroup")
 	}
 
 	inner, err := pv.ParseInner(now)
 	if err != nil {
-		return fmt.Errorf("unable to parse SignedGroup inner: %w", err)
+		return nil, fmt.Errorf("unable to parse SignedGroup inner: %w", err)
 	}
 	// log.Debug("Received SGF of length %d/%d from %v", len(pv.InnerBytes), len(inner), source)
-	for _, innerFact := range inner {
-		packets <- &ReceivedFact{fact: innerFact, source: *source}
+	ret := make([]*ReceivedFact, len(inner))
+	for i := range inner {
+		ret[i] = &ReceivedFact{fact: inner[i], source: *source}
 	}
-	return nil
+	return ret, nil
 }
 
 // chunkReceived takes a continuous stream of ReceivedFacts and lumps them into
@@ -159,6 +144,11 @@ func (s *LinkServer) chunkReceived(
 				s.newBootID()
 			}
 
+			// mark the device state dirty every tick so downstream processors see the
+			// new value
+			s.dev.Dirty()
+			s.interfaceCache.Dirty()
+
 			newFacts <- buffer
 			// always make a new buffer after we send it
 			buffer = nil
@@ -191,29 +181,25 @@ func pruneRemovedLocalFacts(chunk, lastLocal, newLocal []*fact.Fact) []*fact.Fac
 	return filtered
 }
 
-func (s *LinkServer) processChunks(
-	newFacts <-chan []*ReceivedFact,
-	factsRefreshed chan<- []*fact.Fact,
-) error {
-	defer close(factsRefreshed)
+type chunkState struct {
+	s              *LinkServer
+	currentFacts   []*fact.Fact
+	lastLocalFacts []*fact.Fact
+}
 
-	var currentFacts []*fact.Fact
-	var lastLocalFacts []*fact.Fact
+func (s *LinkServer) newChunkState() *chunkState {
+	return &chunkState{s: s}
+}
 
-	for chunk := range newFacts {
-		now := time.Now()
-
-		uniqueFacts, newLocalFacts, err := s.processOneChunk(currentFacts, lastLocalFacts, chunk, now)
-		if err != nil {
-			return err
-		}
-		lastLocalFacts = newLocalFacts
-		currentFacts = uniqueFacts
-
-		factsRefreshed <- uniqueFacts
+func (s *chunkState) processChunk(chunk []*ReceivedFact) ([]*fact.Fact, error) {
+	now := time.Now()
+	uniqueFacts, newLocalFacts, err := s.s.processOneChunk(s.currentFacts, s.lastLocalFacts, chunk, now)
+	if err != nil {
+		return nil, err
 	}
-
-	return nil
+	s.lastLocalFacts = newLocalFacts
+	s.currentFacts = uniqueFacts
+	return uniqueFacts, nil
 }
 
 func (s *LinkServer) processOneChunk(
@@ -229,8 +215,8 @@ func (s *LinkServer) processOneChunk(
 			newFactsChunk = append(newFactsChunk, f)
 		}
 	}
-	s.updateInterfaceCache()
-	dev, err := s.deviceState()
+
+	dev, err := s.dev.State()
 	if err != nil {
 		// this probably means the interface is down
 		// the log message will be printed by the main app as it exits
@@ -259,7 +245,7 @@ func (s *LinkServer) processOneChunk(
 		newLocalFacts = lastLocalFacts
 	}
 
-	pl := createFromPeers(dev.Peers...)
+	s.pl.addPeers(dev.Peers...)
 
 	// TODO: we can cache the config trust to avoid some re-computation
 	evaluators := []trust.Evaluator{
@@ -284,7 +270,7 @@ func (s *LinkServer) processOneChunk(
 	// add all the new not-expired and _trusted_ facts
 	for _, rf := range chunk {
 		// add to what the peer knows, even if we otherwise discard the information
-		s.peerKnowledge.upsertReceived(rf, pl)
+		s.peerKnowledge.received(rf)
 
 		if now.After(rf.fact.Expires) {
 			continue

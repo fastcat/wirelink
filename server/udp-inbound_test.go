@@ -1,16 +1,15 @@
 package server
 
 import (
-	"context"
 	"fmt"
 	"math/rand"
 	"net"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/fastcat/wirelink/autopeer"
 	"github.com/fastcat/wirelink/config"
+	"github.com/fastcat/wirelink/device"
 	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/internal/mocks"
 	"github.com/fastcat/wirelink/internal/networking"
@@ -22,11 +21,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/sync/errgroup"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-func TestLinkServer_readPackets(t *testing.T) {
+func TestLinkServer_parsePacket(t *testing.T) {
 	now := time.Now()
 	expires := now.Add(DefaultFactTTL)
 
@@ -35,11 +33,13 @@ func TestLinkServer_readPackets(t *testing.T) {
 	remotePrivateKey, remotePublicKey := testutils.MustKeyPair(t)
 	randomKey := testutils.MustKey(t)
 
-	remoteSigner := signing.New(&remotePrivateKey)
+	remoteSigner := signing.New(remotePrivateKey)
 	properSource := &net.UDPAddr{
 		IP:   autopeer.AutoAddress(remotePublicKey),
 		Port: rand.Intn(65535),
 	}
+
+	receiveErr := fmt.Errorf("fake packet error")
 
 	wrapAndSign := func(facts ...*fact.Fact) []byte {
 		buffer := make([]byte, 0)
@@ -57,34 +57,20 @@ func TestLinkServer_readPackets(t *testing.T) {
 		return util.MustBytes(sgf.MarshalBinary())
 	}
 
-	type fields struct {
-		conn func(*testing.T) *netmocks.UDPConn
-	}
 	tests := []struct {
-		name         string
-		fields       fields
-		assertion    require.ErrorAssertionFunc
-		packets      []*networking.UDPPacket
-		wantReceived []*ReceivedFact
+		name       string
+		assertion  require.ErrorAssertionFunc
+		packet     *networking.UDPPacket
+		wantParsed []*ReceivedFact
 		// TODO: add `long` flag for skipping tests with non-immediate timings
 	}{
 		{
-			"empty",
-			fields{},
-			require.NoError,
-			[]*networking.UDPPacket{},
-			[]*ReceivedFact{},
-		},
-		{
 			"one alive",
-			fields{},
 			require.NoError,
-			[]*networking.UDPPacket{
-				{
-					Time: now,
-					Addr: properSource,
-					Data: wrapAndSign(facts.AliveFact(&remotePublicKey, expires)),
-				},
+			&networking.UDPPacket{
+				Time: now,
+				Addr: properSource,
+				Data: wrapAndSign(facts.AliveFact(&remotePublicKey, expires)),
 			},
 			[]*ReceivedFact{
 				{
@@ -95,57 +81,48 @@ func TestLinkServer_readPackets(t *testing.T) {
 		},
 		{
 			"ignore unsigned",
-			fields{},
 			require.NoError,
-			[]*networking.UDPPacket{
-				{
-					Time: now,
-					Addr: properSource,
-					Data: util.MustBytes(facts.AliveFact(&randomKey, expires).MarshalBinaryNow(now)),
-				},
-				{
-					Time: now,
-					Addr: properSource,
-					Data: wrapAndSign(facts.AliveFact(&remotePublicKey, expires)),
-				},
+			&networking.UDPPacket{
+				Time: now,
+				Addr: properSource,
+				Data: util.MustBytes(facts.AliveFact(&randomKey, expires).MarshalBinaryNow(now)),
 			},
-			[]*ReceivedFact{
-				{
-					fact:   facts.AliveFact(&remotePublicKey, expires),
-					source: *properSource,
-				},
+			nil,
+		},
+		{
+			"ignore garbage",
+			require.NoError,
+			&networking.UDPPacket{
+				Time: now,
+				Addr: &net.UDPAddr{IP: net.IPv4(1, 2, 3, 4), Port: properSource.Port},
+				Data: testutils.MustRandBytes(t, make([]byte, 100)),
 			},
+			nil,
+		},
+		{
+			"pass receive errors",
+			func(t require.TestingT, err error, msgAndArgs ...interface{}) {
+				assert.ErrorIs(t, err, receiveErr, msgAndArgs...)
+			},
+			&networking.UDPPacket{
+				Time: now,
+				Err:  receiveErr,
+			},
+			nil,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var conn *netmocks.UDPConn
-			if tt.fields.conn != nil {
-				conn = tt.fields.conn(t)
-			} else {
-				conn = &netmocks.UDPConn{}
-			}
-			conn.WithPacketSequence(now, tt.packets...)
-			conn.Test(t)
 			s := &LinkServer{
-				conn:   conn,
-				eg:     &errgroup.Group{},
-				ctx:    context.Background(),
-				signer: signing.New(&localPrivateKey),
+				signer: signing.New(localPrivateKey),
 			}
-			// deep channel to simplify extracting outputs
-			received := make(chan *ReceivedFact, len(tt.wantReceived)+len(tt.packets))
 
-			tt.assertion(t, s.readPackets(received))
+			parsed, err := s.parsePacket(tt.packet)
+			tt.assertion(t, err)
 
-			tt.assertion(t, s.eg.Wait())
-			gotReceived := make([]*ReceivedFact, 0, len(tt.wantReceived))
-			for r := range received {
-				gotReceived = append(gotReceived, r)
-			}
-			// we have just enough `now` locking that we can safely use a plain equality comparison here
-			assert.Equal(t, tt.wantReceived, gotReceived)
-			conn.AssertExpectations(t)
+			// we have just enough `now` locking that we can safely use a plain
+			// equality comparison here
+			assert.Equal(t, tt.wantParsed, parsed)
 		})
 	}
 }
@@ -157,8 +134,8 @@ func TestLinkServer_processSignedGroup(t *testing.T) {
 	// this is doing crypto, so we need _real_ keys, not just random bytes
 	localPrivKey, localPubKey := testutils.MustKeyPair(t)
 	remotePrivKey, remotePubKey := testutils.MustKeyPair(t)
-	localSigner := signing.New(&localPrivKey)
-	remoteSigner := signing.New(&remotePrivKey)
+	localSigner := signing.New(localPrivKey)
+	remoteSigner := signing.New(remotePrivKey)
 	properSource := &net.UDPAddr{
 		IP:   autopeer.AutoAddress(remotePubKey),
 		Port: rand.Intn(65535),
@@ -305,7 +282,7 @@ func TestLinkServer_processSignedGroup(t *testing.T) {
 			},
 			// TODO: require a specific error
 			require.Error,
-			[]*ReceivedFact{},
+			nil,
 		},
 		{
 			"wrong source",
@@ -322,7 +299,7 @@ func TestLinkServer_processSignedGroup(t *testing.T) {
 			},
 			// TODO: require a specific error
 			require.Error,
-			[]*ReceivedFact{},
+			nil,
 		},
 		{
 			"truncated after signing",
@@ -339,7 +316,7 @@ func TestLinkServer_processSignedGroup(t *testing.T) {
 			},
 			// TODO: require a specific error
 			require.Error,
-			[]*ReceivedFact{},
+			nil,
 		},
 		{
 			"truncated before signing",
@@ -356,7 +333,7 @@ func TestLinkServer_processSignedGroup(t *testing.T) {
 			},
 			// TODO: require a specific error
 			require.Error,
-			[]*ReceivedFact{},
+			nil,
 		},
 	}
 	for _, tt := range tests {
@@ -366,15 +343,8 @@ func TestLinkServer_processSignedGroup(t *testing.T) {
 				signer:     tt.fields.signer,
 				peerConfig: newPeerConfigSet(),
 			}
-			// we make a channel with a huge buffer so that we can do this linearly
-			// and not have goroutines and waits
-			packetsChan := make(chan *ReceivedFact, 100)
-			tt.assertion(t, s.processSignedGroup(tt.args.f, tt.args.source, now, packetsChan))
-			close(packetsChan)
-			packets := make([]*ReceivedFact, 0, 100)
-			for p := range packetsChan {
-				packets = append(packets, p)
-			}
+			packets, err := s.processSignedGroup(tt.args.f, tt.args.source, now)
+			tt.assertion(t, err)
 			assert.Equal(t, tt.wantPackets, packets)
 		})
 	}
@@ -462,11 +432,15 @@ func TestLinkServer_chunkReceived(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			origBootID := uuid.Must(uuid.NewRandom())
+			env := &netmocks.Environment{}
+			env.On("Interfaces").Once().Return([]networking.Interface{}, nil)
+			ic, err := newInterfaceCache(env, "")
+			require.NoError(t, err)
 			s := &LinkServer{
-				ChunkPeriod: tt.args.chunkPeriod,
-				bootID:      origBootID,
-				stateAccess: &sync.Mutex{},
+				ChunkPeriod:    tt.args.chunkPeriod,
+				interfaceCache: ic,
 			}
+			s.bootIDValue.Store(origBootID)
 			// make deep channels to avoid buffering problems
 			packets := make(chan *ReceivedFact, len(tt.packets))
 			// need +1 because there is an extra empty chunk sent at start
@@ -491,9 +465,9 @@ func TestLinkServer_chunkReceived(t *testing.T) {
 			}
 			assert.Equal(t, tt.wantChunks, gotChunks)
 			if tt.wantBootIDChange {
-				assert.NotEqual(t, origBootID, s.bootID)
+				assert.NotEqual(t, origBootID, s.bootID())
 			} else {
-				assert.Equal(t, origBootID, s.bootID)
+				assert.Equal(t, origBootID, s.bootID())
 			}
 		})
 	}
@@ -635,8 +609,13 @@ func TestLinkServer_chunkReceived_slow(t *testing.T) {
 			}
 			t.Logf("using CI scale: %d", testutils.CIScaleFactor)
 
+			env := &netmocks.Environment{}
+			env.On("Interfaces").Once().Return([]networking.Interface{}, nil)
+			ic, err := newInterfaceCache(env, "")
+			require.NoError(t, err)
 			s := &LinkServer{
-				ChunkPeriod: tt.args.chunkPeriod * testutils.CIScaleFactorDuration,
+				ChunkPeriod:    tt.args.chunkPeriod * testutils.CIScaleFactorDuration,
+				interfaceCache: ic,
 			}
 			// for this test, use the same limited buffer for the incoming packets as
 			// the real server
@@ -1016,17 +995,24 @@ func TestLinkServer_processOneChunk(t *testing.T) {
 			ctrl.Test(t)
 			tt.fields.net.Test(t)
 			tt.fields.net.WithKnownInterfaces()
-			if tt.fields.peerKnowledge == nil {
-				tt.fields.peerKnowledge = newPKS()
-			}
+			dev, err := device.New(ctrl, tt.fields.config.Iface)
+			require.NoError(t, err)
+			ic, err := newInterfaceCache(tt.fields.net, tt.fields.config.Iface)
+			require.NoError(t, err)
 			s := &LinkServer{
-				stateAccess:   &sync.Mutex{},
-				config:        tt.fields.config,
-				net:           tt.fields.net,
-				ctrl:          ctrl,
-				peerKnowledge: tt.fields.peerKnowledge,
-				FactTTL:       DefaultFactTTL,
-				ChunkPeriod:   DefaultChunkPeriod,
+				config:         tt.fields.config,
+				net:            tt.fields.net,
+				dev:            dev,
+				pl:             newPeerLookup(),
+				peerKnowledge:  tt.fields.peerKnowledge,
+				FactTTL:        DefaultFactTTL,
+				ChunkPeriod:    DefaultChunkPeriod,
+				interfaceCache: ic,
+			}
+			if s.peerKnowledge == nil {
+				s.peerKnowledge = newPKS(s.pl)
+			} else if s.peerKnowledge.pl == nil {
+				s.peerKnowledge.pl = s.pl
 			}
 			gotUniqueFacts, gotNewLocalFacts, err := s.processOneChunk(tt.args.currentFacts, tt.args.lastLocalFacts, tt.args.chunk, now)
 			tt.assertion(t, err)

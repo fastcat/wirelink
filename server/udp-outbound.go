@@ -18,24 +18,15 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-func (s *LinkServer) broadcastFactUpdates(factsRefreshed <-chan []*fact.Fact) error {
-	// TODO: naming here is confusing with the `newFacts` channel
-	for newFacts := range factsRefreshed {
-		dev, err := s.deviceState()
-		if err != nil {
-			// this probably means the interface is down
-			// the log message will be printed by the main app as it exits
-			return fmt.Errorf("unable to load device state, giving up: %w", err)
-		}
-
-		s.broadcastFactUpdatesOnce(newFacts, dev)
+func (s *LinkServer) broadcastFactUpdatesOnce(newFacts []*fact.Fact) error {
+	now := time.Now()
+	dev, err := s.dev.State()
+	if err != nil {
+		// this probably means the interface is down
+		// the log message will be printed by the main app as it exits
+		return fmt.Errorf("unable to load device state, giving up: %w", err)
 	}
 
-	return nil
-}
-
-func (s *LinkServer) broadcastFactUpdatesOnce(newFacts []*fact.Fact, dev *wgtypes.Device) {
-	now := time.Now()
 	filteredFacts := s.factsToSend(newFacts, dev)
 	_, errs := s.broadcastFacts(dev.PublicKey, dev.Peers, filteredFacts, now, s.ChunkPeriod-time.Second)
 	if errs != nil {
@@ -45,7 +36,9 @@ func (s *LinkServer) broadcastFactUpdatesOnce(newFacts []*fact.Fact, dev *wgtype
 		} else {
 			log.Error("Failed to send some facts: %v", errs)
 		}
+		// don't return these, we don't want to abort on this
 	}
+	return nil
 }
 
 func (s *LinkServer) factsToSend(facts []*fact.Fact, dev *wgtypes.Device) []*fact.Fact {
@@ -90,10 +83,6 @@ func (s *LinkServer) shouldSendTo(p *wgtypes.Peer) sendLevel {
 		log.Debug("Don't send to %s: no wg endpoint", s.peerName(p.PublicKey))
 		return sendNothing
 	}
-
-	// protect against tests mutating config while we read it
-	s.stateAccess.Lock()
-	defer s.stateAccess.Unlock()
 
 	// send everything to trusted peers and routers
 	// NOTE: this detects _current_ routers, not peers that are authorized to become
@@ -157,7 +146,7 @@ func (s *LinkServer) prepareFactsForPeer(p *wgtypes.Peer, facts []*fact.Fact, ga
 			log.Debug("Peer %s needs %v", s.peerName(p.PublicKey), f)
 			// assume we will successfully send and peer will accept the info
 			// if these assumptions are wrong, re-sending more often is unlikely to help
-			s.peerKnowledge.upsertSent(p, f)
+			s.peerKnowledge.sent(p, f)
 		}
 	}
 }
@@ -186,7 +175,7 @@ func (s *LinkServer) addPingFor(p *wgtypes.Peer, ping *fact.Fact, ga *fact.Group
 	} else if addedPing {
 		// assume we will successfully send and peer will accept the info
 		// if these assumptions are wrong, re-sending more often is unlikely to help
-		s.peerKnowledge.upsertSent(p, ping)
+		s.peerKnowledge.sent(p, ping)
 	}
 }
 
@@ -205,15 +194,12 @@ func (s *LinkServer) broadcastFacts(
 	s.conn.SetWriteDeadline(now.Add(timeout))
 
 	errs := make(chan error)
-	// hold the mutex momentarily for safe reading of the bootID
-	s.stateAccess.Lock()
 	ping := &fact.Fact{
 		Subject:   &fact.PeerSubject{Key: self},
 		Attribute: fact.AttributeAlive,
-		Value:     &fact.UUIDValue{UUID: s.bootID},
+		Value:     &fact.UUIDValue{UUID: s.bootID()},
 		Expires:   now.Add(s.FactTTL),
 	}
-	s.stateAccess.Unlock()
 
 	for i := range peers {
 		// avoid closure binding problems
