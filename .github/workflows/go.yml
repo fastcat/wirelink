@@ -75,7 +75,7 @@ jobs:
       # upload to codecov as soon as we can to view reports
       - name: Upload coverage (codecov)
         if: ${{ always() }}
-        uses: codecov/codecov-action@v1
+        uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./coverage.out
