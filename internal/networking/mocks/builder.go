@@ -89,7 +89,7 @@ func (_m *Environment) Test(t *testing.T) {
 
 // AssertExpectations calls the method on the Environment mock and on all its
 // registered Interface mocks
-func (_m *Environment) AssertExpectations(t testing.TB) {
+func (_m *Environment) AssertExpectations(t mock.TestingT) {
 	_m.Mock.AssertExpectations(t)
 	if _m.TestData().Has(tdInterfaces) {
 		for _, iface := range _m.TestData().Get(tdInterfaces).MustInterSlice() {
