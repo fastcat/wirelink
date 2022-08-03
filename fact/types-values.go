@@ -44,8 +44,8 @@ func (ipp *IPPortValue) UnmarshalBinary(data []byte) error {
 		return fmt.Errorf("ipv4 + port should be %d bytes, not %d", net.IPv4len+2, len(data))
 	}
 	ipp.IP = util.NormalizeIP(ipp.IP)
-	if len(ipp.IP) != len(data)-1 {
-		return fmt.Errorf("wrong ip length used (v4 in v6?): %d != %d", len(ipp.IP), len(data)-1)
+	if len(ipp.IP) != len(data)-2 {
+		return fmt.Errorf("wrong ip length used (v4 in v6?): %d != %d", len(ipp.IP), len(data)-2)
 	}
 	return nil
 }
