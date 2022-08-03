@@ -93,6 +93,9 @@ test-cover: generate
 	go test -vet=off -timeout=1m -covermode=atomic -coverpkg=./... -coverprofile=coverage.out ./...
 coverage.html: coverage.out
 	go tool cover -html=coverage.out -o=coverage.html
+test-fuzz: generate
+	fgrep -rlZ 'func Fuzz' */ | xargs -0 dirname -z | sort -zu \
+		| xargs -0 -t -I_PKG_ go test ./_PKG_ -fuzz=.* -fuzztime=1m
 
 run: generate
 	go run -exec sudo .
