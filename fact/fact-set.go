@@ -69,11 +69,11 @@ func (k *Key) ToFact() (*Fact, error) {
 		return nil, fmt.Errorf("unrecognized attribute 0x%02x", byte(k.Attribute))
 	}
 	dh(ret)
-	err := ret.Subject.DecodeFrom(len(k.subject), bytes.NewBuffer([]byte(k.subject)))
+	err := ret.Subject.DecodeFrom(len(k.subject), bytes.NewReader([]byte(k.subject)))
 	if err != nil {
 		return nil, err
 	}
-	err = ret.Value.DecodeFrom(len(k.value), bytes.NewBuffer([]byte(k.value)))
+	err = ret.Value.DecodeFrom(len(k.value), bytes.NewReader([]byte(k.value)))
 	if err != nil {
 		return nil, err
 	}

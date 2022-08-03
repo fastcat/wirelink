@@ -62,7 +62,7 @@ func mustSerialize(t require.TestingT, f *Fact) (*Fact, []byte) {
 
 func mustDeserialize(t *testing.T, p []byte, now time.Time) (f *Fact) {
 	f = &Fact{}
-	err := f.DecodeFrom(len(p), now, bytes.NewBuffer(p))
+	err := f.DecodeFrom(len(p), now, bytes.NewReader(p))
 	require.Nil(t, err)
 	// to help verify data races, randomize the input buffer after its consumed,
 	// so that any code that hangs onto it will show clear test failures

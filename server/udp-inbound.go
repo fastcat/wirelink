@@ -22,7 +22,7 @@ func (s *LinkServer) parsePacket(packet *networking.UDPPacket) ([]*ReceivedFact,
 	}
 
 	pp := &fact.Fact{}
-	err := pp.DecodeFrom(len(packet.Data), packet.Time, bytes.NewBuffer(packet.Data))
+	err := pp.DecodeFrom(len(packet.Data), packet.Time, bytes.NewReader(packet.Data))
 	if err != nil {
 		log.Error("Unable to decode fact: %v %v", err, packet.Data)
 		return nil, nil

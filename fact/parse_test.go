@@ -37,7 +37,7 @@ func Test_TTLClamping(t *testing.T) {
 	require.Equal(t, n, n2)
 
 	f = &Fact{}
-	err := f.DecodeFrom(len(p), now, bytes.NewBuffer(p))
+	err := f.DecodeFrom(len(p), now, bytes.NewReader(p))
 	if assert.Error(t, err, "Decoding fact with out of range TTL should fail") {
 		assert.ErrorContains(t, err, "range")
 		assert.ErrorContains(t, err, strconv.Itoa(math.MaxUint16+1))
@@ -55,12 +55,12 @@ func TestAccelerateTimeForTests(t *testing.T) {
 	require.NoError(t, err)
 
 	f = &Fact{}
-	require.NoError(t, f.DecodeFrom(len(p), now, bytes.NewBuffer(p)))
+	require.NoError(t, f.DecodeFrom(len(p), now, bytes.NewReader(p)))
 	assert.Equal(t, now.Add(time.Second), f.Expires)
 
 	ScaleExpirationQuantumForTests(1)
 	f = &Fact{}
-	require.NoError(t, f.DecodeFrom(len(p), now, bytes.NewBuffer(p)))
+	require.NoError(t, f.DecodeFrom(len(p), now, bytes.NewReader(p)))
 	assert.Equal(t, now.Add(10*time.Second), f.Expires)
 }
 
@@ -292,7 +292,7 @@ func TestFact_DecodeFrom(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := &Fact{}
-			tt.assertion(t, f.DecodeFrom(tt.args.lengthHint, now, bytes.NewBuffer(tt.args.data)))
+			tt.assertion(t, f.DecodeFrom(tt.args.lengthHint, now, bytes.NewReader(tt.args.data)))
 			if tt.wantFields != nil {
 				wantFact := &Fact{
 					Attribute: tt.wantFields.Attribute,
