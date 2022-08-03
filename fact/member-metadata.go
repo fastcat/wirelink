@@ -1,7 +1,6 @@
 package fact
 
 import (
-	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -137,11 +136,8 @@ func (mm *MemberMetadata) DecodeFrom(lengthHint int, reader io.Reader) error {
 	// check for bogus payload lengths
 	if payloadLen > MaxPayloadLen {
 		return fmt.Errorf("bad payload length: %d > %d", payloadLen, MaxPayloadLen)
-	} else if b, ok := reader.(*bytes.Reader); ok {
-		if payloadLen > uint64(b.Len()) {
-			return fmt.Errorf("bad payload length: %d > %d", payloadLen, b.Len())
-		}
-	} else if b, ok := reader.(*bytes.Buffer); ok {
+	} else if b, ok := reader.(interface{ Len() int }); ok {
+		// generally bytes.Buffer or bytes.Reader
 		if payloadLen > uint64(b.Len()) {
 			return fmt.Errorf("bad payload length: %d > %d", payloadLen, b.Len())
 		}
