@@ -313,9 +313,8 @@ func FuzzDecodeFrom(f *testing.F) {
 	_, b = mustMockAllowedV4Packet(f, nil)
 	f.Add(b)
 	f.Fuzz(func(t *testing.T, payload []byte) {
+		t.Parallel()
 		ff := &Fact{}
-		n := t.Name()
-		_ = n
 		r := bytes.NewReader(payload)
 		err := ff.DecodeFrom(0, now, r)
 		// trim the payload to how much we actually read
