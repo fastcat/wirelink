@@ -320,7 +320,19 @@ func FuzzDecodeFrom(f *testing.F) {
 		if err == nil {
 			loop, err := ff.MarshalBinaryNow(now)
 			require.NoError(t, err)
-			assert.Equal(t, payload[:len(loop)], loop, "decode/encode should loop")
+			// the uvarint we use for encoding the TTL has multiple valid encodings,
+			// and we need to tolerate that here
+			ttlIn, ttlLenIn := binary.Uvarint(payload[1:])
+			ttlOut, ttlLenOut := binary.Uvarint(loop[1:])
+			if ttlLenIn == ttlLenOut {
+				// no encoding oddities, do a normal compare
+				assert.Equal(t, payload[:len(loop)], loop, "decode/encode should loop")
+			} else {
+				// uvarint oddities
+				assert.Equal(t, payload[0], loop[0])
+				assert.Equal(t, ttlIn, ttlOut)
+				assert.Equal(t, payload[1+ttlLenIn:len(loop)+ttlLenIn-ttlLenOut], loop[1+ttlLenOut:])
+			}
 		}
 	})
 }
