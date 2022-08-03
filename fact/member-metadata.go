@@ -162,11 +162,18 @@ func (mm *MemberMetadata) DecodeFrom(lengthHint int, reader io.Reader) error {
 			return fmt.Errorf("varint encoding error in attribute at payload offset %d", p-n)
 		}
 		p += n
-		if p+int(al) > len(payload) {
+		if al > MaxPayloadLen {
+			// this also serves to check for overflow errors
+			return fmt.Errorf("bad attribute length at payload offset %d: %d>%d", p, al, MaxPayloadLen)
+		}
+		ep := p + int(al)
+		if ep < p {
+			return fmt.Errorf("attribute length overflow at payload offset %d: +%d", p, al)
+		} else if ep > len(payload) {
 			return fmt.Errorf("attribute length error at payload offset %d: +%d>%d", p, al, len(payload))
 		}
-		v := string(payload[p : p+int(al)])
-		p += int(al)
+		v := string(payload[p:ep])
+		p = ep
 
 		validator := memberMetadataValidators[a]
 		if validator != nil {
