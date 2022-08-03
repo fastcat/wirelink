@@ -1,6 +1,7 @@
 package fact
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -23,6 +24,10 @@ const (
 	// wireguard and not wirelink
 	MemberIsBasic MemberAttribute = 'b'
 )
+
+// MaxPayloadLen is the largest payload size we will try to decode to avoid
+// excess memory usage.
+const MaxPayloadLen = 1024 * 1024
 
 // MemberMetadata represents a set of attributes and their values for a single
 // peer.
@@ -128,6 +133,15 @@ func (mm *MemberMetadata) DecodeFrom(lengthHint int, reader io.Reader) error {
 	// TODO: trace the calls to ReadByte from the above, so that we can validate
 	// we don't exceed lengthHint. Not important as we expect lengthHint to be
 	// zero always for this value type
+
+	// check for bogus payload lengths
+	if b, ok := reader.(*bytes.Buffer); ok {
+		if payloadLen > uint64(b.Len()) {
+			return fmt.Errorf("bad payload length: %d > %d", payloadLen, b.Len())
+		}
+	} else if payloadLen > MaxPayloadLen {
+		return fmt.Errorf("bad payload length: %d > %d", payloadLen, MaxPayloadLen)
+	}
 
 	payload := make([]byte, payloadLen)
 	_, err = io.ReadFull(reader, payload)
