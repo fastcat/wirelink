@@ -93,6 +93,10 @@ func (ipn *IPNetValue) UnmarshalBinary(data []byte) error {
 	} else {
 		return fmt.Errorf("ipv4 + cidr should be %d bytes, not %d", net.IPv4len+1, len(data))
 	}
+	if ipn.Mask == nil {
+		// decode failed
+		return fmt.Errorf("bad mask length %d", data[len(data)-1])
+	}
 	return nil
 }
 

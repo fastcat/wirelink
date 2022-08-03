@@ -305,3 +305,22 @@ func TestFact_DecodeFrom(t *testing.T) {
 		})
 	}
 }
+
+func FuzzDecodeFrom(f *testing.F) {
+	now := time.Now()
+	_, b := mustMockAlivePacket(f, nil, nil)
+	f.Add(b)
+	_, b = mustMockAllowedV4Packet(f, nil)
+	f.Add(b)
+	f.Fuzz(func(t *testing.T, payload []byte) {
+		ff := &Fact{}
+		n := t.Name()
+		_ = n
+		err := ff.DecodeFrom(0, now, bytes.NewReader(payload))
+		if err == nil {
+			loop, err := ff.MarshalBinaryNow(now)
+			require.NoError(t, err)
+			assert.Equal(t, payload[:len(loop)], loop, "decode/encode should loop")
+		}
+	})
+}

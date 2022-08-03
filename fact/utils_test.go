@@ -2,6 +2,8 @@ package fact
 
 import (
 	"bytes"
+	"math/rand"
+	"net"
 	"testing"
 	"time"
 
@@ -14,7 +16,7 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
-func mustMockAlivePacket(t *testing.T, subject *wgtypes.Key, id *uuid.UUID) (*Fact, []byte) {
+func mustMockAlivePacket(t require.TestingT, subject *wgtypes.Key, id *uuid.UUID) (*Fact, []byte) {
 	if subject == nil {
 		sk := testutils.MustKey(t)
 		subject = &sk
@@ -31,7 +33,28 @@ func mustMockAlivePacket(t *testing.T, subject *wgtypes.Key, id *uuid.UUID) (*Fa
 	})
 }
 
-func mustSerialize(t *testing.T, f *Fact) (*Fact, []byte) {
+func mustMockAllowedV4Packet(t require.TestingT, subject *wgtypes.Key) (*Fact, []byte) {
+	if subject == nil {
+		sk := testutils.MustKey(t)
+		subject = &sk
+	}
+	return mustSerialize(t, &Fact{
+		Attribute: AttributeAllowedCidrV4,
+		Subject:   &PeerSubject{Key: *subject},
+		Expires:   time.Time{},
+		Value:     &IPNetValue{makeIPNet(t)},
+	})
+}
+
+// TODO: share with package apply
+func makeIPNet(t require.TestingT) net.IPNet {
+	return net.IPNet{
+		IP:   testutils.MustRandBytes(t, make([]byte, net.IPv4len)),
+		Mask: net.CIDRMask(1+rand.Intn(8*net.IPv4len), 8*net.IPv4len),
+	}
+}
+
+func mustSerialize(t require.TestingT, f *Fact) (*Fact, []byte) {
 	p, err := f.MarshalBinary()
 	require.Nil(t, err)
 	return f, p
