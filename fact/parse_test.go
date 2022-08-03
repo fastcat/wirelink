@@ -325,13 +325,19 @@ func FuzzDecodeFrom(f *testing.F) {
 			require.NoError(t, err)
 			// the use of uvarint values several places in the encoding results in a
 			// lot of variable encoding we need to deal with
-			if len(payload) == len(loop) {
-				// either encodings are consistent, or else there are balanced
-				// inconsistencies
-				// TODO: this will fail if the fuzzer manages to hit the balanced case
+			// TODO: this will fail if the fuzzer manages to hit the balanced case
+			simpleEquality := len(payload) == len(loop)
+			// member metadata is a dictionary and so original encoding order may not
+			// match output order
+			if ff.Attribute == AttributeMemberMetadata {
+				simpleEquality = false
+			}
+			if simpleEquality {
 				assert.Equal(t, payload[:len(loop)], loop, "decode/encode should loop")
 			} else {
-				// inconsistent encodings, check via double-looping
+				// do a double loop test to avoid problems with initial encoding
+				// variability
+				assert.LessOrEqual(t, len(loop), len(payload), "decode/encode should not increase length")
 				fff := &Fact{}
 				rr := bytes.NewReader(loop)
 				err := fff.DecodeFrom(0, now, rr)
