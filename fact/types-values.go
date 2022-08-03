@@ -43,6 +43,10 @@ func (ipp *IPPortValue) UnmarshalBinary(data []byte) error {
 	} else {
 		return fmt.Errorf("ipv4 + port should be %d bytes, not %d", net.IPv4len+2, len(data))
 	}
+	ipp.IP = util.NormalizeIP(ipp.IP)
+	if len(ipp.IP) != len(data)-1 {
+		return fmt.Errorf("wrong ip length used (v4 in v6?): %d != %d", len(ipp.IP), len(data)-1)
+	}
 	return nil
 }
 
@@ -97,27 +101,22 @@ func (ipn *IPNetValue) UnmarshalBinary(data []byte) error {
 		// decode failed
 		return fmt.Errorf("bad mask length %d", data[len(data)-1])
 	}
+	ipn.IP = util.NormalizeIP(ipn.IP)
+	if len(ipn.IP) != len(data)-1 {
+		return fmt.Errorf("wrong ip length used (v4 in v6?): %d != %d", len(ipn.IP), len(data)-1)
+	}
 	return nil
 }
 
 // DecodeFrom implements Decodable
 func (ipn *IPNetValue) DecodeFrom(lengthHint int, reader io.Reader) error {
 	if lengthHint == net.IPv4len+1 {
-		if err := util.DecodeFrom(ipn, net.IPv4len+1, reader); err != nil {
-			return err
-		}
+		return util.DecodeFrom(ipn, net.IPv4len+1, reader)
 	} else if lengthHint == net.IPv6len+1 {
-		if err := util.DecodeFrom(ipn, net.IPv6len+1, reader); err != nil {
-			return err
-		}
+		return util.DecodeFrom(ipn, net.IPv6len+1, reader)
 	} else {
 		return fmt.Errorf("invalid length hint for for IPNetValue: %v", lengthHint)
 	}
-	ipn.IP = util.NormalizeIP(ipn.IP)
-	if len(ipn.IP) != lengthHint-1 {
-		return fmt.Errorf("wrong ip length used (v4 in v6?): %d != %d", len(ipn.IP), lengthHint-1)
-	}
-	return nil
 }
 
 // IPNetValue inherits Stringer from IPNet
