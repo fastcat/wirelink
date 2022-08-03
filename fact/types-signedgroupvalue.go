@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"time"
 
 	"golang.org/x/crypto/chacha20poly1305"
@@ -65,7 +64,7 @@ func (sgv *SignedGroupValue) DecodeFrom(lengthHint int, reader io.Reader) error 
 	if buf, ok := reader.(*bytes.Buffer); ok {
 		sgv.InnerBytes = util.CloneBytes(buf.Bytes())
 	} else {
-		sgv.InnerBytes, err = ioutil.ReadAll(reader)
+		sgv.InnerBytes, err = io.ReadAll(reader)
 		if err != nil {
 			return util.WrapOrNewf(err, "failed to read Inner for SignedGroupValue, got %d bytes", len(sgv.InnerBytes))
 		}
