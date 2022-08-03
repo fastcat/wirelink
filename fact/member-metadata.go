@@ -136,16 +136,13 @@ func (mm *MemberMetadata) DecodeFrom(lengthHint int, reader io.Reader) error {
 	// check for bogus payload lengths
 	if payloadLen > MaxPayloadLen {
 		return fmt.Errorf("bad payload length: %d > %d", payloadLen, MaxPayloadLen)
-	} else if b, ok := reader.(interface{ Len() int }); ok {
+	} else if b, ok := reader.(interface{ Len() int }); ok && payloadLen > uint64(b.Len()) {
 		// generally bytes.Buffer or bytes.Reader
-		if payloadLen > uint64(b.Len()) {
-			return fmt.Errorf("bad payload length: %d > %d", payloadLen, b.Len())
-		}
+		return fmt.Errorf("bad payload length: %d > %d", payloadLen, b.Len())
 	}
 
 	payload := make([]byte, payloadLen)
-	_, err = io.ReadFull(reader, payload)
-	if err != nil {
+	if _, err = io.ReadFull(reader, payload); err != nil {
 		return fmt.Errorf("unable to read member attributes payload: %w", err)
 	}
 
@@ -169,26 +166,23 @@ func (mm *MemberMetadata) DecodeFrom(lengthHint int, reader io.Reader) error {
 func (mm *MemberMetadata) decodeAttr(payload []byte, offset int) (int, error) {
 	a := MemberAttribute(payload[0])
 	p := offset + 1
+	if _, ok := mm.attributes[a]; ok {
+		return p, fmt.Errorf("duplicate attribute at payload offset %d: %d", offset, int(a))
+	}
+
 	al, n := binary.Uvarint(payload[p:])
 	if n <= 0 {
-		return p, fmt.Errorf("varint encoding error in attribute at payload offset %d", p-n)
+		return p, fmt.Errorf("attribute length encoding error at payload offset %d", p-n)
 	}
 	p += n
-	if al > MaxPayloadLen {
-		// this also serves to check for overflow errors
-		return p, fmt.Errorf("bad attribute length at payload offset %d: %d>%d", p, al, MaxPayloadLen)
-	}
 	ep := p + int(al)
-	if ep < p {
-		return p, fmt.Errorf("attribute length overflow at payload offset %d: +%d", p, al)
-	} else if ep > len(payload) {
-		return p, fmt.Errorf("attribute length error at payload offset %d: +%d>%d", p, al, len(payload))
+	if al > MaxPayloadLen || ep < p || ep > len(payload) {
+		return p, fmt.Errorf("attribute length overflow at payload offset %d: +%d vs %d", p, al, len(payload))
 	}
 	v := string(payload[p:ep])
 	p = ep
 
-	validator := memberMetadataValidators[a]
-	if validator != nil {
+	if validator := memberMetadataValidators[a]; validator != nil {
 		if err := validator(v); err != nil {
 			return p, fmt.Errorf("invalid member attribute value: %w", err)
 		}
@@ -197,9 +191,6 @@ func (mm *MemberMetadata) decodeAttr(payload []byte, offset int) (int, error) {
 		log.Info("Decoding unrecognized member attribute at payload offset %d: %d", offset, int(a))
 	}
 
-	if _, ok := mm.attributes[a]; ok {
-		return p, fmt.Errorf("duplicate attribute at payload offset %d: %d", offset, int(a))
-	}
 	mm.attributes[a] = v
 	return p, nil
 }
