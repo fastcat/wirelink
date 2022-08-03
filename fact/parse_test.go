@@ -316,22 +316,31 @@ func FuzzDecodeFrom(f *testing.F) {
 		ff := &Fact{}
 		n := t.Name()
 		_ = n
-		err := ff.DecodeFrom(0, now, bytes.NewReader(payload))
+		r := bytes.NewReader(payload)
+		err := ff.DecodeFrom(0, now, r)
+		// trim the payload to how much we actually read
+		payload = payload[:len(payload)-r.Len()]
 		if err == nil {
 			loop, err := ff.MarshalBinaryNow(now)
 			require.NoError(t, err)
-			// the uvarint we use for encoding the TTL has multiple valid encodings,
-			// and we need to tolerate that here
-			ttlIn, ttlLenIn := binary.Uvarint(payload[1:])
-			ttlOut, ttlLenOut := binary.Uvarint(loop[1:])
-			if ttlLenIn == ttlLenOut {
-				// no encoding oddities, do a normal compare
+			// the use of uvarint values several places in the encoding results in a
+			// lot of variable encoding we need to deal with
+			if len(payload) == len(loop) {
+				// either encodings are consistent, or else there are balanced
+				// inconsistencies
+				// TODO: this will fail if the fuzzer manages to hit the balanced case
 				assert.Equal(t, payload[:len(loop)], loop, "decode/encode should loop")
 			} else {
-				// uvarint oddities
-				assert.Equal(t, payload[0], loop[0])
-				assert.Equal(t, ttlIn, ttlOut)
-				assert.Equal(t, payload[1+ttlLenIn:len(loop)+ttlLenIn-ttlLenOut], loop[1+ttlLenOut:])
+				// inconsistent encodings, check via double-looping
+				fff := &Fact{}
+				rr := bytes.NewReader(loop)
+				err := fff.DecodeFrom(0, now, rr)
+				require.NoError(t, err)
+				assert.Zero(t, rr.Len(), "decode/encode/decode should read whole message")
+				assert.Equal(t, ff, fff, "decode/encode/decode should loop")
+				loopLoop, err := fff.MarshalBinaryNow(now)
+				require.NoError(t, err)
+				assert.Equal(t, loop, loopLoop, "decode/encode/decode/encode should loop")
 			}
 		}
 	})
