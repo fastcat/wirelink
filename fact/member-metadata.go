@@ -135,12 +135,16 @@ func (mm *MemberMetadata) DecodeFrom(lengthHint int, reader io.Reader) error {
 	// zero always for this value type
 
 	// check for bogus payload lengths
-	if b, ok := reader.(*bytes.Buffer); ok {
+	if payloadLen > MaxPayloadLen {
+		return fmt.Errorf("bad payload length: %d > %d", payloadLen, MaxPayloadLen)
+	} else if b, ok := reader.(*bytes.Reader); ok {
 		if payloadLen > uint64(b.Len()) {
 			return fmt.Errorf("bad payload length: %d > %d", payloadLen, b.Len())
 		}
-	} else if payloadLen > MaxPayloadLen {
-		return fmt.Errorf("bad payload length: %d > %d", payloadLen, MaxPayloadLen)
+	} else if b, ok := reader.(*bytes.Buffer); ok {
+		if payloadLen > uint64(b.Len()) {
+			return fmt.Errorf("bad payload length: %d > %d", payloadLen, b.Len())
+		}
 	}
 
 	payload := make([]byte, payloadLen)
