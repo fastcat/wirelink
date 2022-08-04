@@ -3,7 +3,9 @@ package vnet
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
+	"os"
 	"time"
 
 	"github.com/fastcat/wirelink/internal/networking"
@@ -96,6 +98,12 @@ func (sc *socketUDPConn) ReadFromUDP(b []byte) (n int, addr *net.UDPAddr, err er
 
 // WriteToUDP implements UDPConn
 func (sc *socketUDPConn) WriteToUDP(p []byte, addr *net.UDPAddr) (n int, err error) {
+	// fuzz test support: log all outbound packets from e2e/acceptance style tests
+	// as seed corpus data for the fuzz tests
+	if os.Getenv("LOG_PACKETS") == "true" {
+		fmt.Fprintf(os.Stderr, "WRITING PACKET: %#v\n", p)
+	}
+
 	// make copies of addrs to ensure they don't change along the way
 	dest := *addr
 	src := *sc.s.addr

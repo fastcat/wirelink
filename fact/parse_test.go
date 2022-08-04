@@ -2,11 +2,14 @@ package fact
 
 import (
 	"bytes"
+	_ "embed"
 	"encoding/binary"
+	"fmt"
 	"math"
 	"math/rand"
 	"net"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -306,12 +309,63 @@ func TestFact_DecodeFrom(t *testing.T) {
 	}
 }
 
+//go:embed testdata/vnet-packets.txt
+var vnetPackets string
+
 func FuzzDecodeFrom(f *testing.F) {
 	now := time.Now()
 	_, b := mustMockAlivePacket(f, nil, nil)
 	f.Add(b)
 	_, b = mustMockAllowedV4Packet(f, nil)
 	f.Add(b)
+
+LINES:
+	for idx, l := range strings.Split(vnetPackets, "\n") {
+		if len(l) == 0 {
+			continue
+		}
+		var data []byte
+		if !assert.True(f, strings.HasPrefix(l, "[]byte{")) ||
+			!assert.True(f, strings.HasSuffix(l, "}")) {
+			continue
+		}
+		l = strings.TrimPrefix(l, "[]byte{")
+		l = strings.TrimSuffix(l, "}")
+		// split on commas
+		byteStrings := strings.Split(l, ",")
+		for _, bs := range byteStrings {
+			var b byte
+			// %v will consume the 0x prefix
+			n, err := fmt.Sscanf(bs, "%v", &b)
+			if !assert.NoError(f, err) ||
+				!assert.Equal(f, 1, n) {
+				continue LINES
+			}
+			data = append(data, b)
+		}
+
+		// add the packet to the seed corpus
+		f.Add(data)
+
+		// parse it and, if it's a signed group, add each of its members to the seed
+		// corpus
+		ff := &Fact{}
+		if assert.NoError(f, ff.DecodeFrom(0, now, bytes.NewReader(data)), "must parse vnet packet %d", idx) {
+			if sgv, ok := ff.Value.(*SignedGroupValue); ok {
+				inner, err := sgv.ParseInner(now)
+				require.NoError(f, err)
+				// TODO: this assumes these packets loop properly, would be better to
+				// split on the original bytes
+				for _, ffi := range inner {
+					id, err := ffi.MarshalBinary()
+					if assert.NoError(f, err) {
+						f.Add(id)
+					}
+				}
+			}
+		}
+	}
+
 	f.Fuzz(func(t *testing.T, payload []byte) {
 		t.Parallel()
 		ff := &Fact{}
