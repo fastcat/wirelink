@@ -201,7 +201,7 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 		sgvBytes := util.MustBytes(sgvFact.MarshalBinaryNow(now))
 		checkSGVFactBytes := func(packet []byte) bool {
 			f := &fact.Fact{}
-			err := f.DecodeFrom(0, now, bytes.NewBuffer(packet))
+			err := f.DecodeFrom(0, now, bytes.NewReader(packet))
 			if err != nil {
 				return false
 			}

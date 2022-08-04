@@ -45,7 +45,7 @@ func TestSignedGroupValue_DecodeFrom(t *testing.T) {
 	}{
 		{
 			"insufficient bytes for nonce",
-			args{0, bytes.NewBuffer(make([]byte, chacha20poly1305.NonceSizeX-1))},
+			args{0, bytes.NewReader(make([]byte, chacha20poly1305.NonceSizeX-1))},
 			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
 				return assert.Error(t, err, msgAndArgs...) &&
 					assert.ErrorContains(t, err, "Nonce")
@@ -54,7 +54,7 @@ func TestSignedGroupValue_DecodeFrom(t *testing.T) {
 		},
 		{
 			"insufficient bytes for tag",
-			args{0, bytes.NewBuffer(make([]byte, chacha20poly1305.NonceSizeX+chacha20poly1305.Overhead-1))},
+			args{0, bytes.NewReader(make([]byte, chacha20poly1305.NonceSizeX+chacha20poly1305.Overhead-1))},
 			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
 				return assert.Error(t, err, msgAndArgs...) &&
 					assert.ErrorContains(t, err, "Tag")
@@ -63,7 +63,7 @@ func TestSignedGroupValue_DecodeFrom(t *testing.T) {
 		},
 		{
 			"buffer success",
-			args{0, bytes.NewBuffer(byteVec(chacha20poly1305.NonceSizeX+chacha20poly1305.Overhead+10, 0))},
+			args{0, bytes.NewReader(byteVec(chacha20poly1305.NonceSizeX+chacha20poly1305.Overhead+10, 0))},
 			assert.NoError,
 			func() *SignedGroupValue {
 				ret := &SignedGroupValue{}

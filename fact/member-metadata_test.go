@@ -229,7 +229,7 @@ func TestMemberMetadata_DecodeFrom(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mm := &MemberMetadata{}
-			tt.assertion(t, mm.DecodeFrom(0, bytes.NewBuffer(tt.data)))
+			tt.assertion(t, mm.DecodeFrom(0, bytes.NewReader(tt.data)))
 			assert.Equal(t, tt.wantFields.attributes, mm.attributes)
 		})
 	}

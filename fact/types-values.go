@@ -43,6 +43,10 @@ func (ipp *IPPortValue) UnmarshalBinary(data []byte) error {
 	} else {
 		return fmt.Errorf("ipv4 + port should be %d bytes, not %d", net.IPv4len+2, len(data))
 	}
+	ipp.IP = util.NormalizeIP(ipp.IP)
+	if len(ipp.IP) != len(data)-2 {
+		return fmt.Errorf("wrong ip length used (v4 in v6?): %d != %d", len(ipp.IP), len(data)-2)
+	}
 	return nil
 }
 
@@ -92,6 +96,14 @@ func (ipn *IPNetValue) UnmarshalBinary(data []byte) error {
 		ipn.Mask = net.CIDRMask(int(data[net.IPv6len]), 8*net.IPv6len)
 	} else {
 		return fmt.Errorf("ipv4 + cidr should be %d bytes, not %d", net.IPv4len+1, len(data))
+	}
+	if ipn.Mask == nil {
+		// decode failed
+		return fmt.Errorf("bad mask length %d", data[len(data)-1])
+	}
+	ipn.IP = util.NormalizeIP(ipn.IP)
+	if len(ipn.IP) != len(data)-1 {
+		return fmt.Errorf("wrong ip length used (v4 in v6?): %d != %d", len(ipn.IP), len(data)-1)
 	}
 	return nil
 }

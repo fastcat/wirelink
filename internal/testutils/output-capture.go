@@ -1,7 +1,7 @@
 package testutils
 
 import (
-	"io/ioutil"
+	"io"
 	"os"
 	"testing"
 
@@ -13,7 +13,7 @@ import (
 func CaptureOutput(t *testing.T, f func()) []byte {
 	originalOutput := os.Stdout
 
-	tempfile, err := ioutil.TempFile("", "wirelink-test-output-capture")
+	tempfile, err := os.CreateTemp(t.TempDir(), "wirelink-test-output-capture")
 	require.NoError(t, err)
 	defer os.Remove(tempfile.Name())
 
@@ -25,7 +25,7 @@ func CaptureOutput(t *testing.T, f func()) []byte {
 
 	_, err = tempfile.Seek(0, 0)
 	require.NoError(t, err)
-	data, err := ioutil.ReadAll(tempfile)
+	data, err := io.ReadAll(tempfile)
 	require.NoError(t, err)
 
 	return data

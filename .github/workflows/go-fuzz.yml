@@ -1,0 +1,48 @@
+name: Go Fuzz
+on: [push]
+concurrency:
+  group: fuzz-${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  fuzz:
+    name: fuzz
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    env:
+      GO111MODULE: "on"
+    steps:
+      - name: Set up Go 1.19
+        uses: actions/setup-go@v3
+        with:
+          go-version: "^1.19"
+        id: go
+      - name: Set up macOS
+        if: startsWith(matrix.os, 'macos-')
+        run: |
+          brew install make
+      - name: Set up Linux
+        if: startsWith(matrix.os, 'ubuntu-')
+        run: |
+          set -x
+          if [ ! -x /usr/bin/gmake ]; then
+            sudo ln -snfv /usr/bin/make /usr/bin/gmake
+          fi
+
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 20
+      - name: Get tags to make version.go
+        run: |
+          git fetch origin +refs/tags/*:refs/tags/*
+          d=30
+          while ! gmake info ; do
+            git fetch --deepen=$d origin +refs/tags/*:refs/tags/*
+            d=$((d+10))
+          done
+
+      - name: Run fuzz tests
+        run: gmake test-fuzz

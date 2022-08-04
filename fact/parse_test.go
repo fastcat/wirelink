@@ -2,11 +2,14 @@ package fact
 
 import (
 	"bytes"
+	_ "embed"
 	"encoding/binary"
+	"fmt"
 	"math"
 	"math/rand"
 	"net"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -37,7 +40,7 @@ func Test_TTLClamping(t *testing.T) {
 	require.Equal(t, n, n2)
 
 	f = &Fact{}
-	err := f.DecodeFrom(len(p), now, bytes.NewBuffer(p))
+	err := f.DecodeFrom(len(p), now, bytes.NewReader(p))
 	if assert.Error(t, err, "Decoding fact with out of range TTL should fail") {
 		assert.ErrorContains(t, err, "range")
 		assert.ErrorContains(t, err, strconv.Itoa(math.MaxUint16+1))
@@ -55,12 +58,12 @@ func TestAccelerateTimeForTests(t *testing.T) {
 	require.NoError(t, err)
 
 	f = &Fact{}
-	require.NoError(t, f.DecodeFrom(len(p), now, bytes.NewBuffer(p)))
+	require.NoError(t, f.DecodeFrom(len(p), now, bytes.NewReader(p)))
 	assert.Equal(t, now.Add(time.Second), f.Expires)
 
 	ScaleExpirationQuantumForTests(1)
 	f = &Fact{}
-	require.NoError(t, f.DecodeFrom(len(p), now, bytes.NewBuffer(p)))
+	require.NoError(t, f.DecodeFrom(len(p), now, bytes.NewReader(p)))
 	assert.Equal(t, now.Add(10*time.Second), f.Expires)
 }
 
@@ -292,7 +295,7 @@ func TestFact_DecodeFrom(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := &Fact{}
-			tt.assertion(t, f.DecodeFrom(tt.args.lengthHint, now, bytes.NewBuffer(tt.args.data)))
+			tt.assertion(t, f.DecodeFrom(tt.args.lengthHint, now, bytes.NewReader(tt.args.data)))
 			if tt.wantFields != nil {
 				wantFact := &Fact{
 					Attribute: tt.wantFields.Attribute,
@@ -303,5 +306,103 @@ func TestFact_DecodeFrom(t *testing.T) {
 				assert.Equal(t, wantFact, f)
 			}
 		})
+	}
+}
+
+//go:embed testdata/vnet-packets.txt
+var vnetPackets string
+
+func FuzzDecodeFrom(f *testing.F) {
+	now := time.Now()
+	_, b := mustMockAlivePacket(f, nil, nil)
+	f.Add(b)
+	_, b = mustMockAllowedV4Packet(f, nil)
+	f.Add(b)
+
+	loadVnetPackets(f, now)
+
+	f.Fuzz(func(t *testing.T, payload []byte) {
+		t.Parallel()
+		ff := &Fact{}
+		r := bytes.NewReader(payload)
+		err := ff.DecodeFrom(0, now, r)
+		// trim the payload to how much we actually read
+		payload = payload[:len(payload)-r.Len()]
+		if err == nil {
+			loop, err := ff.MarshalBinaryNow(now)
+			require.NoError(t, err)
+			// the use of uvarint values several places in the encoding results in a
+			// lot of variable encoding we need to deal with
+			// TODO: this will fail if the fuzzer manages to hit the balanced case
+			simpleEquality := len(payload) == len(loop)
+			// member metadata is a dictionary and so original encoding order may not
+			// match output order
+			if ff.Attribute == AttributeMemberMetadata {
+				simpleEquality = false
+			}
+			if simpleEquality {
+				assert.Equal(t, payload[:len(loop)], loop, "decode/encode should loop")
+			} else {
+				// do a double loop test to avoid problems with initial encoding
+				// variability
+				assert.LessOrEqual(t, len(loop), len(payload), "decode/encode should not increase length")
+				fff := &Fact{}
+				rr := bytes.NewReader(loop)
+				err := fff.DecodeFrom(0, now, rr)
+				require.NoError(t, err)
+				assert.Zero(t, rr.Len(), "decode/encode/decode should read whole message")
+				assert.Equal(t, ff, fff, "decode/encode/decode should loop")
+				loopLoop, err := fff.MarshalBinaryNow(now)
+				require.NoError(t, err)
+				assert.Equal(t, loop, loopLoop, "decode/encode/decode/encode should loop")
+			}
+		}
+	})
+}
+
+func loadVnetPackets(f *testing.F, now time.Time) {
+LINES:
+	for idx, l := range strings.Split(vnetPackets, "\n") {
+		if len(l) == 0 {
+			continue
+		}
+		var data []byte
+		if !assert.True(f, strings.HasPrefix(l, "[]byte{")) || !assert.True(f, strings.HasSuffix(l, "}")) {
+			continue
+		}
+		l = strings.TrimPrefix(l, "[]byte{")
+		l = strings.TrimSuffix(l, "}")
+		// split on commas
+		byteStrings := strings.Split(l, ",")
+		for _, bs := range byteStrings {
+			var b byte
+			// %v will consume the 0x prefix
+			n, err := fmt.Sscanf(bs, "%v", &b)
+			if !assert.NoError(f, err) || !assert.Equal(f, 1, n) {
+				continue LINES
+			}
+			data = append(data, b)
+		}
+
+		// add the packet to the seed corpus
+		f.Add(data)
+
+		// parse it and, if it's a signed group, add each of its members to the seed
+		// corpus
+		ff := &Fact{}
+		if assert.NoError(f, ff.DecodeFrom(0, now, bytes.NewReader(data)), "must parse vnet packet %d", idx) {
+			if sgv, ok := ff.Value.(*SignedGroupValue); ok {
+				inner, err := sgv.ParseInner(now)
+				require.NoError(f, err)
+				// TODO: this assumes these packets loop properly, would be better to
+				// split on the original bytes
+				for _, ffi := range inner {
+					id, err := ffi.MarshalBinary()
+					if assert.NoError(f, err) {
+						f.Add(id)
+					}
+				}
+			}
+		}
 	}
 }
