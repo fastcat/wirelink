@@ -11,7 +11,7 @@ make clean all checkinstall-cross-amd64 checkinstall-cross-arm64
 newdebs=(
 	./packaging/checkinstall/wirelink*.deb
 )
-adddebs release=buster "${newdebs[@]}"
+adddebs release=bullseye "${newdebs[@]}"
 
 # only install wirelink, wireguard-go is not normally installed
 sudo dpkg --install ./packaging/checkinstall/wirelink*$(go env GOARCH).deb
