@@ -16,6 +16,7 @@ TOOLS:=\
 	mvdan.cc/gofumpt@latest \
 	golang.org/x/tools/cmd/goimports@latest \
 	github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
+	golang.org/x/vuln/cmd/govulncheck@latest \
 	$(NULL)
 # tools needed to develop the package
 TOOLS_DEV:=\
@@ -69,13 +70,15 @@ wirelink: generate
 wirelink-cross-%: generate
 # build these stripped
 	CGO_ENABLED=0 GOARCH=$* go build -ldflags "-s -w" -o $@ -v .
-lint: lint-fmt lint-golangci lint-vet
+lint: lint-fmt lint-golangci lint-vet lint-vulncheck
 lint-fmt:
 	! gofumpt -l . | grep .
 lint-golangci: generate
 	golangci-lint run
 lint-vet: generate
 	go vet ./...
+lint-vulncheck:
+	govulncheck -test ./...
 # don't need to run non-race tests if we're gonna run race ones too
 test: lint test-go-race
 test-go: generate
