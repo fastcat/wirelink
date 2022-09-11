@@ -1,3 +1,4 @@
+// The wirelink command is the main entrypoint.
 package main
 
 import (

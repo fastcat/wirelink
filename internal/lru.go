@@ -60,6 +60,9 @@ func (m *LRUMap[K, V]) trim() {
 	atomic.AddInt32(&m.n, -t)
 }
 
+// Get attempts to retrieve an item from the map, returning the item (or the
+// zero value for V) and an ok indicator whether it was found in the map or not.
+// If an item was found, its last used counter will be incremented.
 func (m *LRUMap[K, V]) Get(k K) (v V, ok bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -74,6 +77,8 @@ func (m *LRUMap[K, V]) Get(k K) (v V, ok bool) {
 	return i.v, true
 }
 
+// Set adds or overwrites the value associated with a key in the map, and
+// updates its last used counter.
 func (m *LRUMap[K, V]) Set(k K, v V) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
