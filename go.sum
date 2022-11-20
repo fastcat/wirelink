@@ -203,8 +203,8 @@ github.com/stretchr/testify v1.8.0 h1:pSgiaMZlXftHpm5L7V1+rVB+AZJydKsMxsQBIJw4PK
 github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
 github.com/subosito/gotenv v1.4.1 h1:jyEFiXpy21Wm81FBN71l9VoMMV8H8jG+qIK3GCpY6Qs=
 github.com/subosito/gotenv v1.4.1/go.mod h1:ayKnFf/c6rvx/2iiLrJUk1e6plDbT3edrFNGqEflhK0=
-github.com/vektra/mockery/v2 v2.14.0 h1:KZ1p5Hrn8tiY+LErRMr14HHle6khxo+JKOXLBW/yfqs=
-github.com/vektra/mockery/v2 v2.14.0/go.mod h1:bnD1T8tExSgPD1ripLkDbr60JA9VtQeu12P3wgLZd7M=
+github.com/vektra/mockery/v2 v2.15.0 h1:5Egbxoancm1hhkJUoAF+cf0FBzC9oxS28LL/ZKbC980=
+github.com/vektra/mockery/v2 v2.15.0/go.mod h1:RswGtsqDbCR9j4UcgBQuAZY7OFxI+TgtHevc0gR0kCY=
 github.com/vishvananda/netlink v1.1.0 h1:1iyaYNBLmP6L0220aDnYQpo1QEV4t4hJ+xEEhhJH8j0=
 github.com/vishvananda/netlink v1.1.0/go.mod h1:cTgwzPIzzgDAYoQrMm0EdrjRUBkTqKYppBueQtXaqoE=
 github.com/vishvananda/netns v0.0.0-20191106174202-0a2b9b5464df/go.mod h1:JP3t17pCcGlemwknint6hfoeCVQrEMVwxRLRjXpq+BU=
