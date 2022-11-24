@@ -85,7 +85,7 @@ jobs:
           fail_ci_if_error: true
       - name: Upload coverage (artifact)
         if: ${{ always() }}
-        uses: actions/upload-artifact@v3.1.0
+        uses: actions/upload-artifact@v3.1.1
         with:
           name: coverage.html
           path: ./coverage.html
