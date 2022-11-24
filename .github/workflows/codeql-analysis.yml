@@ -38,11 +38,10 @@ jobs:
         # fetch more than that so git describe --tags will work
         fetch-depth: 20
 
-    # requires 1.18 to build
-    - name: Set up Go 1.18
+    - name: Set up Go 1.19
       uses: actions/setup-go@v3
       with:
-        go-version: "^1.18"
+        go-version: "^1.19"
       id: go
 
     - name: Get tags to make version.go
