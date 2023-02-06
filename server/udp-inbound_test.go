@@ -641,7 +641,7 @@ func TestLinkServer_chunkReceived_slow(t *testing.T) {
 					// sending a nil packet is valid, so we need to check flags if that's what we've got
 					if p.packet != nil {
 						// treat the packet expires as an offset from timeZero, update it to be that offset from now
-						p.packet.fact.Expires.Add(time.Since(timeZero))
+						p.packet.fact.Expires = p.packet.fact.Expires.Add(time.Since(timeZero))
 						packets <- p.packet
 					} else {
 						packets <- nil
