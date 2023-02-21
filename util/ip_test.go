@@ -5,6 +5,7 @@ import (
 	"net"
 	"testing"
 
+	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -138,7 +139,7 @@ func TestIsIPv6LLMatch(t *testing.T) {
 func TestIsGloballyRoutable(t *testing.T) {
 	rb := func(l int, prefix ...byte) []byte {
 		r := make([]byte, l)
-		rand.Read(r)
+		testutils.Rand.Read(r)
 		copy(r, prefix)
 		return r
 	}

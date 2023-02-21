@@ -1,8 +1,6 @@
 package testutils
 
 import (
-	"math/rand"
-
 	"github.com/stretchr/testify/require"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -33,7 +31,7 @@ func MustParseKey(t require.TestingT, s string) wgtypes.Key {
 
 // MustRandBytes fills the given slice with random bytes using rand.Read
 func MustRandBytes(t require.TestingT, data []byte) []byte {
-	n, err := rand.Read(data)
+	n, err := Rand.Read(data)
 	require.Nil(t, err)
 	require.Equal(t, len(data), n)
 	return data

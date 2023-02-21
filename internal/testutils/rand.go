@@ -10,5 +10,8 @@ import (
 func init() {
 	seed := time.Now().UnixNano()
 	fmt.Printf("Today's seed is %v\n", seed)
-	rand.Seed(seed)
+	Rand = rand.New(rand.NewSource(seed))
 }
+
+// Rand is a per-run initialized non-crypto RNG
+var Rand *rand.Rand
