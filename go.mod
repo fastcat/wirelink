@@ -6,7 +6,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/spf13/pflag v1.0.6-0.20201009195203-85dd5c8bc61c
 	github.com/spf13/viper v1.15.0
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	github.com/vektra/mockery/v2 v2.20.2
 	github.com/vishvananda/netlink v1.1.0
 	golang.org/x/crypto v0.6.0
