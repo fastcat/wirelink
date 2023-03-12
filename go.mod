@@ -7,7 +7,7 @@ require (
 	github.com/spf13/pflag v1.0.6-0.20201009195203-85dd5c8bc61c
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.8.1
-	github.com/vektra/mockery/v2 v2.20.2
+	github.com/vektra/mockery/v2 v2.22.1
 	github.com/vishvananda/netlink v1.1.0
 	golang.org/x/crypto v0.6.0
 	golang.org/x/sync v0.1.0
@@ -21,7 +21,9 @@ require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/iancoleman/strcase v0.2.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/jinzhu/copier v0.3.5 // indirect
 	github.com/josharian/native v1.1.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
