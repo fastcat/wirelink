@@ -69,12 +69,12 @@ func (sc *socketUDPConn) Close() error {
 }
 
 // SetReadDeadline implements UDPConn
-func (sc *socketUDPConn) SetReadDeadline(t time.Time) error {
+func (sc *socketUDPConn) SetReadDeadline(_ time.Time) error {
 	panic("Not implemented")
 }
 
 // SetWriteDeadline implements UDPConn by always returning nil
-func (sc *socketUDPConn) SetWriteDeadline(t time.Time) error {
+func (sc *socketUDPConn) SetWriteDeadline(_ time.Time) error {
 	// this is a no-op as our sends are functionally instantaneous
 	return nil
 }
@@ -130,7 +130,7 @@ func (sc *socketUDPConn) WriteToUDP(p []byte, addr *net.UDPAddr) (n int, err err
 // ReadPackets implements UDPConn
 func (sc *socketUDPConn) ReadPackets(
 	ctx context.Context,
-	maxSize int,
+	_ int,
 	output chan<- *networking.UDPPacket,
 ) error {
 	done := ctx.Done()

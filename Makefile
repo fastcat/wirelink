@@ -11,14 +11,15 @@ PKGREL=$(PKGVERREL:$(PKGVER)-%=%)
 
 DOCSFILES:=LICENSE README.md TODO.md
 
-# tools needed to build the package
+# tools needed to build the package, these rely on being in the go.mod for
+# version selection
 TOOLS:=\
-	mvdan.cc/gofumpt@latest \
-	golang.org/x/tools/cmd/goimports@latest \
-	github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
-	golang.org/x/vuln/cmd/govulncheck@latest \
+	mvdan.cc/gofumpt \
+	golang.org/x/tools/cmd/goimports \
+	github.com/golangci/golangci-lint/cmd/golangci-lint \
+	golang.org/x/vuln/cmd/govulncheck \
 	$(NULL)
-# tools needed to develop the package
+# tools needed to develop the package, these aren't tied to go.mod
 TOOLS_DEV:=\
 	github.com/cweill/gotests/gotests@latest \
 	github.com/go-delve/delve/cmd/dlv@latest \

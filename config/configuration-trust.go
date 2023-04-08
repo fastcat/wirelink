@@ -36,7 +36,7 @@ func CreateTrustEvaluator(peers Peers) trust.Evaluator {
 	return ret
 }
 
-func (c *configEvaluator) IsKnown(subject fact.Subject) bool {
+func (c *configEvaluator) IsKnown(_ fact.Subject) bool {
 	// peers are never known to the config evaluator, only trusted
 	return false
 }
@@ -44,7 +44,7 @@ func (c *configEvaluator) IsKnown(subject fact.Subject) bool {
 // TrustLevel looks up the fact's source IP in the list of known peers'
 // IPv6-LL addresses, and returns the configured trust level for that peer,
 // if found and configured
-func (c *configEvaluator) TrustLevel(f *fact.Fact, source net.UDPAddr) *trust.Level {
+func (c *configEvaluator) TrustLevel(_ *fact.Fact, source net.UDPAddr) *trust.Level {
 	// we evaluate the trust level based on the _source_, not the _subject_
 	// source port evaluation is left to route-based-trust
 	pk, ok := c.ipToPeer[util.IPToBytes(source.IP)]

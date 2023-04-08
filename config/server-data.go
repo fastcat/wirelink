@@ -37,7 +37,7 @@ type ServerData struct {
 }
 
 // Parse converts the raw configuration data into a ready to use server config.
-func (s *ServerData) Parse(vcfg *viper.Viper, wgc internal.WgClient) (ret *Server, err error) {
+func (s *ServerData) Parse(vcfg *viper.Viper, _ internal.WgClient) (ret *Server, err error) {
 	// apply this right away, but only as an enable
 	// once debug is on, leave it on (esp. for tests)
 	if s.Debug {

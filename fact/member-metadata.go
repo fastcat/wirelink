@@ -119,7 +119,7 @@ func (mm *MemberMetadata) sortedAttrs() []MemberAttribute {
 }
 
 // DecodeFrom implements Decodable
-func (mm *MemberMetadata) DecodeFrom(lengthHint int, reader io.Reader) error {
+func (mm *MemberMetadata) DecodeFrom(_ int, reader io.Reader) error {
 	var br io.ByteReader
 	var ok bool
 	if br, ok = reader.(io.ByteReader); !ok {

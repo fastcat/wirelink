@@ -65,7 +65,7 @@ func errFromSeed(seed int64, len int) *alternateBuffer {
 }
 
 func TestDecodeFrom(t *testing.T) {
-	len := 16 + rand.Intn(16)
+	readLen := 16 + rand.Intn(16)
 	type args struct {
 		value   *unmarshal
 		readLen int
@@ -81,28 +81,28 @@ func TestDecodeFrom(t *testing.T) {
 			"simple read from byte buffer",
 			args{
 				value:   &unmarshal{},
-				readLen: len,
-				reader:  bufFromSeed(1, len),
+				readLen: readLen,
+				reader:  bufFromSeed(1, readLen),
 			},
-			bytesFromSeed(1, len),
+			bytesFromSeed(1, readLen),
 			false,
 		},
 		{
 			"simple read from reader",
 			args{
 				value:   &unmarshal{},
-				readLen: len,
-				reader:  altFromSeed(2, len),
+				readLen: readLen,
+				reader:  altFromSeed(2, readLen),
 			},
-			bytesFromSeed(2, len),
+			bytesFromSeed(2, readLen),
 			false,
 		},
 		{
 			"read error",
 			args{
 				value:   &unmarshal{},
-				readLen: len,
-				reader:  errFromSeed(3, len),
+				readLen: readLen,
+				reader:  errFromSeed(3, readLen),
 			},
 			nil,
 			true,
@@ -111,8 +111,8 @@ func TestDecodeFrom(t *testing.T) {
 			"short read",
 			args{
 				value:   &unmarshal{},
-				readLen: len,
-				reader:  bufFromSeed(4, len-1),
+				readLen: readLen,
+				reader:  bufFromSeed(4, readLen-1),
 			},
 			nil,
 			true,
@@ -121,10 +121,10 @@ func TestDecodeFrom(t *testing.T) {
 			"unmarshal error",
 			args{
 				value:   &unmarshal{nil, errors.New("Mock fail unmarshal")},
-				readLen: len,
-				reader:  bufFromSeed(5, len),
+				readLen: readLen,
+				reader:  bufFromSeed(5, readLen),
 			},
-			bytesFromSeed(5, len),
+			bytesFromSeed(5, readLen),
 			true,
 		},
 	}

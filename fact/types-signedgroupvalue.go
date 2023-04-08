@@ -48,7 +48,7 @@ func (sgv *SignedGroupValue) MarshalBinary() ([]byte, error) {
 }
 
 // DecodeFrom implements Decodable
-func (sgv *SignedGroupValue) DecodeFrom(lengthHint int, reader io.Reader) error {
+func (sgv *SignedGroupValue) DecodeFrom(_ int, reader io.Reader) error {
 	var n int
 	var err error
 

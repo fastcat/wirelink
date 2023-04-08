@@ -29,7 +29,7 @@ func (s *PeerSubject) UnmarshalBinary(data []byte) error {
 }
 
 // DecodeFrom implements Decodable
-func (s *PeerSubject) DecodeFrom(lengthHint int, reader io.Reader) error {
+func (s *PeerSubject) DecodeFrom(_ int, reader io.Reader) error {
 	return util.DecodeFrom(s, wgtypes.KeyLen, reader)
 }
 
