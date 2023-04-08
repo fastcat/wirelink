@@ -47,8 +47,8 @@ func (pcs *PeerConfigState) Clone() *PeerConfigState {
 
 	ret := *pcs
 	if ret.lastBootID != nil {
-		copy := *ret.lastBootID
-		ret.lastBootID = &copy
+		bootIDCopy := *ret.lastBootID
+		ret.lastBootID = &bootIDCopy
 	}
 	if pcs.endpointLastUsed != nil {
 		ret.endpointLastUsed = make(map[string]time.Time, len(pcs.endpointLastUsed))

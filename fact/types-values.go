@@ -132,7 +132,7 @@ func (v EmptyValue) MarshalBinary() ([]byte, error) {
 }
 
 // DecodeFrom implements Decodable
-func (v EmptyValue) DecodeFrom(lengthHint int, reader io.Reader) error {
+func (v EmptyValue) DecodeFrom(_ int, _ io.Reader) error {
 	return nil
 }
 
@@ -157,7 +157,7 @@ var _ Value = &UUIDValue{}
 // UUIDValue inherits its MarshalBinary from UUID
 
 // DecodeFrom implements Decodable
-func (u *UUIDValue) DecodeFrom(lengthHint int, reader io.Reader) error {
+func (u *UUIDValue) DecodeFrom(_ int, reader io.Reader) error {
 	return util.DecodeFrom(u, uuidLen, reader)
 }
 

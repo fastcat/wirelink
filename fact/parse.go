@@ -65,7 +65,7 @@ var decodeHints = map[Attribute]decodeHinter{
 }
 
 // DecodeFrom implements Decodable
-func (f *Fact) DecodeFrom(lengthHint int, now time.Time, reader util.ByteReader) error {
+func (f *Fact) DecodeFrom(_ int, now time.Time, reader util.ByteReader) error {
 	var err error
 
 	attrByte, err := reader.ReadByte()
