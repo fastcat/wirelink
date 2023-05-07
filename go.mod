@@ -11,7 +11,7 @@ require (
 	github.com/vektra/mockery/v2 v2.26.1
 	github.com/vishvananda/netlink v1.1.0
 	golang.org/x/crypto v0.8.0
-	golang.org/x/sync v0.1.0
+	golang.org/x/sync v0.2.0
 	golang.org/x/tools v0.8.0
 	golang.org/x/vuln v0.0.0-20230407211851-ee3d87385065
 	golang.zx2c4.com/wireguard v0.0.0-20230216153314-c7b76d3d9ecd
