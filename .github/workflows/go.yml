@@ -15,7 +15,7 @@ jobs:
       GO111MODULE: "on"
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 20
 
