@@ -12,7 +12,7 @@ require (
 	github.com/vishvananda/netlink v1.1.0
 	golang.org/x/crypto v0.14.0
 	golang.org/x/sync v0.5.0
-	golang.org/x/tools v0.11.0
+	golang.org/x/tools v0.14.0
 	golang.org/x/vuln v0.2.0
 	golang.zx2c4.com/wireguard v0.0.0-20230704135630-469159ecf7d1
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20230429144221-925a1e7659e6
@@ -187,7 +187,7 @@ require (
 	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea // indirect
 	golang.org/x/exp/typeparams v0.0.0-20230224173230-c95f2b4c22f2 // indirect
-	golang.org/x/mod v0.12.0 // indirect
+	golang.org/x/mod v0.13.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/term v0.13.0 // indirect
