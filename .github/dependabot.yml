@@ -2,6 +2,10 @@ version: 2
 updates:
   - package-ecosystem: "gomod"
     directory: "/"
+    groups:
+      go-everything:
+        patterns:
+          - "*"
     schedule:
       interval: "weekly"
       day: sunday
