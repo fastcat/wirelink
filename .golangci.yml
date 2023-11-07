@@ -18,6 +18,10 @@ linters:
 linters-settings:
   gocyclo:
     min-complexity: 20
+  revive:
+    rules:
+      - name: "superfluous-else"
+        disabled: true
 
 issues:
   # disable default rule suppressions,
