@@ -80,7 +80,7 @@
 		// work around https://github.com/golang/vscode-go/issues/721
 		"editor.formatOnSaveMode": "file",
 		"editor.codeActionsOnSave": {
-			"source.organizeImports": true
+			"source.organizeImports": "explicit"
 		}
 	},
 	"go.formatTool": "gofumpt",
