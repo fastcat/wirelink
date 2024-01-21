@@ -6,14 +6,14 @@ require (
 	github.com/golangci/golangci-lint v1.55.2
 	github.com/google/uuid v1.5.0
 	github.com/spf13/pflag v1.0.6-0.20201009195203-85dd5c8bc61c
-	github.com/spf13/viper v1.18.1
+	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.8.4
-	github.com/vektra/mockery/v2 v2.38.0
+	github.com/vektra/mockery/v2 v2.40.1
 	github.com/vishvananda/netlink v1.1.0
-	golang.org/x/crypto v0.17.0
-	golang.org/x/sync v0.5.0
-	golang.org/x/tools v0.16.1
-	golang.org/x/vuln v1.0.1
+	golang.org/x/crypto v0.18.0
+	golang.org/x/sync v0.6.0
+	golang.org/x/tools v0.17.0
+	golang.org/x/vuln v1.0.2
 	golang.zx2c4.com/wireguard v0.0.0-20231022001213-2e0774f246fb
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20230429144221-925a1e7659e6
 	mvdan.cc/gofumpt v0.5.0
@@ -51,7 +51,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/charithe/durationcheck v0.0.10 // indirect
 	github.com/chavacava/garif v0.1.0 // indirect
-	github.com/chigopher/pathlib v0.15.0 // indirect
+	github.com/chigopher/pathlib v0.19.1 // indirect
 	github.com/curioswitch/go-reassign v0.2.0 // indirect
 	github.com/daixiang0/gci v0.11.2 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
@@ -195,9 +195,9 @@ require (
 	golang.org/x/exp v0.0.0-20231127185646-65229373498e // indirect
 	golang.org/x/exp/typeparams v0.0.0-20231127185646-65229373498e // indirect
 	golang.org/x/mod v0.14.0 // indirect
-	golang.org/x/net v0.19.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
-	golang.org/x/term v0.15.0 // indirect
+	golang.org/x/net v0.20.0 // indirect
+	golang.org/x/sys v0.16.0 // indirect
+	golang.org/x/term v0.16.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.zx2c4.com/wintun v0.0.0-20230126152724-0fa3db229ce2 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
