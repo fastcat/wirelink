@@ -88,7 +88,7 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@v4.3.0
         with:
-          name: coverage.html
+          name: coverage-${{ matrix.os }}.html
           path: ./coverage.html
 
       - name: Test with race detector
