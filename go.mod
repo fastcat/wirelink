@@ -1,6 +1,6 @@
 module github.com/fastcat/wirelink
 
-go 1.21
+go 1.22
 
 require (
 	github.com/golangci/golangci-lint v1.55.2
