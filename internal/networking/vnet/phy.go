@@ -58,7 +58,7 @@ func (i *PhysicalInterface) OutboundPacket(p *Packet) bool {
 	}
 
 	// fixup source addr
-	if n != nil && (p.src.IP.Equal(net.IPv4zero) || p.src.IP.Equal(net.IPv6zero)) {
+	if p.src.IP.Equal(net.IPv4zero) || p.src.IP.Equal(net.IPv6zero) {
 		// TODO: makes assumptions about multiple addrs on interface
 		for _, addr := range i.addrs {
 			// TODO: this fails the race detector sometimes, vs the reads in destinationSocket

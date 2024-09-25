@@ -73,7 +73,7 @@ func (e *linuxEnvironment) interfaceFromGo(iface *native.GoInterface) (*linuxInt
 
 func (e *linuxEnvironment) Close() error {
 	if e.nlh != nil {
-		e.nlh.Delete()
+		e.nlh.Close()
 		e.nlh = nil
 	}
 	return e.GoEnvironment.Close()
