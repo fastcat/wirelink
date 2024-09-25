@@ -1,7 +1,6 @@
 module github.com/fastcat/wirelink
 
-go 1.22
-toolchain go1.22.5
+go 1.23.1
 
 require (
 	github.com/golangci/golangci-lint v1.61.0
@@ -13,9 +12,9 @@ require (
 	github.com/vishvananda/netlink v1.3.0
 	golang.org/x/crypto v0.27.0
 	golang.org/x/sync v0.8.0
-	golang.org/x/tools v0.24.0
+	golang.org/x/tools v0.25.0
 	golang.org/x/vuln v1.1.3
-	golang.zx2c4.com/wireguard v0.0.0-20231022001213-2e0774f246fb
+	golang.zx2c4.com/wireguard v0.0.0-20231211153847-12269c276173
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20230429144221-925a1e7659e6
 	mvdan.cc/gofumpt v0.7.0
 )
@@ -196,7 +195,7 @@ require (
 	golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e // indirect
 	golang.org/x/exp/typeparams v0.0.0-20240314144324-c7f7c6466f7f // indirect
 	golang.org/x/mod v0.21.0 // indirect
-	golang.org/x/net v0.28.0 // indirect
+	golang.org/x/net v0.29.0 // indirect
 	golang.org/x/sys v0.25.0 // indirect
 	golang.org/x/telemetry v0.0.0-20240522233618-39ace7a40ae7 // indirect
 	golang.org/x/term v0.24.0 // indirect
