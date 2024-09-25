@@ -66,7 +66,6 @@
 	],
 	"go.testFlags": ["-short"],
 	"go.lintTool": "golangci-lint",
-	"go.buildOnSave": "workspace",
 	"go.lintOnSave": "workspace",
 	"go.coverOnSave": true,
 	"go.vetOnSave": "workspace",
@@ -76,14 +75,13 @@
 	"[go]": {
 		"editor.insertSpaces": false,
 		"editor.formatOnSave": true,
-		// work around https://github.com/golang/vscode-go/issues/721
+		// work around https://github.com/golang/vscode-go/issues/691
 		"editor.formatOnSaveMode": "file",
 		"editor.codeActionsOnSave": {
 			"source.organizeImports": "explicit"
 		}
 	},
 	"go.formatTool": "gofumpt",
-	"go.gotoSymbol.includeImports": true,
 	"files.insertFinalNewline": true,
 	"files.trimFinalNewlines": true
 }
