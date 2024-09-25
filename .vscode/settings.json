@@ -62,7 +62,6 @@
 		"dlv": "${workspaceFolder}/.vscode/dlv-sudo.sh"
 	},
 	"go.generateTestsFlags": [
-		// NOTE: as of 2020-11-29, this requires gotests@master (no released version yet)
 		"-template=testify"
 	],
 	"go.testFlags": ["-short"],

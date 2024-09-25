@@ -68,8 +68,8 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           version: latest
-      - name: Lint
-        run: gmake lint-ci
+      - name: govulncheck
+        run: gmake lint-vulncheck
 
       - name: Test with coverage
         # building the coverage output runs the tests

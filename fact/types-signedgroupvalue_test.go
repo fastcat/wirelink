@@ -24,7 +24,7 @@ func (mr *mockReader) Read(p []byte) (int, error) {
 
 var _ io.Reader = &mockReader{}
 
-func byteVec(length int, offset int) []byte {
+func byteVec(length, offset int) []byte {
 	ret := make([]byte, length)
 	for i := 0; i < length; i++ {
 		ret[i] = byte(i + offset)

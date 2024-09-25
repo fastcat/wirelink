@@ -8,6 +8,7 @@ linters:
     - gocyclo
     - gofmt
     - goimports
+    - gofumpt
     - revive
     - misspell
     - prealloc
@@ -22,6 +23,8 @@ linters-settings:
     rules:
       - name: "superfluous-else"
         disabled: true
+  gofumpt:
+    extra-rules: true
 
 issues:
   # disable default rule suppressions,

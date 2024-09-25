@@ -10,18 +10,15 @@ PKGREL=$(PKGVERREL:$(PKGVER)-%=%)
 
 DOCSFILES:=LICENSE README.md TODO.md
 
-# tools needed to build the package, these rely on being in the go.mod for
-# version selection
+# tools we need to install in CI
 TOOLS:=\
-	mvdan.cc/gofumpt \
-	golang.org/x/tools/cmd/goimports \
-	golang.org/x/vuln/cmd/govulncheck \
+	golang.org/x/vuln/cmd/govulncheck@latest \
 	$(NULL)
-# tools needed to develop the package, these aren't tied to go.mod
+# tools needed by developers (in addition to the CI ones)
 TOOLS_DEV:=\
 	github.com/cweill/gotests/gotests@latest \
 	github.com/go-delve/delve/cmd/dlv@latest \
-	github.com/golangci/golangci-lint/cmd/golangci-lint \
+	github.com/golangci/golangci-lint/cmd/golangci-lint@latest \
 	$(NULL)
 
 all: everything
@@ -60,9 +57,6 @@ internal/version.go: internal/version.go.in .git/HEAD .git/index
 $(GOGENERATED_SOURCES):
 	go generate ./...
 
-fmt: generate
-	gofumpt -l -w .
-	goimports -w -l .
 compile: generate
 	go build -v ./...
 wirelink: generate
@@ -70,14 +64,11 @@ wirelink: generate
 wirelink-cross-%: generate
 # build these stripped
 	CGO_ENABLED=0 GOARCH=$* go build -ldflags "-s -w" -o $@ -v .
-lint: lint-fmt lint-golangci lint-vet lint-vulncheck
-lint-ci: lint-fmt lint-vet lint-vulncheck
-lint-fmt:
-	! gofumpt -l . | grep .
+lint: lint-golangci lint-vulncheck
 lint-golangci: generate
 	golangci-lint run
-lint-vet: generate
-	go vet ./...
+lint-fix: generate
+	golangci-lint run --fix
 lint-vulncheck:
 	govulncheck -test ./...
 # don't need to run non-race tests if we're gonna run race ones too
