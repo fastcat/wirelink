@@ -1,6 +1,5 @@
 GOPATH:=$(shell go env GOPATH)
 export PATH:=$(GOPATH)/bin:$(PATH)
-export GO111MODULE=on
 
 # can be overridden
 PREFIX=/usr
