@@ -39,10 +39,10 @@ jobs:
         # fetch more than that so git describe --tags will work
         fetch-depth: 20
 
-    - name: Set up Go 1.22
+    - name: Set up Go 1.23
       uses: actions/setup-go@v5
       with:
-        go-version: "^1.22"
+        go-version: "^1.23"
       id: go
 
     - name: Get tags to make version.go
