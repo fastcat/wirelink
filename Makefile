@@ -16,13 +16,13 @@ DOCSFILES:=LICENSE README.md TODO.md
 TOOLS:=\
 	mvdan.cc/gofumpt \
 	golang.org/x/tools/cmd/goimports \
-	github.com/golangci/golangci-lint/cmd/golangci-lint \
 	golang.org/x/vuln/cmd/govulncheck \
 	$(NULL)
 # tools needed to develop the package, these aren't tied to go.mod
 TOOLS_DEV:=\
 	github.com/cweill/gotests/gotests@latest \
 	github.com/go-delve/delve/cmd/dlv@latest \
+	github.com/golangci/golangci-lint/cmd/golangci-lint \
 	$(NULL)
 
 all: everything
@@ -72,6 +72,7 @@ wirelink-cross-%: generate
 # build these stripped
 	CGO_ENABLED=0 GOARCH=$* go build -ldflags "-s -w" -o $@ -v .
 lint: lint-fmt lint-golangci lint-vet lint-vulncheck
+lint-ci: lint-fmt lint-vet lint-vulncheck
 lint-fmt:
 	! gofumpt -l . | grep .
 lint-golangci: generate

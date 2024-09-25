@@ -11,18 +11,16 @@ jobs:
         os: [ubuntu-20.04, ubuntu-22.04, macos-11, macos-12, macos-13]
       fail-fast: false
     runs-on: ${{ matrix.os }}
-    env:
-      GO111MODULE: "on"
     steps:
       - name: Check out code
         uses: actions/checkout@v4
         with:
           fetch-depth: 20
 
-      - name: Set up Go 1.22
+      - name: Set up Go 1.23
         uses: actions/setup-go@v5
         with:
-          go-version: "^1.22"
+          go-version: "^1.23"
         id: go
       - name: Set up macOS
         if: startsWith(matrix.os, 'macos-')
@@ -66,8 +64,12 @@ jobs:
           gmake fmt
           git diff --exit-code
 
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
       - name: Lint
-        run: gmake lint
+        run: gmake lint-ci
 
       - name: Test with coverage
         # building the coverage output runs the tests
