@@ -22,7 +22,7 @@ func autoAddress(key wgtypes.Key) net.IP {
 
 // TODO: this should be done with awareness of the number of peers we're going
 // to have
-var aaMemo = internal.Memoize(50, 5, autoAddress)
+var aaMemo = internal.Memoize(50, autoAddress)
 
 // AutoAddress returns the IPv6 link-local address that should be assigned to
 // peer based on its public key
