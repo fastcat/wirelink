@@ -168,6 +168,7 @@ func TestGoUDPConn_ReadPackets(t *testing.T) {
 			recvDone := make(chan struct{})
 
 			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 			receiveChan := make(chan *networking.UDPPacket, len(tt.args.send)+len(tt.args.wantReceive))
 
 			// have to run the test code async to be concurrent with the sending
@@ -206,9 +207,6 @@ func TestGoUDPConn_ReadPackets(t *testing.T) {
 			}
 			if tt.cancelCtx {
 				cancel()
-			} else {
-				// do cancel it eventually to release resources
-				defer cancel()
 			}
 			<-recvDone
 
