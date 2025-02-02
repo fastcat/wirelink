@@ -5,10 +5,10 @@ go 1.23.1
 require (
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/golang-lru/arc/v2 v2.0.7
-	github.com/spf13/pflag v1.0.6-0.20201009195203-85dd5c8bc61c
+	github.com/spf13/pflag v1.0.6
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.10.0
-	github.com/vektra/mockery/v2 v2.51.1
+	github.com/vektra/mockery/v2 v2.52.1
 	github.com/vishvananda/netlink v1.3.0
 	golang.org/x/crypto v0.32.0
 	golang.org/x/sync v0.10.0
