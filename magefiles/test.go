@@ -41,9 +41,6 @@ func (Test) Cover(ctx context.Context) error {
 	return sh.RunV("go", "test", "-vet=off", "-timeout=1m", "-covermode=atomic", "-coverpkg=./...", "-coverprofile=coverage.out", "./...")
 }
 func (Test) CoverHTML(ctx context.Context) error {
-	if err := ifDirty("coverage.out").then(Test{}.Cover).run(ctx); err != nil {
-		return err
-	}
 	if err := ifDirty("coverage.html").from("coverage.out").then(func(ctx context.Context) error {
 		return sh.RunV("go", "tool", "cover", "-html=coverage.out", "-o=coverage.html")
 	}).run(ctx); err != nil {
