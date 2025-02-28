@@ -53,10 +53,7 @@ func buildVersion(ctx context.Context) error {
 		return err
 	}
 	out := bytes.ReplaceAll(in, []byte("__GIT_VERSION__"), []byte(v.pkgVerRel))
-	if err := os.WriteFile("internal/version.go.tmp", out, 0666); err != nil {
-		return err
-	}
-	if err := os.Rename("internal/version.go.tmp", "internal/version.go"); err != nil {
+	if err := safeOverwrite("internal/version.go", out, 0666); err != nil {
 		return err
 	}
 	return nil
@@ -64,4 +61,12 @@ func buildVersion(ctx context.Context) error {
 
 func goGenerate(ctx context.Context) error {
 	return sh.RunV("go", "generate", "./...")
+}
+
+func safeOverwrite(dst string, content []byte, perm os.FileMode) error {
+	tmp := dst + ".tmp"
+	if err := os.WriteFile(tmp, content, perm); err != nil {
+		return err
+	}
+	return os.Rename(tmp, dst)
 }
