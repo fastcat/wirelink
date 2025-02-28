@@ -48,7 +48,7 @@ func buildVersion(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	v, err := getVersions()
+	v, err := getVersions(ctx)
 	if err != nil {
 		return err
 	}

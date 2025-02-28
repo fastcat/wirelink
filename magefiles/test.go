@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"path/filepath"
+	"strings"
 
 	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/sh"
@@ -52,8 +54,33 @@ func (Test) CoverHTML(ctx context.Context) error {
 
 func (Test) Fuzz(ctx context.Context) error {
 	mg.CtxDeps(ctx, Generate)
-	panic(`TODO:
-fgrep -rlZ 'func Fuzz' */ | xargs -0 dirname -z | sort -zu \
-	| xargs -0 -t -I_PKG_ go test ./_PKG_ -fuzz=.* -fuzztime=1m
-`)
+	// TODO: pipeline this better
+	dirs, err := filepath.Glob("*/")
+	if err != nil {
+		return err
+	}
+	fgArgs := []string{"-rlZ", "func Fuzz"}
+	fgArgs = append(fgArgs, dirs...)
+	fuzzersOut, err := sh.Output("fgrep", fgArgs...)
+	if err != nil {
+		return err
+	}
+	fuzzerFiles := strings.Split(fuzzersOut, "\x00")
+	fuzzerDirs := map[string]bool{}
+	for _, fuzzerFile := range fuzzerFiles {
+		if len(fuzzerFile) != 0 {
+			fuzzerDirs[filepath.Dir(fuzzerFile)] = true
+		}
+	}
+	delete(fuzzerDirs, "magefiles")
+	deps := make([]any, 0, len(fuzzerDirs))
+	for fuzzerDir := range fuzzerDirs {
+		deps = append(deps, mg.F(Test{}.fuzzDir, fuzzerDir))
+	}
+	mg.CtxDeps(ctx, deps...)
+	return nil
+}
+
+func (Test) fuzzDir(ctx context.Context, dir string) error {
+	return sh.RunV("go", "test", "./"+dir, "-fuzz=.*", "-fuzztime=1m")
 }
