@@ -1,7 +1,4 @@
 # cSpell: disable
-run:
-  skipdirs:
-    - try
 
 linters:
   enable:
@@ -30,6 +27,8 @@ issues:
   # disable default rule suppressions,
   # esp. for the "exported methods must have a comment" bit
   exclude-use-default: false
+  exclude-dirs:
+    - try
 
   # emit more hits to the same linter rule at once than the default
   max-same-issues: 10
