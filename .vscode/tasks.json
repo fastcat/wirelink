@@ -41,6 +41,16 @@
 				"kind": "test",
 				"isDefault": true
 			}
+		},
+		{
+			"label": "build mage build",
+			"type": "shell",
+			"command": "go",
+			"args": [
+				"tool",
+				"mage",
+				"preDebug",
+			]
 		}
 	]
 }

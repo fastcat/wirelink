@@ -8,7 +8,15 @@ jobs:
     name: Build
     strategy:
       matrix:
-        os: [ubuntu-22.04, ubuntu-24.04, macos-13, macos-14]
+        os:
+          - ubuntu-22.04
+          - ubuntu-24.04
+          - ubuntu-24.04-arm
+          - macos-13
+          - macos-14
+          # macos-15 is arm
+          - macos-15
+          - windows-latest
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
@@ -22,26 +30,10 @@ jobs:
         with:
           go-version: "^1.24"
         id: go
-      - name: Set up macOS
-        if: startsWith(matrix.os, 'macos-')
-        run: |
-          brew install make
-      - name: Set up Linux
-        if: startsWith(matrix.os, 'ubuntu-')
-        run: |
-          set -x
-          if [ ! -x /usr/bin/gmake ]; then
-            sudo ln -snfv /usr/bin/make /usr/bin/gmake
-          fi
 
       - name: Get tags to make version.go
         run: |
-          git fetch origin +refs/tags/*:refs/tags/*
-          d=30
-          while ! gmake info ; do
-            git fetch --deepen=$d origin +refs/tags/*:refs/tags/*
-            d=$((d+10))
-          done
+          go tool mage deepen
 
       - name: Get dependencies
         run: |
@@ -49,19 +41,13 @@ jobs:
       - name: Get tools
         run: |
           git diff --exit-code
-          gmake install-tools
           go mod tidy
           git diff --exit-code
 
       - name: Build
         run: |
-          gmake compile
+          go tool mage compile
           go mod tidy
-          git diff --exit-code
-
-      - name: Format check
-        run: |
-          gmake fmt
           git diff --exit-code
 
       - name: golangci-lint
@@ -69,15 +55,15 @@ jobs:
         with:
           version: latest
       - name: govulncheck
-        run: gmake lint-vulncheck
+        run: go tool mage lint:vulncheck
 
       - name: Test with coverage
         # building the coverage output runs the tests
-        run: gmake test-cover
+        run: go tool mage test:cover
       - name: Generate coverage report
         # even if tests fail, generate the report
         if: ${{ always() }}
-        run: gmake coverage.html
+        run: go tool mage test:coverHTML
       # upload to codecov as soon as we can to view reports
       - name: Upload coverage (codecov)
         if: ${{ always() }}
@@ -98,4 +84,4 @@ jobs:
         # combination of macos runners being slow and race detector messing with
         # timing makes this combination too flaky for now
         if: "!startsWith(matrix.os, 'macos-')"
-        run: gmake test-go-race
+        run: go tool mage test:goRace
