@@ -1,10 +1,10 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
-	"sync"
 
 	"github.com/magefile/mage/sh"
 )
@@ -15,7 +15,7 @@ type versions struct {
 	pkgRel    string
 }
 
-var getVersions = sync.OnceValues(func() (versions, error) {
+func getVersions(ctx context.Context) (versions, error) {
 	out, err := sh.Output("git", "describe", "--long", "--dirty=+")
 	if err != nil {
 		return versions{}, err
@@ -23,10 +23,10 @@ var getVersions = sync.OnceValues(func() (versions, error) {
 	pkgVerRel := strings.TrimPrefix(out, "v")
 	pkgVer, pkgRel, _ := strings.Cut(pkgVerRel, "-")
 	return versions{pkgVerRel, pkgVer, pkgRel}, nil
-})
+}
 
-func Info() error {
-	v, err := getVersions()
+func Info(ctx context.Context) error {
+	v, err := getVersions(ctx)
 	if err != nil {
 		return err
 	}

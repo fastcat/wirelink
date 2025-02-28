@@ -23,12 +23,7 @@ jobs:
 
       - name: Get tags to make version.go
         run: |
-          git fetch origin +refs/tags/*:refs/tags/*
-          d=30
-          while ! go tool mage info ; do
-            git fetch --deepen=$d origin +refs/tags/*:refs/tags/*
-            d=$((d+10))
-          done
+          go tool mage deepen
 
       - name: Run fuzz tests
         run: go tool mage test:fuzz
