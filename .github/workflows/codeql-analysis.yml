@@ -43,7 +43,7 @@ jobs:
       run: |
         git fetch origin +refs/tags/*:refs/tags/*
         d=30
-        while ! make info ; do
+        while ! go tool mage info ; do
           git fetch --deepen=$d origin +refs/tags/*:refs/tags/*
           d=$((d+10))
         done
@@ -71,9 +71,9 @@ jobs:
     #    uses a compiled language
 
     - run: |
-       make compile
+       go tool mage compile
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
       env:
-        CODEQL_EXTRACTOR_GO_BUILD_COMMAND: "make compile"
+        CODEQL_EXTRACTOR_GO_BUILD_COMMAND: "go tool mage compile"

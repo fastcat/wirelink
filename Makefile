@@ -58,7 +58,7 @@ $(GOGENERATED_SOURCES):
 	go generate ./...
 
 compile: generate
-	go build -v ./...
+	go tool mage compile
 wirelink: generate
 	go build -v .
 wirelink-cross-%: generate

@@ -20,26 +20,15 @@ jobs:
         with:
           go-version: "^1.24"
         id: go
-      - name: Set up macOS
-        if: startsWith(matrix.os, 'macos-')
-        run: |
-          brew install make
-      - name: Set up Linux
-        if: startsWith(matrix.os, 'ubuntu-')
-        run: |
-          set -x
-          if [ ! -x /usr/bin/gmake ]; then
-            sudo ln -snfv /usr/bin/make /usr/bin/gmake
-          fi
 
       - name: Get tags to make version.go
         run: |
           git fetch origin +refs/tags/*:refs/tags/*
           d=30
-          while ! gmake info ; do
+          while ! go tool mage info ; do
             git fetch --deepen=$d origin +refs/tags/*:refs/tags/*
             d=$((d+10))
           done
 
       - name: Run fuzz tests
-        run: gmake test-fuzz
+        run: go tool mage test:fuzz
