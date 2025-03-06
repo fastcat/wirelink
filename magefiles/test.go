@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -51,25 +53,41 @@ func (Test) CoverHTML(ctx context.Context) error {
 
 func (Test) Fuzz(ctx context.Context) error {
 	mg.CtxDeps(ctx, Generate)
-	// TODO: pipeline this better
-	dirs, err := filepath.Glob("*/")
-	if err != nil {
-		return err
-	}
-	fgArgs := []string{"-rlZ", "func Fuzz"}
-	fgArgs = append(fgArgs, dirs...)
-	fuzzersOut, err := sh.Output("fgrep", fgArgs...)
-	if err != nil {
-		return err
-	}
-	fuzzerFiles := strings.Split(fuzzersOut, "\x00")
+
 	fuzzerDirs := map[string]bool{}
-	for _, fuzzerFile := range fuzzerFiles {
-		if len(fuzzerFile) != 0 {
-			fuzzerDirs[filepath.Dir(fuzzerFile)] = true
+	if err := filepath.WalkDir(".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		} else if d.IsDir() {
+			if filepath.Base(path) == ".git" {
+				return filepath.SkipDir
+			}
+			// recurse
+			return nil
+		} else if fuzzerDirs[filepath.Dir(path)] {
+			// already found a fuzzer in this directory, skip it
+			return filepath.SkipDir
+		} else if !strings.HasSuffix(path, "_test.go") {
+			// not a test file
+			return nil
 		}
+		// TODO: stream the file, not just the lines
+		contents, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		for l := range strings.Lines(string(contents)) {
+			if strings.HasPrefix(l, "func Fuzz") {
+				fuzzerDirs[filepath.Dir(path)] = true
+				// done with this dir
+				return filepath.SkipDir
+			}
+		}
+		return nil
+	}); err != nil {
+		return err
 	}
-	delete(fuzzerDirs, "magefiles")
+
 	deps := make([]any, 0, len(fuzzerDirs))
 	for fuzzerDir := range fuzzerDirs {
 		deps = append(deps, mg.F(Test{}.fuzzDir, fuzzerDir))
