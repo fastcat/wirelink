@@ -8,6 +8,7 @@ import (
 	"math"
 	"math/rand"
 	"net"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -363,11 +364,16 @@ func FuzzDecodeFrom(f *testing.F) {
 func loadVnetPackets(f *testing.F, now time.Time) {
 LINES:
 	for idx, l := range strings.Split(vnetPackets, "\n") {
+		if runtime.GOOS == "windows" {
+			// windows line endings
+			l = strings.TrimSuffix(l, "\r")
+		}
 		if len(l) == 0 {
 			continue
 		}
 		var data []byte
-		if !assert.True(f, strings.HasPrefix(l, "[]byte{")) || !assert.True(f, strings.HasSuffix(l, "}")) {
+		if !assert.True(f, strings.HasPrefix(l, "[]byte{"), "line %q should start with %q", l, "[]byte{") ||
+			!assert.True(f, strings.HasSuffix(l, "}"), "line %q should end with %q", l, "}") {
 			continue
 		}
 		l = strings.TrimPrefix(l, "[]byte{")
