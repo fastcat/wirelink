@@ -127,7 +127,9 @@ func TestGoUDPConn_ReadPackets(t *testing.T) {
 			}
 
 			if tt.args.maxSize < 0 {
-				tt.args.maxSize = 0
+				// on some platforms, a zero byte buffer immediately returns an empty
+				// read with no error, which causes problems.
+				tt.args.maxSize = 1
 				for _, p := range tt.args.send {
 					if len(p.Data) > tt.args.maxSize {
 						tt.args.maxSize = len(p.Data)

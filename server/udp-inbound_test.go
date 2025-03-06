@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"sync"
 	"testing"
 	"time"
 
@@ -441,28 +442,43 @@ func TestLinkServer_chunkReceived(t *testing.T) {
 				interfaceCache: ic,
 			}
 			s.bootIDValue.Store(origBootID)
-			// make deep channels to avoid buffering problems
-			packets := make(chan *ReceivedFact, len(tt.packets))
-			// need +1 because there is an extra empty chunk sent at start
-			// add *2+10 to avoid deadlocking on bugs/errors
-			newFacts := make(chan []*ReceivedFact, len(tt.packets)*2+10)
-			for _, p := range tt.packets {
-				packets <- p
-			}
-			close(packets)
-			tt.assertion(t, s.chunkReceived(packets, newFacts, tt.args.maxChunk))
-			gotChunks := [][]*ReceivedFact{}
-			first := true
-			for chunk := range newFacts {
-				// there's always a nil startup chunk, don't require tests to specify that
-				// also ignore nil chunks in crazy-timing-bootID-changes mode
-				if chunk == nil && (first || tt.wantBootIDChange) {
-					first = false
-					continue
+
+			packets := make(chan *ReceivedFact, 1)
+
+			var wg sync.WaitGroup
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				defer close(packets)
+				last := time.Now()
+				for _, p := range tt.packets {
+					// sleep until the clock changes
+					for now := time.Now(); !now.After(last); now = time.Now() {
+						time.Sleep(time.Nanosecond)
+					}
+					packets <- p
 				}
-				gotChunks = append(gotChunks, chunk)
-				first = false
-			}
+			}()
+
+			newFacts := make(chan []*ReceivedFact, 1)
+			gotChunks := [][]*ReceivedFact{}
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				first := true
+				for chunk := range newFacts {
+					// there's always a nil startup chunk, don't require tests to specify that
+					// also ignore nil chunks in crazy-timing-bootID-changes mode
+					if chunk == nil && (first || tt.wantBootIDChange) {
+						first = false
+						continue
+					}
+					gotChunks = append(gotChunks, chunk)
+					first = false
+				}
+			}()
+			tt.assertion(t, s.chunkReceived(packets, newFacts, tt.args.maxChunk))
+			wg.Wait()
 			assert.Equal(t, tt.wantChunks, gotChunks)
 			if tt.wantBootIDChange {
 				assert.NotEqual(t, origBootID, s.bootID())
