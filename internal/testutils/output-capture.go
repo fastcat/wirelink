@@ -15,6 +15,7 @@ func CaptureOutput(t *testing.T, f func()) []byte {
 
 	tempfile, err := os.CreateTemp(t.TempDir(), "wirelink-test-output-capture")
 	require.NoError(t, err)
+	defer tempfile.Close()
 	defer os.Remove(tempfile.Name())
 
 	func() {
