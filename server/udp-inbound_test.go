@@ -446,10 +446,17 @@ func TestLinkServer_chunkReceived(t *testing.T) {
 			// need +1 because there is an extra empty chunk sent at start
 			// add *2+10 to avoid deadlocking on bugs/errors
 			newFacts := make(chan []*ReceivedFact, len(tt.packets)*2+10)
-			for _, p := range tt.packets {
-				packets <- p
-			}
-			close(packets)
+			go func() {
+				defer close(packets)
+				last := time.Now()
+				for _, p := range tt.packets {
+					// sleep until the clock changes
+					for now := time.Now(); !now.After(last); now = time.Now() {
+						time.Sleep(time.Nanosecond)
+					}
+					packets <- p
+				}
+			}()
 			tt.assertion(t, s.chunkReceived(packets, newFacts, tt.args.maxChunk))
 			gotChunks := [][]*ReceivedFact{}
 			first := true
