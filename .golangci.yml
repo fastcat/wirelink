@@ -1,39 +1,45 @@
-# cSpell: disable
-
+version: "2"
 linters:
   enable:
     - gocyclo
-    - gofmt
-    - goimports
-    - gofumpt
-    - revive
     - misspell
     - prealloc
-    - stylecheck
+    - revive
+    - staticcheck
     - unconvert
     - unparam
-
-linters-settings:
-  gocyclo:
-    min-complexity: 20
-  revive:
+  settings:
+    gocyclo:
+      min-complexity: 20
+    revive:
+      rules:
+        - name: superfluous-else
+          disabled: true
+  exclusions:
+    generated: lax
     rules:
-      - name: "superfluous-else"
-        disabled: true
-  gofumpt:
-    extra-rules: true
-
+      - path: (.+)\.go$
+        # errcheck: Almost all programs ignore errors on these functions and in most cases it's ok
+        text: Error return value of .((os\.)?std(out|err)\..*|.*Close|.*Flush|os\.Remove(All)?|.*printf?|os\.(Un)?Setenv). is not checked
+    paths:
+      - try
+      - third_party$
+      - builtin$
+      - examples$
 issues:
-  # disable default rule suppressions,
-  # esp. for the "exported methods must have a comment" bit
-  exclude-use-default: false
-  exclude-dirs:
-    - try
-
-  # emit more hits to the same linter rule at once than the default
   max-same-issues: 10
-
-  # ... but we need to turn some back on
-  exclude:
-    # errcheck: Almost all programs ignore errors on these functions and in most cases it's ok
-    - "Error return value of .((os\\.)?std(out|err)\\..*|.*Close|.*Flush|os\\.Remove(All)?|.*printf?|os\\.(Un)?Setenv). is not checked"
+formatters:
+  enable:
+    - gofmt
+    - gofumpt
+    - goimports
+  settings:
+    gofumpt:
+      extra-rules: true
+  exclusions:
+    generated: lax
+    paths:
+      - try
+      - third_party$
+      - builtin$
+      - examples$
