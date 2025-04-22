@@ -20,7 +20,7 @@ func Info(format string, a ...interface{}) {
 		// format = time.Now().Format(debugStampFormat) + " " + format
 		format = debugOffset() + " " + format
 	}
-	os.Stdout.WriteString(fmt.Sprintf(format, a...))
+	fmt.Printf(format, a...)
 }
 
 // Error writes a formatted string with an appended newline to Stderr.
@@ -33,7 +33,7 @@ func Error(format string, a ...interface{}) {
 		// format = time.Now().Format(debugStampFormat) + " " + format
 		format = debugOffset() + " " + format
 	}
-	os.Stderr.WriteString(fmt.Sprintf(format, a...))
+	fmt.Fprintf(os.Stderr, format, a...)
 }
 
 var (
@@ -72,5 +72,5 @@ func Debug(format string, a ...interface{}) {
 	}
 	// format = time.Now().Format(debugStampFormat) + " " + format
 	format = debugOffset() + " " + format
-	os.Stdout.WriteString(fmt.Sprintf(format, a...))
+	fmt.Printf(format, a...)
 }

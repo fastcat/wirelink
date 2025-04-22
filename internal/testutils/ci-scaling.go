@@ -25,7 +25,7 @@ var CIScaleFactor int
 var CIScaleFactorDuration time.Duration
 
 // CIScaleMs is time.Millisecond * CIScaleFactor
-var CIScaleMs time.Duration // nolint:revive,stylecheck // this is like `time.Millisecond`
+var CIScaleMs time.Duration // nolint:revive,staticcheck // this is like `time.Millisecond`
 
 func measurePerf(target time.Duration) int {
 	counter := 0

@@ -52,11 +52,12 @@ func (ipp *IPPortValue) UnmarshalBinary(data []byte) error {
 
 // DecodeFrom implements Decodable
 func (ipp *IPPortValue) DecodeFrom(lengthHint int, reader io.Reader) error {
-	if lengthHint == net.IPv4len+2 {
+	switch lengthHint {
+	case net.IPv4len + 2:
 		return util.DecodeFrom(ipp, net.IPv4len+2, reader)
-	} else if lengthHint == net.IPv6len+2 {
+	case net.IPv6len + 2:
 		return util.DecodeFrom(ipp, net.IPv6len+2, reader)
-	} else {
+	default:
 		return fmt.Errorf("invalid length hint for for IPPortValue: %v", lengthHint)
 	}
 }
@@ -110,11 +111,12 @@ func (ipn *IPNetValue) UnmarshalBinary(data []byte) error {
 
 // DecodeFrom implements Decodable
 func (ipn *IPNetValue) DecodeFrom(lengthHint int, reader io.Reader) error {
-	if lengthHint == net.IPv4len+1 {
+	switch lengthHint {
+	case net.IPv4len + 1:
 		return util.DecodeFrom(ipn, net.IPv4len+1, reader)
-	} else if lengthHint == net.IPv6len+1 {
+	case net.IPv6len + 1:
 		return util.DecodeFrom(ipn, net.IPv6len+1, reader)
-	} else {
+	default:
 		return fmt.Errorf("invalid length hint for for IPNetValue: %v", lengthHint)
 	}
 }

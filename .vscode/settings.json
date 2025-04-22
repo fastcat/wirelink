@@ -47,6 +47,7 @@
 		"unmarshalling",
 		"unregister",
 		"unregisters",
+		"Unsetenv",
 		"Untrusted",
 		"uuid",
 		"uvarint",

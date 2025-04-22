@@ -18,9 +18,11 @@ linters:
   exclusions:
     generated: lax
     rules:
-      - path: (.+)\.go$
+      - path: "(.+)\\.go$"
         # errcheck: Almost all programs ignore errors on these functions and in most cases it's ok
-        text: Error return value of .((os\.)?std(out|err)\..*|.*Close|.*Flush|os\.Remove(All)?|.*printf?|os\.(Un)?Setenv). is not checked
+        text: Error return value of .((os\.)?Std(out|err)\..*|.*Close|.*Flush|os\.Remove(All)?|.*printf?|os\.(Unsetenv|Setenv)). is not checked
+        linters:
+          - errcheck
     paths:
       - try
       - third_party$

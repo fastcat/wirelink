@@ -57,11 +57,12 @@ func TestAccumulatorSigning(t *testing.T) {
 		sgv := sf.Value.(*SignedGroupValue)
 
 		// signing checks are handled elsewhere
-		if i == 0 {
+		switch i {
+		case 0:
 			assert.Len(t, sgv.InnerBytes, len(ep)*3, "Should have 3 facts in first packet")
-		} else if i == 1 {
+		case 1:
 			assert.Len(t, sgv.InnerBytes, len(ep)*1, "Should have 1 fact in second packet")
-		} else {
+		default:
 			require.FailNow(t, "WAT?!")
 		}
 	}

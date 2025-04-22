@@ -211,7 +211,7 @@ func TestLinkServer_broadcastFacts(t *testing.T) {
 			}
 			match := f.Attribute == sgvFact.Attribute &&
 				reflect.DeepEqual(f.Subject, sgvFact.Subject) &&
-				f.Expires == sgvFact.Expires &&
+				f.Expires.Equal(sgvFact.Expires) &&
 				pvIsSGV &&
 				bytes.Equal(pSGV.InnerBytes, sgv.InnerBytes)
 			if !match {
