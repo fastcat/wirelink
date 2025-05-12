@@ -4,6 +4,10 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
+
+	"go/build"
 
 	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/sh"
@@ -95,4 +99,21 @@ func Clean(ctx context.Context) error {
 var Aliases = map[string]any{
 	"lint": LintAll,
 	"test": TestDefault,
+}
+
+func init() {
+	// make sure GOBIN is in PATH
+	gobin := os.Getenv("GOBIN")
+	if gobin == "" {
+		gopath := os.Getenv("GOPATH")
+		if gopath == "" {
+			gopath = build.Default.GOPATH
+		}
+		gobin = filepath.Join(gopath, "bin")
+	}
+	pathEntries := filepath.SplitList(os.Getenv("PATH"))
+	if !slices.Contains(pathEntries, gobin) {
+		pathEntries = append([]string{gobin}, pathEntries...)
+		os.Setenv("PATH", strings.Join(pathEntries, string(filepath.ListSeparator)))
+	}
 }
