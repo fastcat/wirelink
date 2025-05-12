@@ -12,8 +12,11 @@ newdebs=(
 	./packaging/checkinstall/wirelink*.deb
 )
 for distro in bullseye bookworm jammy noble ; do
-	adddebs release=$distro "${newdebs[@]}"
+	# run these with no stdin so we do the index export only once
+	adddebs release=$distro "${newdebs[@]}" </dev/null
 done
+# update the indexes
+adddebs
 
 # only install wirelink, wireguard-go is not normally installed
 sudo dpkg --install ./packaging/checkinstall/wirelink*$(go env GOARCH).deb
