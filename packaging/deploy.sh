@@ -11,7 +11,7 @@ go tool mage clean all checkinstall:cross amd64 checkinstall:cross arm64
 newdebs=(
 	./packaging/checkinstall/wirelink*.deb
 )
-for distro in bullseye bookworm jammy ; do
+for distro in bullseye bookworm jammy noble ; do
 	adddebs release=$distro "${newdebs[@]}"
 done
 
