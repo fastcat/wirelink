@@ -8,7 +8,7 @@ import (
 
 var toolsDev = []string{
 	"github.com/go-delve/delve/cmd/dlv@latest",
-	"github.com/golangci/golangci-lint/cmd/golangci-lint@latest",
+	"github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest",
 }
 
 func InstallToolsDev(ctx context.Context) error {
