@@ -101,8 +101,8 @@ func (Checkinstall) Cross(ctx context.Context, arch string) error {
 		"--recommends='wireguard-dkms | wireguard-modules'",
 		"--reset-uids=yes",
 		"--backup=no",
-		os.Args[0],
-		"sysInstallCross:"+arch,
+		// the real command
+		os.Args[0], "sysInstallCross", arch,
 	)
 	cmd.Dir = "./packaging/checkinstall"
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
