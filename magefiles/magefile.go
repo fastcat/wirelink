@@ -30,7 +30,7 @@ func WirelinkCross(ctx context.Context, arch string) error {
 	return sh.RunWithV(
 		map[string]string{
 			"CGO_ENABLED": "0",
-			"GOARCH":      "arch",
+			"GOARCH":      arch,
 		},
 		"go", "build", "-ldflags", "-s -w", "-o", "wirelink-cross-"+arch, "-v", ".",
 	)
