@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 
 	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/sh"
@@ -61,9 +63,33 @@ func Everything(ctx context.Context) {
 
 func Clean(ctx context.Context) error {
 	mg.CtxDeps(ctx, Checkinstall{}.Clean)
-	panic(`TODO:
-rm -vf ./wirelink ./wirelink-cross-* $(GENERATED_SOURCES) $(patsubst %,%.tmp,$(GENERATED_SOURCES)) $(GOGENERATED_SOURCES) ./coverage.out ./coverage.html
-`)
+	for _, pattern := range []string{
+		"./wirelink",
+		"./wirelink-cross-*",
+		"./coverage.out",
+		"./coverage.html",
+	} {
+		matches, err := filepath.Glob(pattern)
+		if err != nil {
+			return err
+		}
+		for _, match := range matches {
+			if err := os.RemoveAll(match); err != nil {
+				return err
+			}
+		}
+	}
+	for _, l := range [][]string{generatedSources, goGeneratedSources} {
+		for _, fn := range l {
+			if err := os.RemoveAll(fn); err != nil {
+				return err
+			}
+			if err := os.RemoveAll(fn + ".tmp"); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 var Aliases = map[string]any{

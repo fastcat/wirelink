@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"os"
+	"os/exec"
+	"path/filepath"
 
 	"github.com/magefile/mage/mg"
 	"github.com/magefile/mage/sh"
@@ -39,10 +41,21 @@ func sysinstall(ctx context.Context, src string) error {
 type Checkinstall mg.Namespace
 
 func (Checkinstall) Clean(ctx context.Context) error {
-	panic(`TODO:
-rm -vf ./packaging/*checkinstall/*.deb
-rm -rvf ./packaging/*checkinstall/doc-pak/
-`)
+	for _, pattern := range []string{
+		"./packaging/wirelink-checkinstall/*.deb",
+		"./packaging/wirelink-checkinstall/doc-pak",
+	} {
+		matches, err := filepath.Glob(pattern)
+		if err != nil {
+			return err
+		}
+		for _, match := range matches {
+			if err := os.RemoveAll(match); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (Checkinstall) Prep(ctx context.Context, arch string) error {
@@ -64,26 +77,34 @@ func (Checkinstall) Prep(ctx context.Context, arch string) error {
 
 func (Checkinstall) Cross(ctx context.Context, arch string) error {
 	mg.CtxDeps(ctx, mg.F(Checkinstall{}.Prep, arch))
-	panic(`TODO:
-# extra quoting on some args to work around checkinstall bugs:
-# https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=785441
-	cd ./packaging/checkinstall && fakeroot checkinstall \
-		--type=debian \
-		--install=no \
-		--fstrans=yes \
-		--pkgarch=$* \
-		--pkgname=wirelink \
-		--pkgversion=$(PKGVER) \
-		--pkgrelease=$(PKGREL) \
-		--pkglicense=AGPL-3 \
-		--pkggroup=net \
-		--pkgsource=https://github.com/fastcat/wirelink \
-		--maintainer="'Matthew Gabeler-Lee <cheetah@fastcat.org>'" \
-		--requires=wireguard-tools \
-		--recommends="'wireguard-dkms | wireguard-modules'" \
-		--reset-uids=yes \
-		--backup=no \
-		$(MAKE) -C ../../ sysinstall-cross-$* \
-		</dev/null
-`)
+	// mage's sh package doesn't provide a way to override cwd, so we do this raw.
+	// Some args have extra quoting to work around checkinstall bugs, see:
+	// https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=785441
+	vi, err := getVersions(ctx)
+	if err != nil {
+		return err
+	}
+	cmd := exec.CommandContext(ctx, "fakeroot",
+		"checkinstall",
+		"--type=debian",
+		"--install=no",
+		"--fstrans=yes",
+		"--pkgarch="+arch,
+		"--pkgname=wirelink",
+		"--pkgversion="+vi.pkgVer,
+		"--pkgrelease="+vi.pkgRel,
+		"--pkglicense=AGPL-3",
+		"--pkggroup=net",
+		"--pkgsource=https://github.com/fastcat/wirelink",
+		"--maintainer='Matthew Gabeler-Lee <cheetah@fastcat.org>'",
+		"--requires=wireguard-tools",
+		"--recommends='wireguard-dkms | wireguard-modules'",
+		"--reset-uids=yes",
+		"--backup=no",
+		os.Args[0],
+		"sysInstallCross:"+arch,
+	)
+	cmd.Dir = "./packaging/checkinstall"
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	return cmd.Run()
 }
