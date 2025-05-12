@@ -43,8 +43,8 @@ type Checkinstall mg.Namespace
 
 func (Checkinstall) Clean(ctx context.Context) error {
 	for _, pattern := range []string{
-		"./packaging/wirelink-checkinstall/*.deb",
-		"./packaging/wirelink-checkinstall/doc-pak",
+		"./packaging/*checkinstall/*.deb",
+		"./packaging/*checkinstall/doc-pak",
 	} {
 		matches, err := filepath.Glob(pattern)
 		if err != nil {
