@@ -23,6 +23,7 @@ packaging/*checkinstall/doc-pak/*
 
 coverage.out
 coverage.html
+junit.xml
 
 version.go
 

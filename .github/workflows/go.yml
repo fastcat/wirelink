@@ -59,12 +59,17 @@ jobs:
 
       - name: Test with coverage
         # building the coverage output runs the tests
-        run: go tool mage test:cover
+        run: go tool mage test:coverCI
       - name: Generate coverage report
         # even if tests fail, generate the report
         if: ${{ always() }}
         run: go tool mage test:coverHTML
-      # upload to codecov as soon as we can to view reports
+      - name: Upload tests to codecov
+        # upload the coverage report to codecov
+        if: ${{ always() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
       - name: Upload coverage (codecov)
         if: ${{ always() }}
         uses: codecov/codecov-action@v5

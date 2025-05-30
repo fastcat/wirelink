@@ -42,6 +42,16 @@ func (Test) Cover(ctx context.Context) error {
 	mg.CtxDeps(ctx, Generate)
 	return sh.RunV("go", "test", "-vet=off", "-timeout=1m", "-covermode=atomic", "-coverpkg=./...", "-coverprofile=coverage.out", "./...")
 }
+func (Test) CoverCI(ctx context.Context) error {
+	mg.CtxDeps(ctx, Generate)
+	return sh.RunV("go", "tool", "gotestsum",
+		"--format=github-actions",
+		"--junitfile=junit.xml",
+		"--junitfile-project-name=wirelink",
+		"--",
+		"-vet=off", "-timeout=1m", "-covermode=atomic", "-coverpkg=./...", "-coverprofile=coverage.out", "./...",
+	)
+}
 func (Test) CoverHTML(ctx context.Context) error {
 	if err := ifDirty("coverage.html").from("coverage.out").then(func(ctx context.Context) error {
 		return sh.RunV("go", "tool", "cover", "-html=coverage.out", "-o=coverage.html")
