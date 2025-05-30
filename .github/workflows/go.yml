@@ -37,17 +37,19 @@ jobs:
 
       - name: Get dependencies
         run: |
-          go mod download -x
-      - name: Get tools
-        run: |
+          go mod download
+          go mod verify
           git diff --exit-code
+      - name: Verify tidy
+        run: |
           go mod tidy
+          ( cd magefiles && go mod tidy )
+          go work sync
           git diff --exit-code
 
       - name: Build
         run: |
           go tool mage compile
-          go mod tidy
           git diff --exit-code
 
       - name: golangci-lint
