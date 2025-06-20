@@ -11,10 +11,7 @@
 				"__DEBUG_BIN_CONFIG_PATH": ".",
 				"__DEBUG_BIN_CHATTY": "true"
 			},
-			"args": [
-				"--iface=test",
-				"--dump"
-			]
+			"args": ["--iface=test", "--dump"]
 		},
 		{
 			"name": "Run for real",
@@ -26,37 +23,31 @@
 			"env": {
 				"WIRELINK_DEBUG_AS_ROOT": "true"
 			},
-			"args": [
-				"--iface=wg0",
-				"--debug"
-			]
+			"args": ["--iface=wg0", "--debug"]
 		},
 		{
 			"name": "Test current package",
 			"type": "go",
 			"request": "launch",
 			"mode": "test",
-			"program": "${fileDirname}",
+			"program": "${fileDirname}"
 		},
 		{
 			"name": "Debug mage",
-			"type":"go",
-			"request":"launch",
-			"mode":"exec",
+			"type": "go",
+			"request": "launch",
+			"mode": "exec",
 			"preLaunchTask": "build mage build",
-			"program":"${workspaceFolder}/magefiles/build",
+			"program": "${workspaceFolder}/magefiles/build",
 			"env": {},
-			"args": [
-				"-v",
-				"${input:mageTarget}",
-			]
+			"args": ["-v", "${input:mageTarget}"]
 		}
 	],
 	"inputs": [
 		{
 			"type": "promptString",
 			"id": "mageTarget",
-			"description": "Mage target",
+			"description": "Mage target"
 		}
 	]
 }
