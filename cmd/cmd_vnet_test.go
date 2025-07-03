@@ -27,8 +27,6 @@ const wgPort = 51820
 
 func Test_Cmd_VNet1(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		const quantum = time.Second
-
 		// setup our config path
 		os.Setenv("WIREVLINK_CONFIG_PATH", testutils.SrcDirectory())
 		defer os.Unsetenv("WIREVLINK_CONFIG_PATH")
@@ -107,8 +105,8 @@ func Test_Cmd_VNet1(t *testing.T) {
 		// use shortened timing for the tests
 		// in order for things to work properly, we need the chunk period, the fact ttl,
 		// and the expiration quantum to all be integer multiples with quantum < period < ttl
-		chunkPeriod := 3 * quantum // 150ms
-		factTTL := 3 * chunkPeriod // 450ms
+		chunkPeriod := 3 * time.Second
+		factTTL := 3 * chunkPeriod
 
 		for _, c := range []*WirelinkCmd{host1cmd, client1cmd, client2cmd} {
 			c.Server.FactTTL = factTTL
