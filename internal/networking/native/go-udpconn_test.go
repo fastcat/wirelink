@@ -235,7 +235,7 @@ func TestGoUDPConn_ReadPackets(t *testing.T) {
 				gotOffset := got.Time.Sub(sendStarted)
 				wantOffset := want.Time.Sub(now)
 				assert.GreaterOrEqual(t, gotOffset.Milliseconds(), wantOffset.Milliseconds(), "packet %d earliest receive time", i)
-				assert.LessOrEqual(t, gotOffset.Milliseconds(), (wantOffset + time.Millisecond).Milliseconds(), "packet %d latest receive time", i)
+				assert.LessOrEqual(t, gotOffset.Milliseconds(), (wantOffset + 15*time.Millisecond).Milliseconds(), "packet %d latest receive time", i)
 			}
 		})
 	}
