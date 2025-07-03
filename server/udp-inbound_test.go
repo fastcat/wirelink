@@ -591,7 +591,7 @@ func TestLinkServer_chunkReceived_slow(t *testing.T) {
 			},
 			[]receive{
 				receiveAtMs(100, 0, 1),
-				{offset: 200 * time.Millisecond},
+				receiveAtMs(200),
 				receiveAtMs(300, 2, 3),
 			},
 			true,
@@ -689,7 +689,7 @@ func TestLinkServer_chunkReceived_slow(t *testing.T) {
 					"Received timing %d: must not be early", i)
 				assert.LessOrEqual(t,
 					gotChunks[i].offset.Milliseconds(),
-					(wantChunks[i].offset + 11).Milliseconds(),
+					(wantChunks[i].offset + 10*time.Millisecond).Milliseconds(),
 					"Received timing %d: must not be late", i)
 			}
 		})
