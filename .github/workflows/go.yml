@@ -56,7 +56,7 @@ jobs:
         uses: golangci/golangci-lint-action@v8
         with:
           # TODO: revert once everything is released
-          installmode: goinstall
+          install-mode: goinstall
           version: "688c7c2" # https://github.com/golangci/golangci-lint/pull/5872
       - name: govulncheck
         run: go tool mage lint:vulncheck
