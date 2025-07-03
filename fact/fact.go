@@ -75,7 +75,7 @@ func (f *Fact) MarshalBinaryNow(now time.Time) ([]byte, error) {
 
 	buf.WriteByte(byte(f.Attribute))
 
-	ttl := f.Expires.Sub(now) / timeScale
+	ttl := f.Expires.Sub(now) / time.Second
 	// clamp ttl to uint16 range
 	// TODO: warn if we somehow get outside this range
 	if ttl < 0 {

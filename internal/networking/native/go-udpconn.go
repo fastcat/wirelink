@@ -12,6 +12,7 @@ import (
 // GoUDPConn implements networking.UDPConn by wrapping net.UDPConn
 type GoUDPConn struct {
 	net.UDPConn
+	poll bool
 }
 
 // GoUDPConn implements networking.UDPConn
@@ -58,12 +59,17 @@ READLOOP:
 			break READLOOP
 		default:
 			deadline, ok := ctx.Deadline()
+			if c.poll {
+				// for synctest
+				max := time.Now().Add(time.Millisecond)
+				if !ok || deadline.After(max) {
+					deadline, ok = max, true
+				}
+			}
 			if ok {
-				//nolint:errcheck // don't care about error
-				c.SetReadDeadline(deadline)
+				_ = c.SetReadDeadline(deadline)
 			} else {
-				//nolint:errcheck // don't care about error
-				c.SetReadDeadline(time.Time{})
+				_ = c.SetReadDeadline(time.Time{})
 			}
 			n, addr, err := c.ReadFromUDP(buffer)
 			now := time.Now()
@@ -76,6 +82,10 @@ READLOOP:
 
 				if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
 					// ignore timeouts, generally this is us poking ourselves
+					// in synctest we need to ensure time moves forwards
+					if c.poll && deadline.After(now) {
+						time.Sleep(deadline.Sub(now))
+					}
 					continue
 				}
 

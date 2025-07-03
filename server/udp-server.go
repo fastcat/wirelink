@@ -188,7 +188,7 @@ func (s *LinkServer) Start() (err error) {
 	s.eg.Go(channels.FiltererMany(packets, s.parsePacket, received))
 
 	newFacts := make(chan []*ReceivedFact, 1)
-	s.eg.Go(func() error { return s.chunkReceived(received, newFacts, MaxChunk) })
+	s.eg.Go(func() error { return s.chunkReceived(received, newFacts, MaxChunk, nil) })
 
 	factsRefreshed := make(chan []*fact.Fact, 1)
 	factsRefreshedForBroadcast := make(chan []*fact.Fact, 1)

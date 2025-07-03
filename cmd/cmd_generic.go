@@ -3,11 +3,13 @@
 
 package cmd
 
-import "os"
+import (
+	"os"
+	"os/signal"
+)
 
-// no SIGUSR1 support here, so these are no-ops
-
-func (w *WirelinkCmd) addPlatformSignalHandlers() {
+func (w *WirelinkCmd) addSignalHandlers() {
+	signal.Notify(w.signals, os.Interrupt)
 }
 
 func (w *WirelinkCmd) handlePlatformSignal(os.Signal) bool {
