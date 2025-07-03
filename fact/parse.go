@@ -91,7 +91,7 @@ func (f *Fact) DecodeFrom(_ int, now time.Time, reader util.ByteReader) error {
 	if ttl > math.MaxUint16 {
 		return fmt.Errorf("received TTL outside range: %v", ttl)
 	}
-	f.Expires = now.Add(time.Duration(ttl) * timeScale)
+	f.Expires = now.Add(time.Duration(ttl) * time.Second)
 
 	valueLength := hinter(f)
 
