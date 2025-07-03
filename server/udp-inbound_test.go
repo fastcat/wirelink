@@ -6,6 +6,7 @@ import (
 	"net"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/fastcat/wirelink/autopeer"
@@ -418,8 +419,12 @@ func TestLinkServer_chunkReceived(t *testing.T) {
 			"change bootID on time jump",
 			args{
 				maxChunk: 1,
-				// basically _any_ passage of time will be > 2x this
-				chunkPeriod: time.Nanosecond,
+				// under synctest, we need to play games with this, because we can't
+				// rely on random clock jumps, so we have to start this high (to
+				// initialize the chunk ticker to a slower value) and then after the
+				// first packet/chunk, bring it down so the next ticker tick seems to be
+				// late.
+				chunkPeriod: time.Microsecond,
 			},
 			require.NoError,
 			rfs(0, 1),
@@ -432,59 +437,62 @@ func TestLinkServer_chunkReceived(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			origBootID := uuid.Must(uuid.NewRandom())
-			env := &netmocks.Environment{}
-			env.On("Interfaces").Once().Return([]networking.Interface{}, nil)
-			ic, err := newInterfaceCache(env, "")
-			require.NoError(t, err)
-			s := &LinkServer{
-				ChunkPeriod:    tt.args.chunkPeriod,
-				interfaceCache: ic,
-			}
-			s.bootIDValue.Store(origBootID)
-
-			packets := make(chan *ReceivedFact, 1)
-
-			var wg sync.WaitGroup
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				defer close(packets)
-				last := time.Now()
-				for _, p := range tt.packets {
-					// sleep until the clock changes
-					for now := time.Now(); !now.After(last); now = time.Now() {
-						time.Sleep(time.Nanosecond)
-					}
-					packets <- p
+			synctest.Test(t, func(t *testing.T) {
+				origBootID := uuid.Must(uuid.NewRandom())
+				env := &netmocks.Environment{}
+				env.On("Interfaces").Once().Return([]networking.Interface{}, nil)
+				ic, err := newInterfaceCache(env, "")
+				require.NoError(t, err)
+				s := &LinkServer{
+					ChunkPeriod:    tt.args.chunkPeriod,
+					interfaceCache: ic,
 				}
-			}()
+				s.bootIDValue.Store(origBootID)
 
-			newFacts := make(chan []*ReceivedFact, 1)
-			gotChunks := [][]*ReceivedFact{}
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				first := true
-				for chunk := range newFacts {
-					// there's always a nil startup chunk, don't require tests to specify that
-					// also ignore nil chunks in crazy-timing-bootID-changes mode
-					if chunk == nil && (first || tt.wantBootIDChange) {
+				packets := make(chan *ReceivedFact, 1)
+
+				var wg sync.WaitGroup
+				wg.Go(func() {
+					defer close(packets)
+					for i, p := range tt.packets {
+						// sleep so the clock changes
+						if tt.wantBootIDChange {
+							time.Sleep(tt.args.chunkPeriod)
+						} else {
+							time.Sleep(tt.args.chunkPeriod / time.Duration(len(tt.packets)))
+						}
+						packets <- p
+						if i == 0 && tt.wantBootIDChange {
+							// make the next tick seem late
+							s.ChunkPeriod /= 10
+						}
+					}
+				})
+
+				newFacts := make(chan []*ReceivedFact, 1)
+				gotChunks := [][]*ReceivedFact{}
+				wg.Go(func() {
+					first := true
+					for chunk := range newFacts {
+						// there's always a nil startup chunk, don't require tests to specify that
+						// also ignore nil chunks in crazy-timing-bootID-changes mode
+						if chunk == nil && (first || tt.wantBootIDChange) {
+							first = false
+							continue
+						}
+						gotChunks = append(gotChunks, chunk)
 						first = false
-						continue
 					}
-					gotChunks = append(gotChunks, chunk)
-					first = false
+				})
+				tt.assertion(t, s.chunkReceived(packets, newFacts, tt.args.maxChunk))
+				wg.Wait()
+				assert.Equal(t, tt.wantChunks, gotChunks)
+				if tt.wantBootIDChange {
+					assert.NotEqual(t, origBootID, s.bootID())
+				} else {
+					assert.Equal(t, origBootID, s.bootID())
 				}
-			}()
-			tt.assertion(t, s.chunkReceived(packets, newFacts, tt.args.maxChunk))
-			wg.Wait()
-			assert.Equal(t, tt.wantChunks, gotChunks)
-			if tt.wantBootIDChange {
-				assert.NotEqual(t, origBootID, s.bootID())
-			} else {
-				assert.Equal(t, origBootID, s.bootID())
-			}
+			})
 		})
 	}
 }
@@ -624,74 +632,76 @@ func TestLinkServer_chunkReceived_slow(t *testing.T) {
 				t.SkipNow()
 			}
 
-			env := &netmocks.Environment{}
-			env.On("Interfaces").Once().Return([]networking.Interface{}, nil)
-			ic, err := newInterfaceCache(env, "")
-			require.NoError(t, err)
-			s := &LinkServer{
-				ChunkPeriod:    tt.args.chunkPeriod,
-				interfaceCache: ic,
-			}
-			// for this test, use the same limited buffer for the incoming packets as
-			// the real server
-			packets := make(chan *ReceivedFact, 1)
-			// but still make a deep channel for the output to simplify test logic
-			newFacts := make(chan []*ReceivedFact, len(tt.packets)+1)
-			doneSend := make(chan struct{})
-			doneReceive := make(chan struct{})
-			start := time.Now()
-			go func() {
-				defer close(doneSend)
-				defer close(packets)
-				// this initial duration will be ignored
-				timer := time.NewTimer(time.Hour)
-				defer timer.Stop()
-				for _, p := range tt.packets {
-					currentOffset := time.Since(start)
-					delay := p.offset - currentOffset
-					if delay > 0 {
-						timer.Reset(delay)
-						<-timer.C
-					}
-					// sending a nil packet is valid, so we need to check flags if that's what we've got
-					if p.packet != nil {
-						// treat the packet expires as an offset from timeZero, update it to be that offset from now
-						p.packet.fact.Expires = p.packet.fact.Expires.Add(time.Since(timeZero))
-						packets <- p.packet
-					} else {
-						packets <- nil
-					}
+			synctest.Test(t, func(t *testing.T) {
+				env := &netmocks.Environment{}
+				env.On("Interfaces").Once().Return([]networking.Interface{}, nil)
+				ic, err := newInterfaceCache(env, "")
+				require.NoError(t, err)
+				s := &LinkServer{
+					ChunkPeriod:    tt.args.chunkPeriod,
+					interfaceCache: ic,
 				}
-			}()
-			var gotChunks []receive
-			go func() {
-				defer close(doneReceive)
-				for chunk := range newFacts {
-					gotChunks = append(gotChunks, receive{time.Since(start), chunk})
+				// for this test, use the same limited buffer for the incoming packets as
+				// the real server
+				packets := make(chan *ReceivedFact, 1)
+				// but still make a deep channel for the output to simplify test logic
+				newFacts := make(chan []*ReceivedFact, len(tt.packets)+1)
+				doneSend := make(chan struct{})
+				doneReceive := make(chan struct{})
+				start := time.Now()
+				go func() {
+					defer close(doneSend)
+					defer close(packets)
+					// this initial duration will be ignored
+					timer := time.NewTimer(time.Hour)
+					defer timer.Stop()
+					for _, p := range tt.packets {
+						currentOffset := time.Since(start)
+						delay := p.offset - currentOffset
+						if delay > 0 {
+							timer.Reset(delay)
+							<-timer.C
+						}
+						// sending a nil packet is valid, so we need to check flags if that's what we've got
+						if p.packet != nil {
+							// treat the packet expires as an offset from timeZero, update it to be that offset from now
+							p.packet.fact.Expires = p.packet.fact.Expires.Add(time.Since(timeZero))
+							packets <- p.packet
+						} else {
+							packets <- nil
+						}
+					}
+				}()
+				var gotChunks []receive
+				go func() {
+					defer close(doneReceive)
+					for chunk := range newFacts {
+						gotChunks = append(gotChunks, receive{time.Since(start), chunk})
+					}
+				}()
+				tt.assertion(t, s.chunkReceived(packets, newFacts, tt.args.maxChunk))
+				// wait for goroutines
+				<-doneSend
+				<-doneReceive
+				// there's always a nil startup chunk, don't require tests to specify that
+				wantChunks := append([]receive{{0, nil}}, tt.wantChunks...)
+				assert.Len(t, gotChunks, len(wantChunks))
+				for i := 0; i < len(gotChunks) && i < len(wantChunks); i++ {
+					t.Logf("chunk %d: expected ~ %d, received ~ %d", i, wantChunks[i].offset.Milliseconds(), gotChunks[i].offset.Milliseconds())
+					assert.Equal(t, wantChunks[i].chunk, gotChunks[i].chunk, "Received chunk %d", i)
+					// need to allow some slop in the receive timing
+					// using `assert.InDelta` would be nice, but we really need an asymmetric behavior
+					// it's OK if things are a little late due to timing issues,
+					// but if they are early, there is definitely a bug
+					// have to cast to int64 because of https://github.com/stretchr/testify/issues/780
+					assert.GreaterOrEqual(t, gotChunks[i].offset.Milliseconds(), wantChunks[i].offset.Milliseconds(),
+						"Received timing %d: must not be early", i)
+					assert.LessOrEqual(t,
+						gotChunks[i].offset.Milliseconds(),
+						(wantChunks[i].offset + time.Millisecond).Milliseconds(),
+						"Received timing %d: must not be late", i)
 				}
-			}()
-			tt.assertion(t, s.chunkReceived(packets, newFacts, tt.args.maxChunk))
-			// wait for goroutines
-			<-doneSend
-			<-doneReceive
-			// there's always a nil startup chunk, don't require tests to specify that
-			wantChunks := append([]receive{{0, nil}}, tt.wantChunks...)
-			assert.Len(t, gotChunks, len(wantChunks))
-			for i := 0; i < len(gotChunks) && i < len(wantChunks); i++ {
-				t.Logf("chunk %d: expected ~ %d, received ~ %d", i, wantChunks[i].offset.Milliseconds(), gotChunks[i].offset.Milliseconds())
-				assert.Equal(t, wantChunks[i].chunk, gotChunks[i].chunk, "Received chunk %d", i)
-				// need to allow some slop in the receive timing
-				// using `assert.InDelta` would be nice, but we really need an asymmetric behavior
-				// it's OK if things are a little late due to timing issues,
-				// but if they are early, there is definitely a bug
-				// have to cast to int64 because of https://github.com/stretchr/testify/issues/780
-				assert.GreaterOrEqual(t, gotChunks[i].offset.Milliseconds(), wantChunks[i].offset.Milliseconds(),
-					"Received timing %d: must not be early", i)
-				assert.LessOrEqual(t,
-					gotChunks[i].offset.Milliseconds(),
-					(wantChunks[i].offset + time.Millisecond).Milliseconds(),
-					"Received timing %d: must not be late", i)
-			}
+			})
 		})
 	}
 }
