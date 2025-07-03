@@ -449,27 +449,34 @@ func TestLinkServer_chunkReceived(t *testing.T) {
 				}
 				s.bootIDValue.Store(origBootID)
 
-				packets := make(chan *ReceivedFact, 1)
+				// important that thesee be un-buffered so that we don't have a data
+				// race for the boot id change hack. the ready chan is also required to
+				// avoid the data race.
+				packets := make(chan *ReceivedFact)
+				ready := make(chan struct{})
 
 				var wg sync.WaitGroup
 				wg.Go(func() {
 					defer close(packets)
+					if tt.wantBootIDChange {
+						<-ready
+						// make the next tick seem late
+						s.ChunkPeriod /= 10
+					}
 					for i, p := range tt.packets {
 						// sleep so the clock changes
-						if tt.wantBootIDChange {
-							time.Sleep(tt.args.chunkPeriod)
-						} else {
-							time.Sleep(tt.args.chunkPeriod / time.Duration(len(tt.packets)))
+						if i > 0 {
+							if tt.wantBootIDChange {
+								time.Sleep(tt.args.chunkPeriod)
+							} else {
+								time.Sleep(tt.args.chunkPeriod / time.Duration(len(tt.packets)))
+							}
 						}
 						packets <- p
-						if i == 0 && tt.wantBootIDChange {
-							// make the next tick seem late
-							s.ChunkPeriod /= 10
-						}
 					}
 				})
 
-				newFacts := make(chan []*ReceivedFact, 1)
+				newFacts := make(chan []*ReceivedFact)
 				gotChunks := [][]*ReceivedFact{}
 				wg.Go(func() {
 					first := true
@@ -484,7 +491,7 @@ func TestLinkServer_chunkReceived(t *testing.T) {
 						first = false
 					}
 				})
-				tt.assertion(t, s.chunkReceived(packets, newFacts, tt.args.maxChunk))
+				tt.assertion(t, s.chunkReceived(packets, newFacts, tt.args.maxChunk, ready))
 				wg.Wait()
 				assert.Equal(t, tt.wantChunks, gotChunks)
 				if tt.wantBootIDChange {
@@ -679,7 +686,7 @@ func TestLinkServer_chunkReceived_slow(t *testing.T) {
 						gotChunks = append(gotChunks, receive{time.Since(start), chunk})
 					}
 				}()
-				tt.assertion(t, s.chunkReceived(packets, newFacts, tt.args.maxChunk))
+				tt.assertion(t, s.chunkReceived(packets, newFacts, tt.args.maxChunk, nil))
 				// wait for goroutines
 				<-doneSend
 				<-doneReceive
