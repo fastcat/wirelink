@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/signal"
 	"syscall"
 
 	"github.com/fastcat/wirelink/config"
@@ -17,11 +16,12 @@ import (
 
 // WirelinkCmd represents an instance of the app command line
 type WirelinkCmd struct {
-	args    []string
-	wgc     internal.WgClient
-	Config  *config.Server
-	Server  *server.LinkServer
-	signals chan os.Signal
+	args           []string
+	wgc            internal.WgClient
+	Config         *config.Server
+	Server         *server.LinkServer
+	disableSignals bool // for synctest mainly
+	signals        chan os.Signal
 }
 
 // New creates a new command instance using the given os.Args value
@@ -78,8 +78,9 @@ func (w *WirelinkCmd) Run() error {
 
 	w.signals = make(chan os.Signal, 5)
 	w.Server.AddHandler(func(ctx context.Context) error {
-		signal.Notify(w.signals, syscall.SIGINT, syscall.SIGTERM)
-		w.addPlatformSignalHandlers()
+		if !w.disableSignals {
+			w.addSignalHandlers()
+		}
 		for {
 			select {
 			case sig := <-w.signals:
