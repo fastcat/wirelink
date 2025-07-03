@@ -27,8 +27,7 @@ const wgPort = 51820
 
 func Test_Cmd_VNet1(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		t.Logf("using CI scale: %d", testutils.CIScaleFactor)
-		quantum := testutils.CIScaleFactorDuration * time.Second
+		const quantum = time.Second
 
 		// setup our config path
 		os.Setenv("WIREVLINK_CONFIG_PATH", testutils.SrcDirectory())
