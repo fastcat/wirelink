@@ -50,8 +50,6 @@ func Test_TTLClamping(t *testing.T) {
 
 func TestAccelerateTimeForTests(t *testing.T) {
 	now := time.Now()
-	ScaleExpirationQuantumForTests(10)
-	defer ScaleExpirationQuantumForTests(1)
 
 	f, _ := mustMockAlivePacket(t, nil, nil)
 	f.Expires = now.Add(time.Second)
@@ -62,10 +60,9 @@ func TestAccelerateTimeForTests(t *testing.T) {
 	require.NoError(t, f.DecodeFrom(len(p), now, bytes.NewReader(p)))
 	assert.Equal(t, now.Add(time.Second), f.Expires)
 
-	ScaleExpirationQuantumForTests(1)
 	f = &Fact{}
 	require.NoError(t, f.DecodeFrom(len(p), now, bytes.NewReader(p)))
-	assert.Equal(t, now.Add(10*time.Second), f.Expires)
+	assert.Equal(t, now.Add(time.Second), f.Expires)
 }
 
 func TestParseEndpointV4(t *testing.T) {

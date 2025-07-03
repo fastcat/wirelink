@@ -12,7 +12,6 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/fastcat/wirelink/config"
-	"github.com/fastcat/wirelink/fact"
 	"github.com/fastcat/wirelink/internal/networking/vnet"
 	"github.com/fastcat/wirelink/internal/testutils"
 	"github.com/fastcat/wirelink/log"
@@ -29,10 +28,7 @@ const wgPort = 51820
 func Test_Cmd_VNet1(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		t.Logf("using CI scale: %d", testutils.CIScaleFactor)
-		// use a 100ms time quantum for this test so we can run things on shorter timers
-		fact.ScaleExpirationQuantumForTests(20) // 50ms quantum
-		quantum := testutils.CIScaleFactorDuration * time.Second / 20
-		defer fact.ScaleExpirationQuantumForTests(1)
+		quantum := testutils.CIScaleFactorDuration * time.Second
 
 		// setup our config path
 		os.Setenv("WIREVLINK_CONFIG_PATH", testutils.SrcDirectory())
