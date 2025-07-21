@@ -3,13 +3,24 @@ package native
 import (
 	"fmt"
 	"math/rand"
+	"net"
 	"testing"
 
 	"golang.zx2c4.com/wireguard/wgctrl"
 
+	"github.com/fastcat/wirelink/internal/networking"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func (e *GoEnvironment) ListenUDPPoll(network string, laddr *net.UDPAddr) (networking.UDPConn, error) {
+	c, err := e.ListenUDP(network, laddr)
+	if err != nil {
+		return nil, err
+	}
+	c.(*GoUDPConn).poll = true
+	return c, nil
+}
 
 func TestGoEnvironment_Interfaces(t *testing.T) {
 	tests := []struct {
