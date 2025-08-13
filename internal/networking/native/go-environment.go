@@ -48,7 +48,7 @@ func (e *GoEnvironment) ListenUDP(network string, laddr *net.UDPAddr) (networkin
 	if err != nil {
 		return nil, err
 	}
-	return &GoUDPConn{*conn}, nil
+	return &GoUDPConn{*conn, false}, nil
 }
 
 // NewWgClient implements Environment by wrapping wgctrl.New()
