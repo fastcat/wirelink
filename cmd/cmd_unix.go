@@ -9,8 +9,8 @@ import (
 	"syscall"
 )
 
-func (w *WirelinkCmd) addPlatformSignalHandlers() {
-	signal.Notify(w.signals, syscall.SIGUSR1)
+func (w *WirelinkCmd) addSignalHandlers() {
+	signal.Notify(w.signals, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1)
 }
 
 func (w *WirelinkCmd) handlePlatformSignal(sig os.Signal) bool {

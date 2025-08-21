@@ -90,6 +90,7 @@ func (s *LinkServer) chunkReceived(
 	received <-chan *ReceivedFact,
 	newFacts chan<- []*ReceivedFact,
 	maxChunk int,
+	ready chan<- struct{},
 ) error {
 	defer close(newFacts)
 
@@ -100,6 +101,10 @@ func (s *LinkServer) chunkReceived(
 	// boilerplate
 	chunkTicker := time.NewTicker(s.ChunkPeriod)
 	defer chunkTicker.Stop()
+
+	if ready != nil {
+		close(ready)
+	}
 
 	// send an empty chunk once at startup to prime things
 	newFacts <- nil
