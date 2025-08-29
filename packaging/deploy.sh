@@ -11,7 +11,7 @@ go tool mage clean everything checkinstall:cross amd64 checkinstall:cross arm64
 newdebs=(
 	./packaging/checkinstall/wirelink*.deb
 )
-for distro in bullseye bookworm jammy noble ; do
+for distro in bullseye bookworm trixie sid jammy noble ; do
 	# run these with no stdin so we do the index export only once
 	adddebs release=$distro "${newdebs[@]}" </dev/null
 done
