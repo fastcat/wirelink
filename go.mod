@@ -5,10 +5,10 @@ go 1.25
 require (
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/golang-lru/arc/v2 v2.0.7
-	github.com/spf13/pflag v1.0.7
+	github.com/spf13/pflag v1.0.8
 	github.com/spf13/viper v1.20.1
-	github.com/stretchr/testify v1.10.0
-	github.com/vektra/mockery/v2 v2.53.4
+	github.com/stretchr/testify v1.11.1
+	github.com/vektra/mockery/v2 v2.53.5
 	github.com/vishvananda/netlink v1.3.1
 	golang.org/x/crypto v0.41.0
 	golang.org/x/sync v0.16.0
