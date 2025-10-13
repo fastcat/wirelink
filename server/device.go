@@ -20,7 +20,7 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device, now time.Time) (ret []*fa
 	// facts about the local node
 	ret, err = peerfacts.DeviceFacts(dev, now, s.FactTTL, s.config, s.net)
 	if err != nil {
-		return
+		return ret, err
 	}
 
 	// facts the local node knows about peers configured in the wireguard device
@@ -33,7 +33,7 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device, now time.Time) (ret []*fa
 		var pf []*fact.Fact
 		pf, err = peerfacts.LocalFacts(&peer, s.FactTTL, useLocalAIPs, useLocalMembership, now)
 		if err != nil {
-			return
+			return ret, err
 		}
 		ret = append(ret, pf...)
 	}
@@ -80,7 +80,7 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device, now time.Time) (ret []*fa
 		}
 	}
 
-	return
+	return ret, err
 }
 
 func (s *LinkServer) handlePeerConfigAllowedIPs(
@@ -110,7 +110,7 @@ func (s *LinkServer) handlePeerConfigAllowedIPs(
 			facts = append(facts, staticFact)
 		}
 	}
-	return
+	return facts
 }
 
 func (s *LinkServer) handlePeerConfigEndpoints(
@@ -124,7 +124,7 @@ func (s *LinkServer) handlePeerConfigEndpoints(
 	// only do static lookups for dead peers
 	if pcs, ok := s.peerConfig.Get(pk); ok && (pcs.IsAlive() || pcs.IsHealthy()) {
 		log.Debug("Skipping static lookup for OK peer %s", s.peerName(pk))
-		return
+		return facts
 	}
 
 	for _, ep := range pc.Endpoints {
@@ -164,7 +164,7 @@ func (s *LinkServer) handlePeerConfigEndpoints(
 			facts = append(facts, staticFact)
 		}
 	}
-	return
+	return facts
 }
 
 func (s *LinkServer) isUsablePeerEndpointLocked(f *fact.Fact) bool {

@@ -34,7 +34,7 @@ func (pcs *peerConfigSet) Get(key wgtypes.Key) (ret *apply.PeerConfigState, ok b
 	pcs.psm.Lock()
 	ret, ok = pcs.peerStates[key]
 	pcs.psm.Unlock()
-	return
+	return ret, ok
 }
 
 func (pcs *peerConfigSet) Set(key wgtypes.Key, value *apply.PeerConfigState) {

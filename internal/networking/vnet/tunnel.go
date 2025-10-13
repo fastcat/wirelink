@@ -35,7 +35,7 @@ func (t *Tunnel) Keys() (privateKey, publicKey wgtypes.Key) {
 	privateKey = t.privateKey
 	publicKey = t.publicKey
 	t.m.Unlock()
-	return
+	return privateKey, publicKey
 }
 
 // PublicKey returns the tunnel's public key
@@ -58,7 +58,7 @@ func (t *Tunnel) GenerateKeys() (privateKey, publicKey wgtypes.Key) {
 	t.privateKey = privateKey
 	t.publicKey = publicKey
 	t.m.Unlock()
-	return
+	return privateKey, publicKey
 }
 
 // TunPeer represents a simplified version of a wireguard peer,

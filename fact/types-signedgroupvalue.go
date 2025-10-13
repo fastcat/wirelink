@@ -82,16 +82,16 @@ func (sgv *SignedGroupValue) ParseInner(now time.Time) (ret []*Fact, err error) 
 		// TODO: bytes[0] or readbyte/unreadbyte?
 		if buf.Bytes()[0] == byte(AttributeSignedGroup) {
 			err = fmt.Errorf("SignedGroups must not be nested at #%d @%d", len(ret), buf.Len()-len(sgv.InnerBytes))
-			return
+			return ret, err
 		}
 		next := &Fact{}
 		if err = next.DecodeFrom(0, now, buf); err != nil {
 			err = fmt.Errorf("unable to decode SignedGroupValue inner #%d @%d: %w", len(ret), buf.Len()-len(sgv.InnerBytes), err)
-			return
+			return ret, err
 		}
 		ret = append(ret, next)
 	}
-	return
+	return ret, err
 }
 
 func (sgv *SignedGroupValue) String() string {

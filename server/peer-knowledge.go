@@ -116,7 +116,7 @@ func (pks *peerKnowledgeSet) expire() (count int) {
 			count++
 		}
 	}
-	return
+	return count
 }
 
 // peerKnows returns that a peer knows a fact if we think it knows it (not pruned by `expire`),

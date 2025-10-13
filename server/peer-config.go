@@ -143,7 +143,7 @@ func (s *LinkServer) collectPeerFlags(
 		return factsByPeer[k] != nil || localPeers[k] || validPeers[k]
 	})
 
-	return
+	return localPeers, removePeer, validPeers
 }
 
 func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Device, startTime, now time.Time) {
@@ -302,7 +302,7 @@ func (s *LinkServer) deletePeers(
 
 	if !doDelPeers {
 		log.Debug("Not safe to delete peers from %s", dev.PublicKey)
-		return
+		return err
 	}
 
 	var cfg wgtypes.Config
@@ -335,7 +335,7 @@ func (s *LinkServer) deletePeers(
 		}
 	}
 
-	return
+	return err
 }
 
 func (s *LinkServer) readyForAllowedIPs(
@@ -422,7 +422,7 @@ func (s *LinkServer) configurePeer(
 	}
 
 	if pcfg == nil {
-		return
+		return state, err
 	}
 
 	pcfg.UpdateOnly = !allowAdd
@@ -438,10 +438,10 @@ func (s *LinkServer) configurePeer(
 	})
 	if err != nil {
 		log.Error("Failed to configure peer %s: %+v: %v", peerName, *pcfg, err)
-		return
+		return state, err
 	} else if !logged {
 		log.Info("WAT: applied unknown peer config change to %s: %+v", peerName, *pcfg)
 	}
 
-	return
+	return state, err
 }

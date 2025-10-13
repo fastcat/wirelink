@@ -69,7 +69,7 @@
 		"-template=testify"
 	],
 	"go.testFlags": ["-short"],
-	"go.lintTool": "golangci-lint",
+	"go.lintTool": "golangci-lint-v2",
 	"go.lintOnSave": "workspace",
 	"go.coverOnSave": true,
 	"go.vetOnSave": "workspace",

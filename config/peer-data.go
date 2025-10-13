@@ -23,14 +23,14 @@ type PeerData struct {
 // Parse validates the info in the PeerData and returns the parsed tuple + error
 func (p *PeerData) Parse() (key wgtypes.Key, peer Peer, err error) {
 	if key, err = wgtypes.ParseKey(p.PublicKey); err != nil {
-		return
+		return key, peer, err
 	}
 	peer.Name = p.Name
 	if p.Trust != "" {
 		val, ok := trust.Values[p.Trust]
 		if !ok {
 			err = fmt.Errorf("invalid trust level '%s'", p.Trust)
-			return
+			return key, peer, err
 		}
 		peer.Trust = &val
 	}
@@ -44,11 +44,11 @@ func (p *PeerData) Parse() (key wgtypes.Key, peer Peer, err error) {
 		var port int
 		if host, portString, err = net.SplitHostPort(ep); err != nil {
 			err = fmt.Errorf("bad endpoint '%s' for '%s'='%s': %w", ep, p.PublicKey, p.Name, err)
-			return
+			return key, peer, err
 		}
 		if port, err = net.LookupPort("udp", portString); err != nil {
 			err = fmt.Errorf("bad endpoint port in '%s' for '%s'='%s': %w", ep, p.PublicKey, p.Name, err)
-			return
+			return key, peer, err
 		}
 
 		// try to resolve the host, ignoring DNS errors and just looking for parse errors
@@ -64,7 +64,7 @@ func (p *PeerData) Parse() (key wgtypes.Key, peer Peer, err error) {
 		} else if err != nil {
 			// this branch is very hard, if not impossible, to reach in a test or in the real world
 			err = fmt.Errorf("bad endpoint host in '%s' for '%s'='%s': %w", ep, p.PublicKey, p.Name, err)
-			return
+			return key, peer, err
 		}
 
 		// TODO: can validate host portion is syntactically valid: do a lookup and
@@ -82,7 +82,7 @@ func (p *PeerData) Parse() (key wgtypes.Key, peer Peer, err error) {
 		_, ipn, err = net.ParseCIDR(aip)
 		if err != nil {
 			err = fmt.Errorf("bad AllowedIP '%s' for '%s'='%s': %w", aip, p.PublicKey, p.Name, err)
-			return
+			return key, peer, err
 		}
 		// NOTE: we don't need to run ipn.IP through ipn.Mask, as ParseCIDR does that for us
 		// we want to do that so config can contain minor harmless mistakes, or also use the
@@ -93,5 +93,5 @@ func (p *PeerData) Parse() (key wgtypes.Key, peer Peer, err error) {
 
 	peer.Basic = p.Basic
 
-	return
+	return key, peer, err
 }

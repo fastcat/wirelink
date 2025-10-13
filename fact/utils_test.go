@@ -67,5 +67,5 @@ func mustDeserialize(t *testing.T, p []byte, now time.Time) (f *Fact) {
 	// to help verify data races, randomize the input buffer after its consumed,
 	// so that any code that hangs onto it will show clear test failures
 	testutils.MustRandBytes(t, p)
-	return
+	return f
 }

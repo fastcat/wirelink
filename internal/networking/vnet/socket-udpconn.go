@@ -87,13 +87,13 @@ func (sc *socketUDPConn) ReadFromUDP(b []byte) (n int, addr *net.UDPAddr, err er
 	sc.s.m.Unlock()
 	if inbound == nil {
 		err = net.ErrClosed
-		return
+		return n, addr, err
 	}
 	p := <-sc.inbound
 	n = copy(b, p.data)
 	addr = p.src
 	err = nil
-	return
+	return n, addr, err
 }
 
 // WriteToUDP implements UDPConn

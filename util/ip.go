@@ -32,7 +32,7 @@ func IsIPv6LLMatch(expected net.IP, actual *net.IPNet, local bool) bool {
 func IPToBytes(ip net.IP) (ret [net.IPv6len]byte) {
 	ip = ip.To16()
 	copy(ret[:], ip)
-	return
+	return ret
 }
 
 // IsGloballyRoutable checks if an IP address looks routable across the internet
