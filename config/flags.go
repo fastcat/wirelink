@@ -91,7 +91,7 @@ func Init(args []string) (flags *pflag.FlagSet, vcfg *viper.Viper) {
 	// hard to set env vars with hyphens, bash doesn't like it
 	vcfg.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 
-	return
+	return flags, vcfg
 }
 
 // Parse reads flags and configs
@@ -99,7 +99,7 @@ func Parse(flags *pflag.FlagSet, vcfg *viper.Viper, args []string) (ret *ServerD
 	err = flags.Parse(args[1:])
 	if err != nil {
 		flags.Usage()
-		return
+		return ret, err
 	}
 	// activate debug logging immediately
 	if debug, _ := flags.GetBool(DebugFlag); debug {
@@ -146,5 +146,5 @@ func Parse(flags *pflag.FlagSet, vcfg *viper.Viper, args []string) (ret *ServerD
 		ret.Router = nil
 	}
 
-	return
+	return ret, err
 }

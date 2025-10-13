@@ -76,5 +76,5 @@ func (c *composite) TrustLevel(fact *fact.Fact, source net.UDPAddr) (ret *Level)
 			ret = l
 		}
 	}
-	return
+	return ret
 }

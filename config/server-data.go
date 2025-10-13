@@ -117,5 +117,5 @@ func (s *ServerData) Parse(vcfg *viper.Viper, _ internal.WgClient) (ret *Server,
 		return nil, err
 	}
 
-	return
+	return ret, err
 }

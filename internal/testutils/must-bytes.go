@@ -18,7 +18,7 @@ func MustKeyPair(t require.TestingT) (privateKey, publicKey wgtypes.Key) {
 // MustKey uses MustRandBytes to generate a random (not crypto-valid) key
 func MustKey(t require.TestingT) (key wgtypes.Key) {
 	MustRandBytes(t, key[:])
-	return
+	return key
 }
 
 // MustParseKey parses the string version of a wireguard key, panicing via

@@ -185,5 +185,5 @@ func KeysDifference(old, new []*Fact) (onlyOld, onlyNew []Key) {
 		}
 	}
 
-	return
+	return onlyOld, onlyNew
 }

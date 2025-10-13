@@ -323,5 +323,5 @@ func (s *LinkServer) processOneChunk(
 		s.newBootID()
 	}
 
-	return
+	return uniqueFacts, newLocalFacts, err
 }

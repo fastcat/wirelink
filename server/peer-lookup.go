@@ -31,7 +31,7 @@ func (pl *peerLookup) GetPeer(ip net.IP) (peer wgtypes.Key, ok bool) {
 	pl.mu.RLock()
 	peer, ok = pl.p[k]
 	pl.mu.RUnlock()
-	return
+	return peer, ok
 }
 
 // func (pl *peerLookup) GetIP(peer wgtypes.Key) net.IP {

@@ -20,20 +20,20 @@ func (s *Signer) SignFor(
 ) {
 	sk, err := s.sharedKey(peer)
 	if err != nil {
-		return
+		return nonce, tag, err
 	}
 	if _, err = rand.Read(nonce[:]); err != nil {
-		return
+		return nonce, tag, err
 	}
 	cipher, err := chacha20poly1305.NewX(sk[:])
 	if err != nil {
-		return
+		return nonce, tag, err
 	}
 	out := cipher.Seal(nil, nonce[:], nil, data)
 	if len(out) != len(tag) {
 		err = fmt.Errorf("unexpected output length %d from AEAD, expected %d", len(out), len(tag))
-		return
+		return nonce, tag, err
 	}
 	copy(tag[:], out[:])
-	return
+	return nonce, tag, err
 }
