@@ -2,7 +2,6 @@
 // generation present in go.mod
 
 //go:build never
-// +build never
 
 package internal
 

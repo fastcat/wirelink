@@ -1,5 +1,4 @@
 //go:build js || nacl || plan9 || windows || zos
-// +build js nacl plan9 windows zos
 
 package cmd
 
