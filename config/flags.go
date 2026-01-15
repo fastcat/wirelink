@@ -18,6 +18,10 @@ const (
 	RouterFlag = "router"
 	// IfaceFlag is the name of the flag to set the wireguard interface to use
 	IfaceFlag = "iface"
+	// PortFlag is the name of the flag to set the UDP port to listen on inside
+	// the interface for exchanging facts with peers. If unset, it will default to
+	// one more than the port on which the wireguard interface is listening.
+	PortFlag = "port"
 	// DumpConfigFlag is the name of the flag to request config dumping
 	DumpConfigFlag = "dump"
 	// VersionFlag is the name of the flag to request printing the program version
@@ -37,6 +41,10 @@ func programName(args []string) string {
 	ext := path.Ext(base)
 	if len(ext) > 0 {
 		base = base[:len(base)-len(ext)]
+	}
+	if strings.HasPrefix(base, "__debug_bin") {
+		// debugging gets weird
+		return "wirelink"
 	}
 	return base
 }
@@ -59,6 +67,9 @@ func Init(args []string) (flags *pflag.FlagSet, vcfg *viper.Viper) {
 	vcfg.SetTypeByDefaultValue(true)
 
 	flags.Bool(RouterFlag, false, "Is the local device a router (bool, omit for autodetect)")
+
+	vcfg.SetDefault(PortFlag, 0)
+	flags.Int(PortFlag, 0, "UDP port to listen on inside the interface for exchanging facts with peers")
 
 	vcfg.SetDefault(IfaceFlag, "wg0")
 	flags.StringP(IfaceFlag, "i", "wg0", "Interface on which to operate")
