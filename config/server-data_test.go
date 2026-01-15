@@ -216,61 +216,66 @@ func TestServerData_Dump(t *testing.T) {
 		name     string
 		args     []string
 		env      [][]string
-		wantJSON interface{}
+		wantJSON any
 	}{
 		{
 			"empty",
 			nil,
 			nil,
-			map[string]interface{}{
+			map[string]any{
 				"chatty":      false,
 				"config-path": configPath,
 				"debug":       false,
 				"iface":       "wg0",
+				"port":        0.0, // should be an int but raw json parsing makes it a float here
 			},
 		},
 		{
 			"arg iface",
 			[]string{"--iface", wgIface},
 			nil,
-			map[string]interface{}{
+			map[string]any{
 				"chatty":      false,
 				"config-path": configPath,
 				"debug":       false,
 				"iface":       wgIface,
+				"port":        0.0, // should be an int but raw json parsing makes it a float here
 			},
 		},
 		{
 			"env iface",
 			nil,
 			[][]string{envArg("iface", wgIface)},
-			map[string]interface{}{
+			map[string]any{
 				"chatty":      false,
 				"config-path": configPath,
 				"debug":       false,
 				"iface":       wgIface,
+				"port":        0.0, // should be an int but raw json parsing makes it a float here
 			},
 		},
 		{
 			"arg chatty",
 			[]string{"--chatty"},
 			nil,
-			map[string]interface{}{
+			map[string]any{
 				"chatty":      true,
 				"config-path": configPath,
 				"debug":       false,
 				"iface":       "wg0",
+				"port":        0.0, // should be an int but raw json parsing makes it a float here
 			},
 		},
 		{
 			"env chatty",
 			nil,
 			[][]string{envArg("chatty", "true")},
-			map[string]interface{}{
+			map[string]any{
 				"chatty":      true,
 				"config-path": configPath,
 				"debug":       false,
 				"iface":       "wg0",
+				"port":        0.0, // should be an int but raw json parsing makes it a float here
 			},
 		},
 		// TODO: more
@@ -301,7 +306,7 @@ func TestServerData_Dump(t *testing.T) {
 				require.Nil(t, s)
 			})
 
-			var dumpedObj interface{}
+			var dumpedObj any
 			require.NoError(t, json.Unmarshal(outputData, &dumpedObj))
 
 			assert.Equal(t, tt.wantJSON, dumpedObj)
