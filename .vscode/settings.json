@@ -34,6 +34,7 @@
 		"pcfg",
 		"pflag",
 		"pflags",
+		"prealloc",
 		"SGFs",
 		"stretchr",
 		"stringifying",

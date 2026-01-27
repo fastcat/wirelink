@@ -64,9 +64,8 @@ func TestShouldAccept(t *testing.T) {
 	}
 	allLevels := []Level{Untrusted, Endpoint, AllowedIPs, Membership, DelegateTrust}
 
-	tests := []test{
-		{"nil trust", args{fact.AttributeAlive, true, nil}, false},
-	}
+	tests := make([]test, 0, 10*max(len(validAttrs), len(invalidAttrs))*4) // estimate to shut up linter
+	tests = append(tests, test{"nil trust", args{fact.AttributeAlive, true, nil}, false})
 	tests = append(tests, matrix("gigo", invalidAttrs, false, allLevels, false)...)
 	tests = append(tests, matrix("gigo", invalidAttrs, true, allLevels, false)...)
 	tests = append(tests, matrix("new peer", validAttrs, false, []Level{Untrusted, Endpoint, AllowedIPs}, false)...)

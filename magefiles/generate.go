@@ -12,6 +12,7 @@ import (
 var generatedSources = []string{
 	"internal/version.go",
 }
+
 var goGeneratedSources = []string{
 	"internal/mocks/WgClient.go",
 	"trust/mock_Evaluator_test.go",
@@ -19,7 +20,8 @@ var goGeneratedSources = []string{
 	"internal/networking/mocks/Interface.go",
 	"internal/networking/mocks/UDPConn.go",
 }
-var generated = append(append([]string{}, generatedSources...), goGeneratedSources...)
+
+// var generated = append(append([]string{}, generatedSources...), goGeneratedSources...)
 
 func Generate(ctx context.Context) error {
 	runs := make([]any, len(generators))
@@ -53,7 +55,7 @@ func buildVersion(ctx context.Context) error {
 		return err
 	}
 	out := bytes.ReplaceAll(in, []byte("__GIT_VERSION__"), []byte(v.pkgVerRel))
-	if err := safeOverwrite("internal/version.go", out, 0666); err != nil {
+	if err := safeOverwrite("internal/version.go", out, 0o666); err != nil {
 		return err
 	}
 	return nil

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"fmt"
 	"math/rand"
 	"net"
@@ -44,16 +45,16 @@ func TestLinkServer_parsePacket(t *testing.T) {
 	receiveErr := fmt.Errorf("fake packet error")
 
 	wrapAndSign := func(facts ...*fact.Fact) []byte {
-		buffer := make([]byte, 0)
+		var buf bytes.Buffer
 		for _, f := range facts {
-			buffer = append(buffer, util.MustBytes(f.MarshalBinaryNow(now))...)
+			buf.Write(util.MustBytes(f.MarshalBinaryNow(now))) // never fails
 		}
-		nonce, tag, err := remoteSigner.SignFor(buffer, &localPublicKey)
+		nonce, tag, err := remoteSigner.SignFor(buf.Bytes(), &localPublicKey)
 		require.NoError(t, err)
 		sgf := &fact.Fact{
 			Attribute: fact.AttributeSignedGroup,
 			Subject:   &fact.PeerSubject{Key: remotePublicKey},
-			Value:     &fact.SignedGroupValue{Nonce: nonce, Tag: tag, InnerBytes: buffer},
+			Value:     &fact.SignedGroupValue{Nonce: nonce, Tag: tag, InnerBytes: buf.Bytes()},
 			Expires:   expires,
 		}
 		return util.MustBytes(sgf.MarshalBinary())
@@ -158,11 +159,11 @@ func TestLinkServer_processSignedGroup(t *testing.T) {
 		})
 	}
 	svgFromFacts := func(facts ...*fact.Fact) *fact.SignedGroupValue {
-		data := make([]byte, 0)
+		var buf bytes.Buffer
 		for _, f := range facts {
-			data = append(data, util.MustBytes(f.MarshalBinaryNow(now))...)
+			buf.Write(util.MustBytes(f.MarshalBinaryNow(now))) // never fails
 		}
-		return sgvFromBytes(data)
+		return sgvFromBytes(buf.Bytes())
 	}
 	rf := func(f *fact.Fact) *ReceivedFact {
 		return &ReceivedFact{
