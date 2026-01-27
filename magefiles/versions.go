@@ -15,7 +15,7 @@ type versions struct {
 	pkgRel    string
 }
 
-func getVersions(ctx context.Context) (versions, error) {
+func getVersions(_ context.Context) (versions, error) {
 	out, err := sh.Output("git", "describe", "--long", "--dirty=+")
 	if err != nil {
 		return versions{}, err

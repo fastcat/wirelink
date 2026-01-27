@@ -26,7 +26,7 @@ func SysInstallCross(ctx context.Context, arch string) error {
 	return sysinstall(ctx, "wirelink-cross-"+arch)
 }
 
-func sysinstall(ctx context.Context, src string) error {
+func sysinstall(_ context.Context, src string) error {
 	if err := sh.RunV("install", src, PREFIX+"/bin/wirelink"); err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func (Checkinstall) Prep(ctx context.Context, arch string) error {
 	if err := sh.RunV("go", "mod", "tidy"); err != nil {
 		return err
 	}
-	if err := os.MkdirAll("packaging/wirelink-checkinstall/doc-pak", 0777); err != nil {
+	if err := os.MkdirAll("packaging/wirelink-checkinstall/doc-pak", 0o777); err != nil {
 		return err
 	}
 	args := []string{"-m", "644"}
