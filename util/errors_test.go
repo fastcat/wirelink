@@ -8,15 +8,16 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+//go:fix inline
 func stringPtr(value string) *string {
-	return &value
+	return new(value)
 }
 
 func TestWrapOrNewf(t *testing.T) {
 	type args struct {
 		err    error
 		format string
-		args   []interface{}
+		args   []any
 	}
 	tests := []struct {
 		name       string
@@ -42,7 +43,7 @@ func TestWrapOrNewf(t *testing.T) {
 				nil,
 			},
 			"simple wrapping: inner",
-			stringPtr("inner"),
+			new("inner"),
 		},
 	}
 	for _, tt := range tests {

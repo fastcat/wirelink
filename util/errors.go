@@ -6,7 +6,7 @@ import (
 
 // WrapOrNewf calls fmt.Errorf with varying format depending on whether err is
 // nil, always returning an error value
-func WrapOrNewf(err error, format string, args ...interface{}) error {
+func WrapOrNewf(err error, format string, args ...any) error {
 	if err == nil {
 		return fmt.Errorf(format, args...)
 	}

@@ -3,6 +3,7 @@ package testutils
 import (
 	"math/rand"
 	"net"
+	"slices"
 	"testing"
 )
 
@@ -66,10 +67,5 @@ func RandUDP6Addr(t *testing.T) *net.UDPAddr {
 
 // ContainsIPNet runs a predicate across a net.IPNet slice and returns if any match was found
 func ContainsIPNet(addrs []net.IPNet, predicate func(net.IPNet) bool) bool {
-	for _, addr := range addrs {
-		if predicate(addr) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(addrs, predicate)
 }

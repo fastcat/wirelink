@@ -104,7 +104,7 @@ func TestLinkServer_parsePacket(t *testing.T) {
 		},
 		{
 			"pass receive errors",
-			func(t require.TestingT, err error, msgAndArgs ...interface{}) {
+			func(t require.TestingT, err error, msgAndArgs ...any) {
 				assert.ErrorIs(t, err, receiveErr, msgAndArgs...)
 			},
 			&networking.UDPPacket{

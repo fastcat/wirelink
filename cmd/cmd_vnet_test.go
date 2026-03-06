@@ -312,7 +312,7 @@ func Test_Cmd_VNet1(t *testing.T) {
 		// c2 no longer gets data, so it shouldn't think it's safe to delete peers,
 		// but it should reset them to LL-only
 		// same HandshakeValidity notes apply here
-		assertUnhealthy(client2, "wg1", c1pub, boolPtr(true), "3: c2 retains c1")
+		assertUnhealthy(client2, "wg1", c1pub, new(true), "3: c2 retains c1")
 		assertNotKnows(client1, "wg1", badPub, "3: c1 removed badpub")
 		assertNotKnows(host1, "wg0", badPub, "3: h never knows badpub")
 		assertNotKnows(client2, "wg1", badPub, "3: c2 never knows badpub")
@@ -333,6 +333,7 @@ func Test_Cmd_VNet1(t *testing.T) {
 	})
 }
 
+//go:fix inline
 func boolPtr(value bool) *bool {
-	return &value
+	return new(value)
 }

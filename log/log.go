@@ -12,7 +12,7 @@ import (
 
 // Info writes a formatted string with an appended newline to Stdout.
 // errors are ignored.
-func Info(format string, a ...interface{}) {
+func Info(format string, a ...any) {
 	if format[len(format)-1] != '\n' {
 		format = format + "\n"
 	}
@@ -25,7 +25,7 @@ func Info(format string, a ...interface{}) {
 
 // Error writes a formatted string with an appended newline to Stderr.
 // errors are ignored.
-func Error(format string, a ...interface{}) {
+func Error(format string, a ...any) {
 	if format[len(format)-1] != '\n' {
 		format = format + "\n"
 	}
@@ -63,7 +63,7 @@ func IsDebug() bool {
 
 // Debug writes a formatted string with an appended newline to Stdout, if enabled.
 // errors are ignored.
-func Debug(format string, a ...interface{}) {
+func Debug(format string, a ...any) {
 	if !debugEnabled {
 		return
 	}

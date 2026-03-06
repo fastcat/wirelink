@@ -3,6 +3,7 @@
 package linux
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/vishvananda/netlink"
@@ -15,12 +16,7 @@ import (
 )
 
 func containsIface(ifaces []networking.Interface, predicate func(networking.Interface) bool) bool {
-	for _, iface := range ifaces {
-		if predicate(iface) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(ifaces, predicate)
 }
 
 func Test_linuxEnvironment_Interfaces(t *testing.T) {

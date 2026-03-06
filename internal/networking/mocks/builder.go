@@ -27,7 +27,7 @@ func (_m *Environment) WithInterface(name string) *Interface {
 	if td.Has(tdInterfaces) {
 		td.Set(tdInterfaces, append(td.Get(tdInterfaces).MustInterSlice(), iface))
 	} else {
-		td.Set(tdInterfaces, []interface{}{iface})
+		td.Set(tdInterfaces, []any{iface})
 	}
 	_m.On("InterfaceByName", name).Return(iface, nil).Maybe()
 	iface.On("Name").Return(name).Maybe()
@@ -110,7 +110,7 @@ func (_m *Environment) RegisterUDPConn(c *UDPConn) *UDPConn {
 	if td.Has(tdConnections) {
 		td.Set(tdConnections, append(td.Get(tdConnections).MustInterSlice(), c))
 	} else {
-		td.Set(tdConnections, []interface{}{c})
+		td.Set(tdConnections, []any{c})
 	}
 	return c
 }

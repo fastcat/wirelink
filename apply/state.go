@@ -2,6 +2,7 @@ package apply
 
 import (
 	"fmt"
+	"maps"
 	"net"
 	"time"
 
@@ -52,9 +53,7 @@ func (pcs *PeerConfigState) Clone() *PeerConfigState {
 	}
 	if pcs.endpointLastUsed != nil {
 		ret.endpointLastUsed = make(map[string]time.Time, len(pcs.endpointLastUsed))
-		for k, v := range pcs.endpointLastUsed {
-			ret.endpointLastUsed[k] = v
-		}
+		maps.Copy(ret.endpointLastUsed, pcs.endpointLastUsed)
 	}
 	return &ret
 }

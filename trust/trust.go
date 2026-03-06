@@ -112,6 +112,8 @@ func ShouldAccept(attr fact.Attribute, known bool, level *Level) bool {
 
 // Ptr is a helper, mostly for tests, to allow specifying a trust constant
 // in a place where a pointer is required.
+//
+//go:fix inline
 func Ptr(level Level) *Level {
-	return &level
+	return new(level)
 }

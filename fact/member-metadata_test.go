@@ -338,7 +338,7 @@ func TestMemberMetadata_With(t *testing.T) {
 
 func TestMemberMetadata_Equality(t *testing.T) {
 	// repeat this a bunch because hashes are unpredictable
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		name := fmt.Sprintf("foo%d", i)
 		basic := i%2 == 0
 		mm1 := (&MemberMetadata{}).With(name, basic)

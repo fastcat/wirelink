@@ -26,7 +26,7 @@ var _ io.Reader = &mockReader{}
 
 func byteVec(length, offset int) []byte {
 	ret := make([]byte, length)
-	for i := 0; i < length; i++ {
+	for i := range length {
 		ret[i] = byte(i + offset)
 	}
 	return ret
@@ -46,7 +46,7 @@ func TestSignedGroupValue_DecodeFrom(t *testing.T) {
 		{
 			"insufficient bytes for nonce",
 			args{0, bytes.NewReader(make([]byte, chacha20poly1305.NonceSizeX-1))},
-			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
+			func(t assert.TestingT, err error, msgAndArgs ...any) bool {
 				return assert.Error(t, err, msgAndArgs...) &&
 					assert.ErrorContains(t, err, "Nonce")
 			},
@@ -55,7 +55,7 @@ func TestSignedGroupValue_DecodeFrom(t *testing.T) {
 		{
 			"insufficient bytes for tag",
 			args{0, bytes.NewReader(make([]byte, chacha20poly1305.NonceSizeX+chacha20poly1305.Overhead-1))},
-			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
+			func(t assert.TestingT, err error, msgAndArgs ...any) bool {
 				return assert.Error(t, err, msgAndArgs...) &&
 					assert.ErrorContains(t, err, "Tag")
 			},
@@ -113,7 +113,7 @@ func TestSignedGroupValue_ParseInner(t *testing.T) {
 			[]byte{byte(AttributeSignedGroup)},
 			args{time.Now()},
 			nil,
-			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
+			func(t assert.TestingT, err error, msgAndArgs ...any) bool {
 				return assert.Error(t, err, msgAndArgs...) &&
 					assert.ErrorContains(t, err, "nested")
 			},
@@ -123,7 +123,7 @@ func TestSignedGroupValue_ParseInner(t *testing.T) {
 			[]byte{byte(AttributeUnknown)},
 			args{time.Now()},
 			nil,
-			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
+			func(t assert.TestingT, err error, msgAndArgs ...any) bool {
 				return assert.Error(t, err, msgAndArgs...) &&
 					assert.ErrorContains(t, err, "AttributeUnknown")
 			},
@@ -133,7 +133,7 @@ func TestSignedGroupValue_ParseInner(t *testing.T) {
 			[]byte{0xff},
 			args{time.Now()},
 			nil,
-			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
+			func(t assert.TestingT, err error, msgAndArgs ...any) bool {
 				return assert.Error(t, err, msgAndArgs...) &&
 					assert.ErrorContains(t, err, "unrecognized")
 			},
