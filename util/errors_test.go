@@ -8,11 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-//go:fix inline
-func stringPtr(value string) *string {
-	return new(value)
-}
-
 func TestWrapOrNewf(t *testing.T) {
 	type args struct {
 		err    error

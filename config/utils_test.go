@@ -11,8 +11,3 @@ func letter() rune {
 func boolean() bool {
 	return rand.Intn(2) == 1
 }
-
-//go:fix inline
-func boolPtr(value bool) *bool {
-	return new(value)
-}

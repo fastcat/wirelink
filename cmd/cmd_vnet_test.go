@@ -332,8 +332,3 @@ func Test_Cmd_VNet1(t *testing.T) {
 		assert.NotNil(t, lan2)
 	})
 }
-
-//go:fix inline
-func boolPtr(value bool) *bool {
-	return new(value)
-}
