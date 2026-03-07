@@ -43,7 +43,7 @@ func TestWirelinkCmd_Init(t *testing.T) {
 			fields{[]string{"--iface", wgFake, "--garbagearg"}},
 			args{},
 			nil,
-			func(t require.TestingT, err error, msgAndArgs ...interface{}) {
+			func(t require.TestingT, err error, msgAndArgs ...any) {
 				require.Error(t, err, msgAndArgs...)
 				require.Contains(t, err.Error(), "parse config")
 			},
@@ -59,7 +59,7 @@ func TestWirelinkCmd_Init(t *testing.T) {
 			map[string]string{
 				"_ROUTER": "NOTABOOLEAN",
 			},
-			func(t require.TestingT, err error, msgAndArgs ...interface{}) {
+			func(t require.TestingT, err error, msgAndArgs ...any) {
 				require.Error(t, err, msgAndArgs...)
 				assert.ErrorContains(t, err, "parse config")
 			},
@@ -75,7 +75,7 @@ func TestWirelinkCmd_Init(t *testing.T) {
 			map[string]string{
 				"_CONFIG_PATH": testutils.SrcDirectory(),
 			},
-			func(t require.TestingT, err error, msgAndArgs ...interface{}) {
+			func(t require.TestingT, err error, msgAndArgs ...any) {
 				require.Error(t, err, msgAndArgs...)
 				assert.ErrorContains(t, err, "load config")
 				// check for the base64 error somewhere in the stack
@@ -108,7 +108,7 @@ func TestWirelinkCmd_Init(t *testing.T) {
 			fields{[]string{"--iface", wgFake}},
 			args{},
 			nil,
-			func(t require.TestingT, err error, msgAndArgs ...interface{}) {
+			func(t require.TestingT, err error, msgAndArgs ...any) {
 				require.Error(t, err, msgAndArgs...)
 				assert.ErrorContains(t, err, "create server")
 				assert.ErrorContains(t, err, wgFake)

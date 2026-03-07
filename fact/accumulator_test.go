@@ -18,7 +18,7 @@ func TestAccumulatorLimits(t *testing.T) {
 
 	a := NewAccumulator(len(ep)*4-1, time.Now())
 
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		err := a.AddFact(ef)
 		require.Nil(t, err)
 	}
@@ -32,7 +32,7 @@ func TestAccumulatorSigning(t *testing.T) {
 	ef, ep := mustMockAlivePacket(t, nil, nil)
 
 	a := NewAccumulator(len(ep)*4-1, time.Now())
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		err := a.AddFact(ef)
 		require.Nil(t, err)
 	}

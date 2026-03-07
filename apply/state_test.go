@@ -2,6 +2,7 @@ package apply
 
 import (
 	"fmt"
+	"maps"
 	"math/rand"
 	"net"
 	"reflect"
@@ -496,9 +497,7 @@ func TestPeerConfigState_NextEndpoint(t *testing.T) {
 			assert.Equal(t, tt.want, got)
 			if tt.want != nil {
 				wantMap := make(map[string]time.Time, len(tt.fields.endpointLastUsed))
-				for k, v := range tt.fields.endpointLastUsed {
-					wantMap[k] = v
-				}
+				maps.Copy(wantMap, tt.fields.endpointLastUsed)
 				wantMap[string(util.MustBytes(facts.EndpointValue(tt.want).MarshalBinary()))] = now
 				assert.Equal(t, wantMap, pcs.endpointLastUsed)
 			}

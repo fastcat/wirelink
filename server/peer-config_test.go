@@ -84,7 +84,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 			"add new peer without details",
 			fields{
 				buildConfig(wgIface).withPeer(remoteController1Key, &config.Peer{
-					Trust: trust.Ptr(trust.Membership),
+					Trust: new(trust.Membership),
 				}).Build(),
 				func(t *testing.T) *mocks.WgClient {
 					ret := &mocks.WgClient{}
@@ -121,7 +121,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 			"add new peer with details",
 			fields{
 				buildConfig(wgIface).withPeer(remoteController1Key, &config.Peer{
-					Trust: trust.Ptr(trust.Membership),
+					Trust: new(trust.Membership),
 				}).Build(),
 				func(t *testing.T) *mocks.WgClient {
 					ret := &mocks.WgClient{}
@@ -159,7 +159,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 			"delete peer with details",
 			fields{
 				buildConfig(wgIface).withPeer(remoteController1Key, &config.Peer{
-					Trust: trust.Ptr(trust.Membership),
+					Trust: new(trust.Membership),
 				}).Build(),
 				func(t *testing.T) *mocks.WgClient {
 					ret := &mocks.WgClient{}
@@ -200,9 +200,9 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 			"keep peer 50% controllers online",
 			fields{
 				buildConfig(wgIface).withPeer(remoteController1Key, &config.Peer{
-					Trust: trust.Ptr(trust.Membership),
+					Trust: new(trust.Membership),
 				}).withPeer(remoteController2Key, &config.Peer{
-					Trust: trust.Ptr(trust.Membership),
+					Trust: new(trust.Membership),
 				}).Build(),
 				func(t *testing.T) *mocks.WgClient {
 					ret := &mocks.WgClient{}
@@ -519,7 +519,7 @@ func TestLinkServer_deletePeers(t *testing.T) {
 			fields{
 				// need a peer that has Membership
 				buildConfig(wgIface).withPeer(k1, &config.Peer{
-					Trust: trust.Ptr(trust.Membership),
+					Trust: new(trust.Membership),
 				}).Build(),
 				map[wgtypes.Key]*apply.PeerConfigState{
 					// k1 must be alive & healthy, for a while, for its Membership trust
@@ -596,7 +596,7 @@ func TestLinkServer_deletePeers(t *testing.T) {
 			fields{
 				// need a peer that has Membership
 				buildConfig(wgIface).withPeer(k1, &config.Peer{
-					Trust: trust.Ptr(trust.Membership),
+					Trust: new(trust.Membership),
 				}).Build(),
 				map[wgtypes.Key]*apply.PeerConfigState{
 					// k1 must be alive & healthy, for a while, for its Membership trust

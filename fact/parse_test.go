@@ -239,7 +239,7 @@ func TestFact_DecodeFrom(t *testing.T) {
 		{
 			"AttributeUnknown error",
 			args{0, []byte{byte(AttributeUnknown)}},
-			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
+			func(t assert.TestingT, err error, msgAndArgs ...any) bool {
 				return assert.Error(t, err, msgAndArgs...) &&
 					assert.ErrorContains(t, err, "AttributeUnknown") &&
 					assert.ErrorContains(t, err, "legacy")
@@ -249,7 +249,7 @@ func TestFact_DecodeFrom(t *testing.T) {
 		{
 			"invalid attribute error",
 			args{0, []byte{0xff}},
-			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
+			func(t assert.TestingT, err error, msgAndArgs ...any) bool {
 				return assert.Error(t, err, msgAndArgs...) &&
 					assert.ErrorContains(t, err, "unrecognized attribute") &&
 					assert.ErrorContains(t, err, "0xff")
@@ -259,7 +259,7 @@ func TestFact_DecodeFrom(t *testing.T) {
 		{
 			"TTL read error",
 			args{0, []byte{byte(AttributeAlive)}},
-			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
+			func(t assert.TestingT, err error, msgAndArgs ...any) bool {
 				return assert.Error(t, err, msgAndArgs...) &&
 					assert.ErrorContains(t, err, "ttl")
 			},
@@ -271,7 +271,7 @@ func TestFact_DecodeFrom(t *testing.T) {
 				_, b := mustMockAlivePacket(t, nil, nil)
 				return b[:len(b)-uuidLen-1]
 			}()},
-			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
+			func(t assert.TestingT, err error, msgAndArgs ...any) bool {
 				return assert.Error(t, err, msgAndArgs...) &&
 					assert.ErrorContains(t, err, "subject")
 			},
@@ -283,7 +283,7 @@ func TestFact_DecodeFrom(t *testing.T) {
 				_, b := mustMockAlivePacket(t, nil, nil)
 				return b[:len(b)-1]
 			}()},
-			func(t assert.TestingT, err error, msgAndArgs ...interface{}) bool {
+			func(t assert.TestingT, err error, msgAndArgs ...any) bool {
 				return assert.Error(t, err, msgAndArgs...) &&
 					assert.ErrorContains(t, err, "value")
 			},
@@ -376,8 +376,8 @@ LINES:
 		l = strings.TrimPrefix(l, "[]byte{")
 		l = strings.TrimSuffix(l, "}")
 		// split on commas
-		byteStrings := strings.Split(l, ",")
-		for _, bs := range byteStrings {
+		byteStrings := strings.SplitSeq(l, ",")
+		for bs := range byteStrings {
 			var b byte
 			// %v will consume the 0x prefix
 			n, err := fmt.Sscanf(bs, "%v", &b)

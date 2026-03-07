@@ -11,7 +11,3 @@ func letter() rune {
 func boolean() bool {
 	return rand.Intn(2) == 1
 }
-
-func boolPtr(value bool) *bool {
-	return &value
-}

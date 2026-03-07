@@ -120,7 +120,7 @@ func Test_Cmd_VNet1(t *testing.T) {
 		// hack in configs for peers
 		host1cmd.Config.Peers[h1pub] = &config.Peer{
 			Name:  host1.Name() + "@self",
-			Trust: trust.Ptr(trust.Membership),
+			Trust: new(trust.Membership),
 		}
 		host1cmd.Config.Peers[c1pub] = &config.Peer{
 			Name:       client1.Name() + "@" + host1.Name(),
@@ -132,7 +132,7 @@ func Test_Cmd_VNet1(t *testing.T) {
 		}
 		client1cmd.Config.Peers[h1pub] = &config.Peer{
 			Name:  host1.Name() + "@" + client1.Name(),
-			Trust: trust.Ptr(trust.Membership),
+			Trust: new(trust.Membership),
 			Endpoints: []config.PeerEndpoint{{
 				Host: "100.1.1.1",
 				Port: wgPort,
@@ -143,7 +143,7 @@ func Test_Cmd_VNet1(t *testing.T) {
 		}
 		client2cmd.Config.Peers[h1pub] = &config.Peer{
 			Name:  host1.Name() + "@" + client2.Name(),
-			Trust: trust.Ptr(trust.Membership),
+			Trust: new(trust.Membership),
 			Endpoints: []config.PeerEndpoint{{
 				Host: "100.1.1.1",
 				Port: wgPort,
@@ -312,7 +312,7 @@ func Test_Cmd_VNet1(t *testing.T) {
 		// c2 no longer gets data, so it shouldn't think it's safe to delete peers,
 		// but it should reset them to LL-only
 		// same HandshakeValidity notes apply here
-		assertUnhealthy(client2, "wg1", c1pub, boolPtr(true), "3: c2 retains c1")
+		assertUnhealthy(client2, "wg1", c1pub, new(true), "3: c2 retains c1")
 		assertNotKnows(client1, "wg1", badPub, "3: c1 removed badpub")
 		assertNotKnows(host1, "wg0", badPub, "3: h never knows badpub")
 		assertNotKnows(client2, "wg1", badPub, "3: c2 never knows badpub")
@@ -331,8 +331,4 @@ func Test_Cmd_VNet1(t *testing.T) {
 		// just to silence variable usage
 		assert.NotNil(t, lan2)
 	})
-}
-
-func boolPtr(value bool) *bool {
-	return &value
 }

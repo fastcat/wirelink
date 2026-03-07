@@ -2,9 +2,8 @@ package native
 
 import (
 	"net"
+	"slices"
 	"testing"
-
-	"github.com/fastcat/wirelink/internal/testutils"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -27,9 +26,8 @@ func TestGoInterface_Addrs(t *testing.T) {
 			nil,
 			false,
 			func(t *testing.T, addrs []net.IPNet, err error) {
-				assert.True(t, testutils.ContainsIPNet(addrs, func(addr net.IPNet) bool {
+				assert.True(t, slices.ContainsFunc(addrs, func(addr net.IPNet) bool {
 					ones, bits := addr.Mask.Size()
-					// check for 127.0.0.1/8
 					return net.IPv4(127, 0, 0, 1).Equal(addr.IP) && ones == 8 && bits == 32
 				}))
 			},

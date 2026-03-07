@@ -21,7 +21,7 @@ func Compile(ctx context.Context) error {
 }
 
 func Wirelink(ctx context.Context) error {
-	mg.CtxDeps(ctx, Generate)
+	mg.CtxDeps(ctx, Generate, Compile)
 	return sh.RunV("go", "build", "-v", ".")
 }
 func WirelinkCross(ctx context.Context, arch string) error {

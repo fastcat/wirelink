@@ -1,6 +1,7 @@
 package vnet
 
 import (
+	"maps"
 	"net"
 	"time"
 
@@ -151,9 +152,7 @@ func (t *Tunnel) AddPeer(name string, publicKey wgtypes.Key, endpoint *net.UDPAd
 func (t *Tunnel) Peers() map[string]*TunPeer {
 	t.m.Lock()
 	ret := make(map[string]*TunPeer, len(t.peers))
-	for k, v := range t.peers {
-		ret[k] = v
-	}
+	maps.Copy(ret, t.peers)
 	t.m.Unlock()
 	return ret
 }

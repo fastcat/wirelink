@@ -9,13 +9,13 @@ import (
 func TestTernary(t *testing.T) {
 	type args struct {
 		value       bool
-		trueResult  interface{}
-		falseResult interface{}
+		trueResult  any
+		falseResult any
 	}
 	tests := []struct {
 		name string
 		args args
-		want interface{}
+		want any
 	}{
 		{
 			"true",

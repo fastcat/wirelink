@@ -101,19 +101,19 @@ func TestPeers_AnyTrustedAt(t *testing.T) {
 		},
 		{
 			"no match",
-			Peers{k1: &Peer{Trust: trust.Ptr(trust.Untrusted)}},
+			Peers{k1: &Peer{Trust: new(trust.Untrusted)}},
 			args{trust.Endpoint},
 			false,
 		},
 		{
 			"match",
-			Peers{k1: &Peer{Trust: trust.Ptr(trust.Endpoint)}},
+			Peers{k1: &Peer{Trust: new(trust.Endpoint)}},
 			args{trust.Endpoint},
 			true,
 		},
 		{
 			"over-match",
-			Peers{k1: &Peer{Trust: trust.Ptr(trust.Membership)}},
+			Peers{k1: &Peer{Trust: new(trust.Membership)}},
 			args{trust.Endpoint},
 			true,
 		},

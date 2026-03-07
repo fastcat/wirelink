@@ -69,7 +69,7 @@ func TestPeerData_Parse(t *testing.T) {
 			k,
 			Peer{
 				Name:       "xyzzy",
-				Trust:      trust.Ptr(trust.Membership),
+				Trust:      new(trust.Membership),
 				Endpoints:  []PeerEndpoint{},
 				AllowedIPs: []net.IPNet{},
 			},

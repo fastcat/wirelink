@@ -63,13 +63,3 @@ func RandUDP6Addr(t *testing.T) *net.UDPAddr {
 		Port: rand.Intn(65535),
 	}
 }
-
-// ContainsIPNet runs a predicate across a net.IPNet slice and returns if any match was found
-func ContainsIPNet(addrs []net.IPNet, predicate func(net.IPNet) bool) bool {
-	for _, addr := range addrs {
-		if predicate(addr) {
-			return true
-		}
-	}
-	return false
-}

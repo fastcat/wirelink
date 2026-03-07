@@ -64,13 +64,13 @@ func Test_knownPeerTrust_TrustLevel(t *testing.T) {
 			"known leaf self info",
 			peerList(k1),
 			mkArgs(k1, k1),
-			Ptr(Endpoint),
+			new(Endpoint),
 		},
 		{
 			"known leaf other info",
 			peerList(k1),
 			mkArgs(k2, k1),
-			Ptr(Endpoint),
+			new(Endpoint),
 		},
 	}
 	for _, tt := range tests {

@@ -59,7 +59,7 @@ func TestLinkServer_shouldSendTo(t *testing.T) {
 		{
 			"send everything to trusted peer",
 			fields{&config.Server{Peers: config.Peers{
-				k1: &config.Peer{Trust: trust.Ptr(trust.AllowedIPs)},
+				k1: &config.Peer{Trust: new(trust.AllowedIPs)},
 			}}},
 			args{
 				&wgtypes.Peer{PublicKey: k1, Endpoint: ep1},
