@@ -15,10 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func containsIface(ifaces []networking.Interface, predicate func(networking.Interface) bool) bool {
-	return slices.ContainsFunc(ifaces, predicate)
-}
-
 func Test_linuxEnvironment_Interfaces(t *testing.T) {
 	type fields struct {
 		create bool
@@ -42,10 +38,7 @@ func Test_linuxEnvironment_Interfaces(t *testing.T) {
 				for _, iface := range ifaces {
 					assert.IsType(t, &linuxInterface{}, iface)
 				}
-				assert.True(t, containsIface(ifaces, func(iface networking.Interface) bool {
-					require.NotNil(t, iface)
-					return iface.Name() == "lo"
-				}), "Should find a localhost interface")
+				assert.True(t, slices.ContainsFunc(ifaces, func(iface networking.Interface) bool { require.NotNil(t, iface); return iface.Name() == "lo" }), "Should find a localhost interface")
 			},
 		},
 	}

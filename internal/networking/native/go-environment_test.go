@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net"
+	"slices"
 	"testing"
 
 	"golang.zx2c4.com/wireguard/wgctrl"
@@ -36,10 +37,7 @@ func TestGoEnvironment_Interfaces(t *testing.T) {
 			nil,
 			false,
 			func(t *testing.T, ifaces []*GoInterface, err error) {
-				assert.True(t, containsIface(ifaces, func(iface *GoInterface) bool {
-					require.NotNil(t, iface)
-					return iface.Name() == localhostInterfaceName
-				}), "Should find a localhost interface")
+				assert.True(t, slices.ContainsFunc(ifaces, func(iface *GoInterface) bool { require.NotNil(t, iface); return iface.Name() == localhostInterfaceName }), "Should find a localhost interface")
 				assert.GreaterOrEqual(t, len(ifaces), 2)
 			},
 		},

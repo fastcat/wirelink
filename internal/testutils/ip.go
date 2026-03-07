@@ -3,7 +3,6 @@ package testutils
 import (
 	"math/rand"
 	"net"
-	"slices"
 	"testing"
 )
 
@@ -63,9 +62,4 @@ func RandUDP6Addr(t *testing.T) *net.UDPAddr {
 		IP:   MustRandBytes(t, make([]byte, net.IPv6len)),
 		Port: rand.Intn(65535),
 	}
-}
-
-// ContainsIPNet runs a predicate across a net.IPNet slice and returns if any match was found
-func ContainsIPNet(addrs []net.IPNet, predicate func(net.IPNet) bool) bool {
-	return slices.ContainsFunc(addrs, predicate)
 }

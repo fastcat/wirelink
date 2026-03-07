@@ -120,7 +120,7 @@ func Test_Cmd_VNet1(t *testing.T) {
 		// hack in configs for peers
 		host1cmd.Config.Peers[h1pub] = &config.Peer{
 			Name:  host1.Name() + "@self",
-			Trust: trust.Ptr(trust.Membership),
+			Trust: new(trust.Membership),
 		}
 		host1cmd.Config.Peers[c1pub] = &config.Peer{
 			Name:       client1.Name() + "@" + host1.Name(),
@@ -132,7 +132,7 @@ func Test_Cmd_VNet1(t *testing.T) {
 		}
 		client1cmd.Config.Peers[h1pub] = &config.Peer{
 			Name:  host1.Name() + "@" + client1.Name(),
-			Trust: trust.Ptr(trust.Membership),
+			Trust: new(trust.Membership),
 			Endpoints: []config.PeerEndpoint{{
 				Host: "100.1.1.1",
 				Port: wgPort,
@@ -143,7 +143,7 @@ func Test_Cmd_VNet1(t *testing.T) {
 		}
 		client2cmd.Config.Peers[h1pub] = &config.Peer{
 			Name:  host1.Name() + "@" + client2.Name(),
-			Trust: trust.Ptr(trust.Membership),
+			Trust: new(trust.Membership),
 			Endpoints: []config.PeerEndpoint{{
 				Host: "100.1.1.1",
 				Port: wgPort,
