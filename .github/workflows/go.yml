@@ -68,7 +68,7 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          report-type: test_results
+          report_type: test_results
       - name: Upload coverage (codecov)
         if: ${{ always() }}
         uses: codecov/codecov-action@v5
