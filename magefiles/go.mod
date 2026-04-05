@@ -2,7 +2,7 @@ module github.com/fastcat/wirelink/magefiles
 
 go 1.26
 
-require github.com/magefile/mage v1.17.0
+require github.com/magefile/mage v1.17.1
 
 require (
 	github.com/bitfield/gotestdox v0.2.2 // indirect
