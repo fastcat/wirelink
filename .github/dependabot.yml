@@ -4,10 +4,6 @@ updates:
     directories:
       - "/"
       - "/magefiles"
-    groups:
-      go-everything:
-        patterns:
-          - "*"
     schedule:
       interval: "weekly"
       day: sunday
