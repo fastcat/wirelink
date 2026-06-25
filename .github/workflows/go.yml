@@ -9,12 +9,11 @@ jobs:
     strategy:
       matrix:
         os:
-          - ubuntu-22.04
-          - ubuntu-24.04
-          - ubuntu-24.04-arm
-          - macos-15
+          - ubuntu-26.04
+          - ubuntu-26.04-arm
           - macos-26
           - windows-latest
+          - windows-11-arm
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
