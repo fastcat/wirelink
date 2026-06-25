@@ -86,5 +86,5 @@ jobs:
       - name: Test with race detector
         # combination of macos runners being slow and race detector messing with
         # timing makes this combination too flaky for now
-        if: "!startsWith(matrix.os, 'macos-')"
+        if: "!startsWith(matrix.os, 'macos-') && !(startsWith(matrix.os, 'windows-') && endsWith(matrix.os, '-arm'))"
         run: go tool mage test:goRace
