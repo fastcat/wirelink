@@ -281,6 +281,11 @@ func (s *LinkServer) processOneChunk(
 			continue
 		}
 
+		if !s.isValidFact(rf.fact) {
+			log.Error("dropping invalid fact: %v from %v", rf.fact, rf.source)
+			continue
+		}
+
 		level := evaluator.TrustLevel(rf.fact, rf.source)
 		known := evaluator.IsKnown(rf.fact.Subject)
 		if trust.ShouldAccept(rf.fact.Attribute, known, level) {
@@ -324,4 +329,15 @@ func (s *LinkServer) processOneChunk(
 	}
 
 	return uniqueFacts, newLocalFacts, err
+}
+
+func (s *LinkServer) isValidFact(f *fact.Fact) bool {
+	switch f.Attribute {
+	case fact.AttributeEndpointV4, fact.AttributeEndpointV6:
+		if ep, ok := f.Value.(*fact.IPPortValue); ok {
+			return !s.interfaceCache.WillTunnel(ep.IP)
+		}
+		return false
+	}
+	return true
 }
