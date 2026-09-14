@@ -37,7 +37,10 @@ formatters:
     - goimports
   settings:
     gofumpt:
-      extra-rules: true
+      extra:
+        group-params: true
+        clothe-returns: false
+        balance-calls: true
   exclusions:
     generated: lax
     paths:
