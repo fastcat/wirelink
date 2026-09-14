@@ -31,7 +31,9 @@ func (d *Device) EnsurePeersAutoIP() (int, error) {
 	err = d.ConfigureDevice(cfg)
 	if err != nil {
 		return 0, fmt.Errorf(
-			"unable to configure %s with %d new peer IPv6-LL AllowedIPs: %w", d.iface, len(cfg.Peers), err)
+			"unable to configure %s with %d new peer IPv6-LL AllowedIPs: %w",
+			d.iface, len(cfg.Peers), err,
+		)
 	}
 
 	return len(cfg.Peers), nil
