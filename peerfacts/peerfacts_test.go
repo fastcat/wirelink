@@ -168,7 +168,14 @@ func TestLocalFacts(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotRet, err := LocalFacts(tt.args.peer, tt.args.ttl, tt.args.trustLocalAIPs, tt.args.trustLocalMembership, tt.args.now)
+			gotRet, err := LocalFacts(
+				tt.args.peer,
+				tt.args.ttl,
+				tt.args.trustLocalAIPs,
+				tt.args.trustLocalMembership,
+				tt.args.now,
+				func(net.IP) bool { return false },
+			)
 			if tt.wantErr {
 				require.NotNil(t, err, "LocalFacts() error")
 			} else {

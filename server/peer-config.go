@@ -44,7 +44,9 @@ FACTLOOP:
 				return fmt.Errorf("unable to load device state, giving up: %w", err)
 			}
 
-			s.configurePeersOnce(facts, dev, startTime, now)
+			if err := s.configurePeersOnce(facts, dev, startTime, now); err != nil {
+				log.Error("failed to configure peers: %v", err)
+			}
 
 		case printDone := <-s.printRequested:
 			log.Info("%s", s.formatFacts(time.Now(), facts))
@@ -95,7 +97,17 @@ func (s *LinkServer) collectPeerFlags(
 		// is still valid now
 		newAlive, aliveUntil, bootID := s.peerKnowledge.peerAlive(peer.PublicKey)
 		ps, _ := s.peerConfig.Get(peer.PublicKey)
-		ps = ps.Update(peer, s.peerConfigName(peer.PublicKey), newAlive, aliveUntil, bootID, now, peerFacts, false)
+		ps = ps.Update(
+			peer,
+			s.peerConfigName(peer.PublicKey),
+			newAlive,
+			aliveUntil,
+			bootID,
+			now,
+			peerFacts,
+			false,
+			s.interfaceCache.WillTunnel,
+		)
 		s.peerConfig.Set(peer.PublicKey, ps)
 	}
 	// do the same, slightly fake for the local peer
@@ -117,6 +129,7 @@ func (s *LinkServer) collectPeerFlags(
 			factsByPeer[dev.PublicKey],
 			// quiet: no reason to log "changes" to the local peer
 			true,
+			s.interfaceCache.WillTunnel,
 		)
 		s.peerConfig.Set(dev.PublicKey, ps)
 	}
@@ -146,7 +159,7 @@ func (s *LinkServer) collectPeerFlags(
 	return localPeers, removePeer, validPeers
 }
 
-func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Device, startTime, now time.Time) {
+func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Device, startTime, now time.Time) error {
 	factsByPeer := groupFactsByPeer(newFacts)
 
 	localPeers, removePeer, validPeers := s.collectPeerFlags(now, dev, factsByPeer)
@@ -233,9 +246,7 @@ func (s *LinkServer) configurePeersOnce(newFacts []*fact.Fact, dev *wgtypes.Devi
 		eg.Go(func() error { return s.deletePeers(dev, removePeer, now) })
 	}
 
-	//nolint:errcheck // we don't actually care if any of the routines failed,
-	// just that they finished
-	eg.Wait()
+	return eg.Wait()
 }
 
 func (s *LinkServer) peerHealthyEnough(now time.Time, key wgtypes.Key) bool {
