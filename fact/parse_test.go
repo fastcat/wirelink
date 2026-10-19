@@ -129,10 +129,8 @@ func TestParseCidrV4(t *testing.T) {
 	now := time.Now()
 
 	ipn := &IPNetValue{
-		IPNet: net.IPNet{
-			IP:   testutils.MustRandBytes(t, make([]byte, net.IPv4len)),
-			Mask: net.CIDRMask(rand.Intn(8*net.IPv4len), 8*net.IPv4len),
-		},
+		IP:   testutils.MustRandBytes(t, make([]byte, net.IPv4len)),
+		Mask: net.CIDRMask(rand.Intn(8*net.IPv4len), 8*net.IPv4len),
 	}
 	key := testutils.MustKey(t)
 
@@ -164,10 +162,8 @@ func TestParseCidrV6(t *testing.T) {
 	now := time.Now()
 
 	ipn := &IPNetValue{
-		IPNet: net.IPNet{
-			IP:   testutils.MustRandBytes(t, make([]byte, net.IPv6len)),
-			Mask: net.CIDRMask(rand.Intn(8*net.IPv6len), 8*net.IPv6len),
-		},
+		IP:   testutils.MustRandBytes(t, make([]byte, net.IPv6len)),
+		Mask: net.CIDRMask(rand.Intn(8*net.IPv6len), 8*net.IPv6len),
 	}
 	key := testutils.MustKey(t)
 
