@@ -38,6 +38,7 @@ func makePCS(t *testing.T, healthy, alive, aliveLong bool) *apply.PeerConfigStat
 		now,
 		nil,
 		false,
+		func(net.IP) bool { return false },
 	)
 	// make sure it worked
 	assert.Equal(t, healthy, ret.IsHealthy())

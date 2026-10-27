@@ -449,7 +449,7 @@ func TestLinkServer_configurePeersOnce(t *testing.T) {
 				interfaceCache: ic,
 			}
 			s.newBootID()
-			s.configurePeersOnce(tt.args.newFacts, tt.args.dev, tt.args.startTime, tt.args.now)
+			assert.NoError(t, s.configurePeersOnce(tt.args.newFacts, tt.args.dev, tt.args.startTime, tt.args.now))
 
 			if ctrl != nil {
 				ctrl.AssertExpectations(t)

@@ -70,12 +70,13 @@ func (pcs *PeerConfigState) Update(
 	now time.Time,
 	facts []*fact.Fact,
 	quiet bool,
+	willTunnel func(net.IP) bool,
 ) *PeerConfigState {
 	pcs = pcs.EnsureNotNil()
 	// clone before updates to prevent data races
 	pcs = pcs.Clone()
 	pcs.lastHandshake = peer.LastHandshakeTime
-	newHealthy := isHealthy(pcs, peer)
+	newHealthy := isHealthy(pcs, peer, willTunnel)
 	var bootChanged, firstBoot bool
 	if bootID != nil {
 		bootChanged = pcs.lastBootID != nil && *bootID != *pcs.lastBootID

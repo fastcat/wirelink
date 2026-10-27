@@ -2,10 +2,12 @@ package peerfacts
 
 import (
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/fastcat/wirelink/apply"
 	"github.com/fastcat/wirelink/fact"
+	"github.com/fastcat/wirelink/log"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
@@ -17,6 +19,7 @@ func LocalFacts(
 	trustLocalAIPs bool,
 	trustLocalMembership bool,
 	now time.Time,
+	willTunnel func(net.IP) bool,
 ) (ret []*fact.Fact, err error) {
 	// NOTE: we can represent more than 255 seconds at the protocol level now,
 	// but longer than that is probably a bad idea for the time being
@@ -35,9 +38,13 @@ func LocalFacts(
 		})
 	}
 
-	// the endpoint is trustable if the last handshake age is less than the TTL
+	// the endpoint is trustable if the last handshake age is less than the TTL,
+	// and it isn't an erroneous endpoint within the tunnel itself (which creates
+	// infinite loops).
 	if peer.Endpoint != nil && peer.LastHandshakeTime.After(now.Add(-apply.HandshakeValidity)) {
-		if peer.Endpoint.IP.To4() != nil {
+		if willTunnel(peer.Endpoint.IP) {
+			log.Error("peer endpoint %v is within wg net", peer.Endpoint)
+		} else if peer.Endpoint.IP.To4() != nil {
 			addAttr(fact.AttributeEndpointV4, &fact.IPPortValue{IP: peer.Endpoint.IP, Port: peer.Endpoint.Port})
 		} else if peer.Endpoint.IP.To16() != nil {
 			addAttr(fact.AttributeEndpointV6, &fact.IPPortValue{IP: peer.Endpoint.IP, Port: peer.Endpoint.Port})

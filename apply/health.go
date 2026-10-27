@@ -1,6 +1,7 @@
 package apply
 
 import (
+	"net"
 	"time"
 
 	"golang.zx2c4.com/wireguard/device"
@@ -30,11 +31,18 @@ const HandshakeValidity = HandshakeValidityBase + HealthHysteresisBandaid
 // we should consider updating its config to try to find a working setup.
 // note that this is separate from being "Alive", which means that we have heard
 // fact packet(s) from it recently
-func isHealthy(state *PeerConfigState, peer *wgtypes.Peer) bool {
+func isHealthy(state *PeerConfigState, peer *wgtypes.Peer, willTunnel func(net.IP) bool) bool {
 	// if the peer doesn't have an endpoint, it's not healthy
 	if peer.Endpoint == nil {
 		return false
 	}
+	// if the peer endpoint is within any of the device networks, that's a bad
+	// state and not healthy even if wireguard shows a recent handshake, as that
+	// will cause traffic loops.
+	if willTunnel(peer.Endpoint.IP) {
+		return false
+	}
+
 	// if the peer handshake is still valid, the peer is healthy
 	if peer.LastHandshakeTime.Add(HandshakeValidity).After(time.Now()) {
 		return true

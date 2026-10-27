@@ -166,19 +166,19 @@ func TestDeviceFacts(t *testing.T) {
 				{
 					Attribute: fact.AttributeAllowedCidrV4,
 					Subject:   &fact.PeerSubject{Key: k1},
-					Value: &fact.IPNetValue{IPNet: net.IPNet{
+					Value: &fact.IPNetValue{
 						IP:   ipn1.IP.Mask(ipn1.Mask),
 						Mask: ipn1.Mask,
-					}},
+					},
 					Expires: now.Add(time.Minute),
 				},
 				{
 					Attribute: fact.AttributeAllowedCidrV6,
 					Subject:   &fact.PeerSubject{Key: k1},
-					Value: &fact.IPNetValue{IPNet: net.IPNet{
+					Value: &fact.IPNetValue{
 						IP:   ipn2.IP.Mask(ipn2.Mask),
 						Mask: ipn2.Mask,
-					}},
+					},
 					Expires: now.Add(time.Minute),
 				},
 			},

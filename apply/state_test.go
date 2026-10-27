@@ -197,7 +197,17 @@ func TestPeerConfigState_Update(t *testing.T) {
 			if tt.fields.nil {
 				pcs = nil
 			}
-			got := pcs.Update(tt.args.peer, tt.args.name, tt.args.newAlive, tt.args.aliveUntil, tt.args.bootID, tt.args.now, tt.args.facts, false)
+			got := pcs.Update(
+				tt.args.peer,
+				tt.args.name,
+				tt.args.newAlive,
+				tt.args.aliveUntil,
+				tt.args.bootID,
+				tt.args.now,
+				tt.args.facts,
+				false,
+				func(net.IP) bool { return false },
+			)
 			assert.Equal(t, tt.want, got)
 		})
 	}

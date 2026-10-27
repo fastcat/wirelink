@@ -31,7 +31,14 @@ func (s *LinkServer) collectFacts(dev *wgtypes.Device, now time.Time) (ret []*fa
 	log.Debug("Using local AIP/membership: %v/%v", useLocalAIPs, useLocalMembership)
 	for _, peer := range dev.Peers {
 		var pf []*fact.Fact
-		pf, err = peerfacts.LocalFacts(&peer, s.FactTTL, useLocalAIPs, useLocalMembership, now)
+		pf, err = peerfacts.LocalFacts(
+			&peer,
+			s.FactTTL,
+			useLocalAIPs,
+			useLocalMembership,
+			now,
+			s.interfaceCache.WillTunnel,
+		)
 		if err != nil {
 			return ret, err
 		}

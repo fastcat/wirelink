@@ -44,6 +44,7 @@ func TestLinkServer_formatFacts(t *testing.T) {
 		now,
 		nil,
 		true,
+		nil,
 	)
 
 	type fields struct {

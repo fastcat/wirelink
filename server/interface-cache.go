@@ -76,9 +76,11 @@ func (ic *interfaceCache) WillTunnel(ip net.IP) bool {
 	}
 
 	isTunnel := false
+	var tunnelNet net.IPNet
 	for _, ipn := range ic.tunnelIPNets {
 		if ipn.Contains(ip) {
 			isTunnel = true
+			tunnelNet = ipn
 			break
 		}
 	}
@@ -86,10 +88,15 @@ func (ic *interfaceCache) WillTunnel(ip net.IP) bool {
 		ic.mu.RUnlock()
 		return false
 	}
+	tunnelNetSize, _ := tunnelNet.Mask.Size()
 	for _, ipn := range ic.hostIPNets {
 		if ipn.Contains(ip) {
-			isTunnel = false
-			break
+			// if a host network is narrower than the tunnel network, then it
+			// supersedes, but if it's wider then the tunnel supersedes.
+			if maskSize, _ := ipn.Mask.Size(); maskSize <= tunnelNetSize {
+				isTunnel = false
+				break
+			}
 		}
 	}
 

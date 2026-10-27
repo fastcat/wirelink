@@ -263,10 +263,11 @@ func TestLinkServer_collectFacts(t *testing.T) {
 			env.WithKnownInterfaces()
 			env.Test(t)
 			s := &LinkServer{
-				config:     tt.fields.config,
-				net:        env,
-				peerConfig: tt.fields.peerConfig,
-				FactTTL:    DefaultFactTTL,
+				config:         tt.fields.config,
+				net:            env,
+				peerConfig:     tt.fields.peerConfig,
+				FactTTL:        DefaultFactTTL,
+				interfaceCache: &interfaceCache{},
 			}
 			gotRet, err := s.collectFacts(tt.args.dev, now)
 			if tt.wantErr {

@@ -2,6 +2,7 @@ package apply
 
 import (
 	"math/rand"
+	"net"
 	"testing"
 	"time"
 
@@ -73,7 +74,7 @@ func Test_isHealthy(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := isHealthy(tt.args.state, tt.args.peer)
+			got := isHealthy(tt.args.state, tt.args.peer, func(net.IP) bool { return false })
 			t.Logf("deltas: %v, %v, %v", now.Sub(then), now.Sub(longAgo), now.Sub(longLongAgo))
 			assert.Equal(t, tt.want, got)
 		})

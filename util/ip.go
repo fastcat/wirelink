@@ -2,6 +2,7 @@ package util
 
 import (
 	"net"
+	"slices"
 )
 
 // NormalizeIP returns a version of the given ip normalized to its underlying
@@ -67,4 +68,13 @@ func IsGloballyRoutable(ip net.IP) bool {
 	// TODO: more ipv6 reserved ranges
 	// https://www.iana.org/assignments/ipv6-address-space/ipv6-address-space.xhtml
 	return true
+}
+
+func NetsContainIP(nets []net.IPNet, ip net.IP) bool {
+	return slices.ContainsFunc(
+		nets,
+		func(n net.IPNet) bool {
+			return n.Contains(ip)
+		},
+	)
 }
